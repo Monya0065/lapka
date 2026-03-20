@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dose Calculator (Safety-Locked)</title>
+  <style>
+    :root {
+      --bg: #f9f7f2;
+      --panel: #fff;
+      --text: #2b2316;
+      --muted: #7a6a56;
+      --brand: #9f5a1f;
+      --line: #ead9c7;
+    }
+    body { margin: 0; font-family: "Manrope", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .box { width: min(740px, 92%); margin: 26px auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+    h1 { margin-top: 0; }
+    label { display: block; margin-top: 10px; font-weight: 700; }
+    input, select, button { width: 100%; margin-top: 6px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); font: inherit; }
+    button { border: 0; background: var(--brand); color: #fff; font-weight: 700; cursor: pointer; }
+    .result { margin-top: 14px; padding: 12px; border-radius: 10px; background: #fff7ef; border: 1px solid var(--line); }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Dose Calculator Demo (Safety-Locked)</h1>
+    <p class="muted">Medication dosage output is intentionally disabled for safety. This module returns an observation intensity score only.</p>
+
+    <label>Weight (kg)
+      <input id="weight" type="number" min="0.5" step="0.1" value="6.0" />
+    </label>
+
+    <label>Symptom concern level
+      <select id="concern">
+        <option value="1">Low concern</option>
+        <option value="1.5">Medium concern</option>
+        <option value="2">High concern</option>
+      </select>
+    </label>
+
+    <button id="calcBtn">Calculate Observation Plan</button>
+
+    <div class="result" id="result">
+      Enter values and run calculation.
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("calcBtn").addEventListener("click", () => {
+      const weight = Number(document.getElementById("weight").value || 0);
+      const factor = Number(document.getElementById("concern").value || 1);
+      const score = Math.max(1, Math.round(weight * factor));
+
+      let cadence = "Check status every 12 hours.";
+      if (score >= 10 && score < 20) cadence = "Check status every 6 hours and contact your clinic today.";
+      if (score >= 20) cadence = "High concern: seek urgent veterinary guidance now.";
+
+      document.getElementById("result").innerHTML = `
+        <strong>Observation score:</strong> ${score}<br />
+        <strong>Safe action:</strong> ${cadence}<br />
+        <strong>Safety notice:</strong> This tool provides triage information only.<br />
+        <strong>Important:</strong> No drug names, dosages, or treatment instructions are provided.
+      `;
+    });
+  </script>
+</body>
+</html>

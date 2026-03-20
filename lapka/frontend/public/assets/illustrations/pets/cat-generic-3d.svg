@@ -1,0 +1,35 @@
+<svg width="720" height="520" viewBox="0 0 720 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="720" height="520" rx="48" fill="url(#bg)"/>
+<ellipse cx="360" cy="420" rx="180" ry="32" fill="#B9D8E8" fill-opacity=".55"/>
+<path d="M279 165L320 97L350 178L279 165Z" fill="#7B95B3"/>
+<path d="M441 165L400 97L370 178L441 165Z" fill="#7B95B3"/>
+<circle cx="360" cy="244" r="118" fill="url(#fur)"/>
+<ellipse cx="360" cy="282" rx="72" ry="58" fill="#F6FBFF"/>
+<circle cx="320" cy="232" r="13" fill="#294E75"/>
+<circle cx="400" cy="232" r="13" fill="#294E75"/>
+<circle cx="323" cy="235" r="4" fill="white"/>
+<circle cx="403" cy="235" r="4" fill="white"/>
+<path d="M360 254L373 276H347L360 254Z" fill="#E59DB8"/>
+<path d="M344 291C352 304 368 304 376 291" stroke="#E59DB8" stroke-width="8" stroke-linecap="round"/>
+<path d="M285 262H223" stroke="#5D7EA2" stroke-width="6" stroke-linecap="round"/>
+<path d="M292 283L228 296" stroke="#5D7EA2" stroke-width="6" stroke-linecap="round"/>
+<path d="M435 262H497" stroke="#5D7EA2" stroke-width="6" stroke-linecap="round"/>
+<path d="M428 283L492 296" stroke="#5D7EA2" stroke-width="6" stroke-linecap="round"/>
+<g filter="url(#card)">
+<rect x="40" y="40" width="190" height="74" rx="22" fill="white" fill-opacity=".86"/>
+</g>
+<text x="68" y="84" fill="#244B73" font-family="Arial, sans-serif" font-size="34" font-weight="700">Pet 3D</text>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="720" y2="520" gradientUnits="userSpaceOnUse">
+<stop stop-color="#EEF8FF"/>
+<stop offset="1" stop-color="#D8EEF0"/>
+</linearGradient>
+<linearGradient id="fur" x1="242" y1="126" x2="470" y2="362" gradientUnits="userSpaceOnUse">
+<stop stop-color="#93A9C7"/>
+<stop offset="1" stop-color="#5D7EA2"/>
+</linearGradient>
+<filter id="card" x="24" y="28" width="222" height="106" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#7CA7C4" flood-opacity=".22"/>
+</filter>
+</defs>
+</svg>

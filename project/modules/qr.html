@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Generator</title>
+  <style>
+    :root {
+      --bg: #f6faf8;
+      --panel: #fff;
+      --text: #16251f;
+      --muted: #53675d;
+      --brand: #1d7049;
+      --line: #d4e4da;
+    }
+    body { margin: 0; font-family: "Manrope", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .box { width: min(780px, 92%); margin: 24px auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+    h1 { margin-top: 0; }
+    label { display: block; margin-top: 10px; font-weight: 700; }
+    input, button { width: 100%; margin-top: 6px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); font: inherit; }
+    button { border: 0; background: var(--brand); color: #fff; font-weight: 700; cursor: pointer; }
+    .grid-wrap { margin-top: 12px; display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    canvas { border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>QR Generator (Tilda Demo Module)</h1>
+    <p class="muted">Standalone, no external libraries. Generates a QR-style visual token for appointment sharing.</p>
+
+    <label>Text or URL
+      <input id="payload" type="text" value="https://vet-safe.demo/visit/12345" />
+    </label>
+
+    <button id="genBtn">Generate Code</button>
+
+    <div class="grid-wrap">
+      <canvas id="code" width="256" height="256"></canvas>
+      <div>
+        <p><strong>Output:</strong> Visual share code</p>
+        <p class="muted">For production scanning, replace with ISO QR encoder in backend render pipeline.</p>
+        <p class="muted">Safety notice: This tool provides triage information only.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function hashString(s) {
+      let h = 2166136261;
+      for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+
+    function drawFinder(ctx, x, y, cell) {
+      ctx.fillRect(x, y, 7 * cell, 7 * cell);
+      ctx.clearRect(x + cell, y + cell, 5 * cell, 5 * cell);
+      ctx.fillRect(x + 2 * cell, y + 2 * cell, 3 * cell, 3 * cell);
+    }
+
+    function generatePattern(text) {
+      const size = 29;
+      const data = Array.from({ length: size }, () => Array(size).fill(false));
+      const seed = hashString(text || "empty");
+
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const n = (x * 374761393 + y * 668265263 + seed) >>> 0;
+          data[y][x] = ((n ^ (n >>> 13)) & 3) === 0;
+        }
+      }
+
+      // Reserve corners for finder patterns
+      for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+          data[y][x] = false;
+          data[y][size - 1 - x] = false;
+          data[size - 1 - y][x] = false;
+        }
+      }
+      return data;
+    }
+
+    function render(text) {
+      const canvas = document.getElementById("code");
+      const ctx = canvas.getContext("2d");
+      const size = 29;
+      const cell = Math.floor(canvas.width / size);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#111";
+
+      const data = generatePattern(text);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (data[y][x]) ctx.fillRect(x * cell, y * cell, cell, cell);
+        }
+      }
+
+      drawFinder(ctx, 0, 0, cell);
+      drawFinder(ctx, (size - 7) * cell, 0, cell);
+      drawFinder(ctx, 0, (size - 7) * cell, cell);
+    }
+
+    document.getElementById("genBtn").addEventListener("click", () => {
+      render(document.getElementById("payload").value.trim());
+    });
+
+    render(document.getElementById("payload").value);
+  </script>
+</body>
+</html>

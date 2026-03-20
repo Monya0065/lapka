@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doctor Dashboard</title>
+  <style>
+    :root {
+      --bg: #f3f7fb;
+      --panel: #fff;
+      --text: #16253a;
+      --muted: #59718b;
+      --brand: #255f9a;
+      --line: #d6e2ee;
+    }
+    body { margin: 0; font-family: "Manrope", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .top { padding: 16px; border-bottom: 1px solid var(--line); background: #fff; display: flex; justify-content: space-between; }
+    .wrap { width: min(1120px, 94%); margin: 18px auto; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+    h1, h3 { margin-top: 0; }
+    .muted { color: var(--muted); }
+    a { color: var(--brand); text-decoration: none; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <strong>Doctor Portal</strong>
+    <a href="/pages/index.html">Back to site</a>
+  </header>
+
+  <main class="wrap">
+    <h1>Dr. Rivera</h1>
+    <p class="muted">Clinical workflow and patient priorities.</p>
+
+    <section class="grid">
+      <article class="card"><h3>Schedule</h3><p class="muted">8 booked visits, 2 urgent slots pending.</p></article>
+      <article class="card"><h3>Patients</h3><p class="muted">42 active cases this week.</p></article>
+      <article class="card"><h3>Visits</h3><p class="muted">4 in progress, 1 awaiting protocol finalization.</p></article>
+      <article class="card"><h3>Visit Protocol</h3><p class="muted"><a href="/modules/protocol.html">Open protocol generator</a></p></article>
+      <article class="card"><h3>Documents</h3><p class="muted">9 new uploads today.</p></article>
+      <article class="card"><h3>Chat</h3><p class="muted">3 owner conversations flagged for follow-up.</p></article>
+    </section>
+  </main>
+</body>
+</html>

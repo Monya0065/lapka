@@ -1,0 +1,145 @@
+{
+  "platform": "tilda-zero-block",
+  "pages": [
+    {
+      "path": "/",
+      "blocks": [
+        {
+          "block": "hero",
+          "elements": [
+            { "type": "title", "x": 120, "y": 80, "size": 52 },
+            { "type": "subtitle", "x": 120, "y": 170, "size": 20 },
+            { "type": "button", "x": 120, "y": 250, "size": 16 },
+            { "type": "panel", "x": 760, "y": 90, "w": 360, "h": 280 }
+          ]
+        },
+        {
+          "block": "features",
+          "elements": [
+            { "type": "title", "x": 120, "y": 480, "size": 40 },
+            { "type": "card", "x": 120, "y": 560, "w": 320, "h": 220 },
+            { "type": "card", "x": 470, "y": 560, "w": 320, "h": 220 },
+            { "type": "card", "x": 820, "y": 560, "w": 320, "h": 220 }
+          ]
+        },
+        {
+          "block": "how-it-works",
+          "elements": [
+            { "type": "title", "x": 120, "y": 860, "size": 38 },
+            { "type": "step", "x": 120, "y": 940, "w": 190, "h": 140 },
+            { "type": "step", "x": 340, "y": 940, "w": 190, "h": 140 },
+            { "type": "step", "x": 560, "y": 940, "w": 190, "h": 140 },
+            { "type": "step", "x": 780, "y": 940, "w": 190, "h": 140 },
+            { "type": "step", "x": 1000, "y": 940, "w": 190, "h": 140 }
+          ]
+        },
+        {
+          "block": "demo",
+          "elements": [
+            { "type": "title", "x": 120, "y": 1160, "size": 38 },
+            { "type": "module-list", "x": 120, "y": 1240, "w": 1020, "h": 280 }
+          ]
+        },
+        {
+          "block": "security",
+          "elements": [
+            { "type": "title", "x": 120, "y": 1570, "size": 36 },
+            { "type": "text", "x": 120, "y": 1630, "w": 980, "h": 120 }
+          ]
+        },
+        {
+          "block": "cta",
+          "elements": [
+            { "type": "panel", "x": 120, "y": 1800, "w": 1020, "h": 240 },
+            { "type": "title", "x": 180, "y": 1860, "size": 38 },
+            { "type": "button", "x": 180, "y": 1950, "size": 16 }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/clinics",
+      "blocks": [
+        {
+          "block": "clinic-overview",
+          "elements": [
+            { "type": "title", "x": 120, "y": 90, "size": 46 },
+            { "type": "grid", "x": 120, "y": 220, "w": 1020, "h": 440 }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/owners",
+      "blocks": [
+        {
+          "block": "owner-overview",
+          "elements": [
+            { "type": "title", "x": 120, "y": 90, "size": 44 },
+            { "type": "grid", "x": 120, "y": 220, "w": 1020, "h": 640 }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/pricing",
+      "blocks": [
+        {
+          "block": "pricing-grid",
+          "elements": [
+            { "type": "title", "x": 120, "y": 90, "size": 44 },
+            { "type": "card", "x": 120, "y": 230, "w": 320, "h": 440 },
+            { "type": "card", "x": 470, "y": 230, "w": 320, "h": 440 },
+            { "type": "card", "x": 820, "y": 230, "w": 320, "h": 440 }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/security",
+      "blocks": [
+        {
+          "block": "security-cards",
+          "elements": [
+            { "type": "title", "x": 120, "y": 90, "size": 42 },
+            { "type": "grid", "x": 120, "y": 230, "w": 1020, "h": 520 }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/faq",
+      "blocks": [
+        {
+          "block": "faq-list",
+          "elements": [
+            { "type": "title", "x": 120, "y": 90, "size": 42 },
+            { "type": "accordion", "x": 120, "y": 220, "w": 920, "h": 520 }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/auth",
+      "blocks": [
+        {
+          "block": "auth-form",
+          "elements": [
+            { "type": "panel", "x": 380, "y": 120, "w": 500, "h": 560 },
+            { "type": "form", "x": 420, "y": 180, "w": 420, "h": 420 }
+          ]
+        }
+      ]
+    }
+  ],
+  "responsive": {
+    "desktop": 1200,
+    "tablet": 960,
+    "mobile": 640,
+    "rules": [
+      "Stack cards to single column below 960px",
+      "Reduce heading size by 20% on mobile",
+      "Expand button width to 100% on mobile"
+    ]
+  }
+}

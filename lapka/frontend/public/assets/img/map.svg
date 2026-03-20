@@ -1,0 +1,22 @@
+<svg width="640" height="420" viewBox="0 0 640 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg5" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#def2ff"/>
+      <stop offset="100%" stop-color="#ecfff8"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="420" rx="28" fill="url(#bg5)"/>
+  <path d="M70 340 C180 270 220 150 330 190 C430 225 470 320 580 280" stroke="#9ac7d8" stroke-width="12" fill="none"/>
+  <circle cx="180" cy="250" r="20" fill="#2aa6da"/>
+  <circle cx="180" cy="250" r="8" fill="#fff"/>
+  <circle cx="320" cy="190" r="20" fill="#2bc8a1"/>
+  <circle cx="320" cy="190" r="8" fill="#fff"/>
+  <circle cx="470" cy="280" r="20" fill="#ffb020"/>
+  <circle cx="470" cy="280" r="8" fill="#fff"/>
+  <circle cx="280" cy="300" r="20" fill="#dc3545"/>
+  <circle cx="280" cy="300" r="8" fill="#fff"/>
+  <text x="178" y="284" font-size="18" text-anchor="middle" fill="#2b556b" font-family="Segoe UI,sans-serif">Клиника</text>
+  <text x="320" y="224" font-size="18" text-anchor="middle" fill="#2b556b" font-family="Segoe UI,sans-serif">Аптека</text>
+  <text x="470" y="314" font-size="18" text-anchor="middle" fill="#2b556b" font-family="Segoe UI,sans-serif">Площадка</text>
+  <text x="280" y="334" font-size="18" text-anchor="middle" fill="#2b556b" font-family="Segoe UI,sans-serif">Зоомагазин</text>
+</svg>

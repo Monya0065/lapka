@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VetSafe Cloud | AI Triage Veterinary SaaS</title>
+  <style>
+    :root {
+      --bg: #f5f7f4;
+      --panel: #ffffff;
+      --text: #13211a;
+      --muted: #54645a;
+      --brand: #176a45;
+      --accent: #ff8a3d;
+      --line: #d6e1d8;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(19, 33, 26, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Manrope", "Segoe UI", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 20% 0%, #edf8f1 0%, #f5f7f4 45%, #f1f4f1 100%);
+      line-height: 1.5;
+    }
+    .wrap { width: min(1120px, 92%); margin: 0 auto; }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(245, 247, 244, 0.95);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px 0;
+    }
+    .brand { font-weight: 800; letter-spacing: 0.3px; }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      margin: 0 8px;
+      font-size: 14px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 18px;
+      border-radius: 999px;
+      border: 0;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-ghost { background: #fff; color: var(--text); border: 1px solid var(--line); }
+    section { padding: 72px 0; }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 28px;
+      align-items: center;
+    }
+    .hero h1 {
+      font-size: clamp(30px, 5vw, 54px);
+      line-height: 1.1;
+      margin: 0 0 16px;
+    }
+    .hero p { color: var(--muted); margin: 0 0 24px; }
+    .hero-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+    .kpi {
+      background: #f7fbf8;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .card h3 { margin-top: 0; }
+    .muted { color: var(--muted); }
+    .how {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+    .step {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 14px;
+    }
+    .demo-list a {
+      display: block;
+      margin: 6px 0;
+      color: var(--brand);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .cta {
+      background: linear-gradient(135deg, #176a45 0%, #0f4d32 100%);
+      border-radius: 22px;
+      color: #fff;
+      padding: 40px;
+      text-align: center;
+    }
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 24px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    @media (max-width: 920px) {
+      .hero { grid-template-columns: 1fr; }
+      .grid-3 { grid-template-columns: 1fr; }
+      .how { grid-template-columns: 1fr 1fr; }
+      .kpis { grid-template-columns: 1fr; }
+      nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <div class="brand">VetSafe Cloud</div>
+      <nav>
+        <a href="/pages/clinics.html">Clinics</a>
+        <a href="/pages/owners.html">Owners</a>
+        <a href="/pages/pricing.html">Pricing</a>
+        <a href="/pages/security.html">Security</a>
+        <a href="/pages/faq.html">FAQ</a>
+      </nav>
+      <a class="btn btn-primary" href="/pages/auth.html">Sign in</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero" id="hero">
+      <div>
+        <h1>Veterinary SaaS with a safety-first AI triage layer</h1>
+        <p>
+          One platform for owners, doctors, and clinic admins. Built for rapid triage,
+          secure medical records, and coordinated care workflows.
+        </p>
+        <a class="btn btn-primary" href="#demo">Try Demo Modules</a>
+        <a class="btn btn-ghost" href="/pages/clinics.html">Explore Clinic CRM</a>
+      </div>
+      <div class="hero-card">
+        <h3>Platform Snapshot</h3>
+        <p class="muted">Role-based access, AI triage guardrails, and auditable workflows.</p>
+        <div class="kpis">
+          <div class="kpi"><strong>3</strong><br />Portals</div>
+          <div class="kpi"><strong>99.9%</strong><br />Uptime target</div>
+          <div class="kpi"><strong>24/7</strong><br />Triage availability</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2>Features</h2>
+      <div class="grid-3">
+        <article class="card">
+          <h3>Owner App</h3>
+          <p class="muted">Pet profiles, vaccination timeline, lab results, reminders, symptom diary, and chat.</p>
+        </article>
+        <article class="card">
+          <h3>Doctor Workspace</h3>
+          <p class="muted">Schedule, patients, visit protocols, secure documents, and structured communication.</p>
+        </article>
+        <article class="card">
+          <h3>Clinic CRM</h3>
+          <p class="muted">Staff planning, operational analytics, billing overview, and full audit logging.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="how">
+      <h2>How It Works</h2>
+      <div class="how">
+        <div class="step"><strong>1</strong><br />Owner submits symptoms and key vitals.</div>
+        <div class="step"><strong>2</strong><br />Red flags are checked first for emergency signs.</div>
+        <div class="step"><strong>3</strong><br />Risk score + age multiplier define urgency.</div>
+        <div class="step"><strong>4</strong><br />AI returns only safe actions and visit recommendation.</div>
+        <div class="step"><strong>5</strong><br />Doctor receives triage context in dashboard.</div>
+      </div>
+    </section>
+
+    <section id="demo">
+      <h2>Interactive Demo</h2>
+      <div class="grid-3 demo-list">
+        <article class="card">
+          <h3>Clinical Safety Demos</h3>
+          <a href="/modules/triage.html">AI Triage Demo</a>
+          <a href="/modules/protocol.html">Visit Protocol Generator</a>
+          <a href="/modules/qr.html">QR Generator</a>
+        </article>
+        <article class="card">
+          <h3>Calculators</h3>
+          <a href="/modules/calculator.html">Dose Calculator (Safety-Locked)</a>
+          <a href="/modules/fluids.html">Fluid Calculator</a>
+          <a href="/modules/rer.html">RER Calculator</a>
+        </article>
+        <article class="card">
+          <h3>Portal Previews</h3>
+          <a href="/modules/owner-dashboard.html">Owner Dashboard</a>
+          <a href="/modules/doctor-dashboard.html">Doctor Dashboard</a>
+          <a href="/modules/clinic-dashboard.html">Clinic Dashboard</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="security">
+      <h2>Security</h2>
+      <div class="card">
+        <p>
+          End-to-end encryption in transit, role-based permissions, immutable audit log,
+          and strict AI guardrails that prevent diagnosis or medication output.
+        </p>
+      </div>
+    </section>
+
+    <section id="cta">
+      <div class="cta">
+        <h2>Launch your veterinary digital platform on Tilda</h2>
+        <p>Copy any module into a T123 HTML block and connect it to your backend APIs.</p>
+        <a class="btn btn-ghost" href="/pages/auth.html">Open Auth Demo</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">VetSafe Cloud demo architecture for Tilda Zero Block and HTML block assembly.</div>
+  </footer>
+</body>
+</html>

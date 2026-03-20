@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR-генератор (чистый JS, демо)</title>
+    <style>
+      :root {
+        --blue: #4c7cf3;
+        --soft: #eaf1ff;
+        --gray: #e6e8ee;
+        --text: #2b2f3a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        color: var(--text);
+        background: linear-gradient(180deg, #f5f9ff 0%, #fff 220px);
+      }
+      .card {
+        max-width: 900px;
+        margin: 0 auto;
+        border: 1px solid var(--gray);
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(43, 47, 58, 0.08);
+        background: #fff;
+        padding: 16px;
+      }
+      h1 { margin: 0 0 10px; font-size: 1.26rem; }
+      label { display: block; margin-bottom: 4px; font-weight: 700; font-size: 0.9rem; }
+      textarea {
+        width: 100%;
+        min-height: 100px;
+        resize: vertical;
+        border: 1px solid #cfd5e2;
+        border-radius: 12px;
+        padding: 10px;
+        font: inherit;
+      }
+      .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+      select, input {
+        width: 100%;
+        border: 1px solid #cfd5e2;
+        border-radius: 12px;
+        padding: 10px;
+        font: inherit;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      button {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .primary { background: var(--blue); color: #fff; }
+      .secondary { background: #fff; border: 1px solid var(--gray); }
+      .error { color: #a12e1f; min-height: 22px; font-weight: 700; margin-top: 8px; }
+      .info {
+        margin-top: 8px;
+        border-radius: 12px;
+        border: 1px solid #bed0ff;
+        background: #f8fbff;
+        padding: 10px;
+        font-size: 0.9rem;
+      }
+      .canvas-wrap {
+        margin-top: 12px;
+        border: 1px dashed #c9d7fb;
+        border-radius: 12px;
+        padding: 10px;
+        display: inline-block;
+        background: #fff;
+      }
+      .small { color: #5b6376; font-size: 0.85rem; }
+      @media (max-width: 700px) {
+        .grid { grid-template-columns: 1fr; }
+        button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="card">
+      <h1>Реальный QR-генератор (без CDN, чистый JS)</h1>
+      <p class="small">Байтовый режим, ECC L, версии QR 2-4, отрисовка на canvas, скачивание PNG.</p>
+
+      <label for="qrText">Входной текст (ASCII/UTF-8, до 120 символов)</label>
+      <textarea id="qrText" placeholder="https://example.com/lapka"></textarea>
+
+      <div class="grid" style="margin-top: 10px;">
+        <div>
+          <label for="scale">Масштаб пикселей</label>
+          <select id="scale">
+            <option value="6">6 пикс/модуль</option>
+            <option value="8" selected>8 пикс/модуль</option>
+            <option value="10">10 пикс/модуль</option>
+          </select>
+        </div>
+        <div>
+          <label for="quiet">Тихая зона</label>
+          <select id="quiet">
+            <option value="2">2 модуля</option>
+            <option value="4" selected>4 модуля</option>
+            <option value="6">6 модуля</option>
+          </select>
+        </div>
+        <div>
+          <label for="rounding">Округление (только для инфо)</label>
+          <select id="rounding">
+            <option value="0">0 знаков</option>
+            <option value="1" selected>1 знак</option>
+            <option value="2">2 знаков</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="generateBtn" class="primary">Сгенерировать QR</button>
+        <button type="button" id="downloadBtn" class="secondary">Скачать PNG</button>
+        <button type="button" id="resetBtn" class="secondary">Сброс</button>
+      </div>
+
+      <p id="err" class="error" aria-live="polite"></p>
+      <div id="info" class="info" aria-live="polite">QR-код еще не сгенерирован.</div>
+
+      <div class="canvas-wrap">
+        <canvas id="qrCanvas" width="320" height="320" aria-label="QR output"></canvas>
+      </div>
+    </section>
+
+    <script>
+      (function () {
+        const VERSION_INFO = {
+          2: { size: 25, dataCodewords: 34, eccCodewords: 10, align: [6, 18] },
+          3: { size: 29, dataCodewords: 55, eccCodewords: 15, align: [6, 22] },
+          4: { size: 33, dataCodewords: 80, eccCodewords: 20, align: [6, 26] }
+        };
+        const CAP_BYTES = { 2: 32, 3: 53, 4: 78 };
+
+        const ALPHA = 2;
+        const GF_MOD = 0x11d;
+        const exp = new Array(512).fill(0);
+        const log = new Array(256).fill(0);
+
+        (function initGfTables() {
+          let x = 1;
+          for (let i = 0; i < 255; i++) {
+            exp[i] = x;
+            log[x] = i;
+            x <<= 1;
+            if (x & 0x100) {
+              x ^= GF_MOD;
+            }
+          }
+          for (let i = 255; i < 512; i++) {
+            exp[i] = exp[i - 255];
+          }
+        })();
+
+        function gfMul(a, b) {
+          if (a === 0 || b === 0) return 0;
+          return exp[log[a] + log[b]];
+        }
+
+        function gfPow(base, power) {
+          if (power === 0) return 1;
+          if (base === 0) return 0;
+          const idx = (log[base] * power) % 255;
+          return exp[(idx + 255) % 255];
+        }
+
+        function polyMultiply(a, b) {
+          const out = new Array(a.length + b.length - 1).fill(0);
+          for (let i = 0; i < a.length; i++) {
+            for (let j = 0; j < b.length; j++) {
+              out[i + j] ^= gfMul(a[i], b[j]);
+            }
+          }
+          return out;
+        }
+
+        function makeGeneratorPoly(degree) {
+          let poly = [1];
+          for (let i = 0; i < degree; i++) {
+            poly = polyMultiply(poly, [1, gfPow(ALPHA, i)]);
+          }
+          return poly;
+        }
+
+        function reedSolomonCompute(data, eccLen) {
+          const gen = makeGeneratorPoly(eccLen);
+          const msg = data.slice();
+          for (let i = 0; i < eccLen; i++) msg.push(0);
+
+          for (let i = 0; i < data.length; i++) {
+            const coef = msg[i];
+            if (coef === 0) continue;
+            for (let j = 0; j < gen.length; j++) {
+              msg[i + j] ^= gfMul(gen[j], coef);
+            }
+          }
+          return msg.slice(msg.length - eccLen);
+        }
+
+        function utf8Bytes(str) {
+          return Array.from(new TextEncoder().encode(str));
+        }
+
+        function chooseVersion(byteLen) {
+          if (byteLen <= CAP_BYTES[2]) return 2;
+          if (byteLen <= CAP_BYTES[3]) return 3;
+          if (byteLen <= CAP_BYTES[4]) return 4;
+          return null;
+        }
+
+        function appendBits(buffer, value, length) {
+          for (let i = length - 1; i >= 0; i--) {
+            buffer.push(((value >>> i) & 1) === 1);
+          }
+        }
+
+        function buildDataCodewords(bytes, version) {
+          const info = VERSION_INFO[version];
+          const bitBuffer = [];
+
+          appendBits(bitBuffer, 0b0100, 4);
+          appendBits(bitBuffer, bytes.length, 8);
+          for (const b of bytes) appendBits(bitBuffer, b, 8);
+
+          const dataBitCap = info.dataCodewords * 8;
+          appendBits(bitBuffer, 0, Math.min(4, dataBitCap - bitBuffer.length));
+          while (bitBuffer.length % 8 !== 0) bitBuffer.push(false);
+
+          const data = [];
+          for (let i = 0; i < bitBuffer.length; i += 8) {
+            let val = 0;
+            for (let j = 0; j < 8; j++) {
+              val = (val << 1) | (bitBuffer[i + j] ? 1 : 0);
+            }
+            data.push(val);
+          }
+
+          const pads = [0xec, 0x11];
+          let padIndex = 0;
+          while (data.length < info.dataCodewords) {
+            data.push(pads[padIndex % 2]);
+            padIndex++;
+          }
+          return data;
+        }
+
+        function makeMatrix(size) {
+          const модуля = [];
+          const isFunc = [];
+          for (let y = 0; y < size; y++) {
+            модуля.push(new Array(size).fill(false));
+            isFunc.push(new Array(size).fill(false));
+          }
+          return { модуля, isFunc };
+        }
+
+        function setFunc(matrix, x, y, dark) {
+          const { модуля, isFunc } = matrix;
+          if (x < 0 || y < 0 || y >= модуля.length || x >= модуля.length) return;
+          модуля[y][x] = dark;
+          isFunc[y][x] = true;
+        }
+
+        function drawFinder(matrix, cx, cy) {
+          for (let dy = -4; dy <= 4; dy++) {
+            for (let dx = -4; dx <= 4; dx++) {
+              const x = cx + dx;
+              const y = cy + dy;
+              const dist = Math.max(Math.abs(dx), Math.abs(dy));
+              const dark = dist !== 2 && dist !== 4;
+              setFunc(matrix, x, y, dark);
+            }
+          }
+        }
+
+        function drawAlignment(matrix, cx, cy) {
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              const dist = Math.max(Math.abs(dx), Math.abs(dy));
+              const dark = dist !== 1;
+              setFunc(matrix, cx + dx, cy + dy, dark);
+            }
+          }
+        }
+
+        function drawFunctionPatterns(matrix, version) {
+          const info = VERSION_INFO[version];
+          const size = info.size;
+
+          drawFinder(matrix, 3, 3);
+          drawFinder(matrix, size - 4, 3);
+          drawFinder(matrix, 3, size - 4);
+
+          for (let i = 0; i < size; i++) {
+            setFunc(matrix, 6, i, i % 2 === 0);
+            setFunc(matrix, i, 6, i % 2 === 0);
+          }
+
+          const aligns = info.align;
+          for (let i = 0; i < aligns.length; i++) {
+            for (let j = 0; j < aligns.length; j++) {
+              const x = aligns[i];
+              const y = aligns[j];
+              const isOverlapFinder =
+                (i === 0 && j === 0) ||
+                (i === 0 && j === aligns.length - 1) ||
+                (i === aligns.length - 1 && j === 0);
+              if (!isOverlapFinder) drawAlignment(matrix, x, y);
+            }
+          }
+
+          setFunc(matrix, 8, size - 8, true);
+
+          for (let i = 0; i < 8; i++) {
+            if (i !== 6) {
+              setFunc(matrix, 8, i, false);
+              setFunc(matrix, i, 8, false);
+            }
+          }
+          for (let i = 0; i < 7; i++) {
+            setFunc(matrix, size - 1 - i, 8, false);
+            setFunc(matrix, 8, size - 1 - i, false);
+          }
+          setFunc(matrix, 8, 8, false);
+        }
+
+        function toBits(codewords) {
+          const bits = [];
+          for (const cw of codewords) {
+            for (let i = 7; i >= 0; i--) {
+              bits.push(((cw >>> i) & 1) === 1);
+            }
+          }
+          return bits;
+        }
+
+        function placeCodewords(matrix, codewords) {
+          const bits = toBits(codewords);
+          const size = matrix.модуля.length;
+          let bitIndex = 0;
+          let upward = true;
+
+          for (let right = size - 1; right >= 1; right -= 2) {
+            if (right === 6) right--;
+            for (let i = 0; i < size; i++) {
+              const y = upward ? size - 1 - i : i;
+              for (let dx = 0; dx < 2; dx++) {
+                const x = right - dx;
+                if (!matrix.isFunc[y][x]) {
+                  matrix.модуля[y][x] = bitIndex < bits.length ? bits[bitIndex] : false;
+                  bitIndex++;
+                }
+              }
+            }
+            upward = !upward;
+          }
+        }
+
+        function getMaskBit(mask, x, y) {
+          switch (mask) {
+            case 0: return (x + y) % 2 === 0;
+            case 1: return y % 2 === 0;
+            case 2: return x % 3 === 0;
+            case 3: return (x + y) % 3 === 0;
+            case 4: return (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0;
+            case 5: return ((x * y) % 2 + (x * y) % 3) === 0;
+            case 6: return (((x * y) % 2 + (x * y) % 3) % 2) === 0;
+            case 7: return ((((x + y) % 2) + ((x * y) % 3)) % 2) === 0;
+            default: return false;
+          }
+        }
+
+        function applyMask(matrix, mask) {
+          const size = matrix.модуля.length;
+          for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+              if (!matrix.isFunc[y][x] && getMaskBit(mask, x, y)) {
+                matrix.модуля[y][x] = !matrix.модуля[y][x];
+              }
+            }
+          }
+        }
+
+        function getFormatBits(mask) {
+          const ecl = 0b01;
+          const data = (ecl << 3) | mask;
+          let rem = data << 10;
+          const poly = 0x537;
+          for (let i = 14; i >= 10; i--) {
+            if (((rem >>> i) & 1) !== 0) {
+              rem ^= poly << (i - 10);
+            }
+          }
+          return ((data << 10) | rem) ^ 0x5412;
+        }
+
+        function drawFormatBits(matrix, mask) {
+          const size = matrix.модуля.length;
+          const bits = getFormatBits(mask);
+          const bit = (i) => ((bits >>> i) & 1) === 1;
+
+          for (let i = 0; i <= 5; i++) setFunc(matrix, 8, i, bit(i));
+          setFunc(matrix, 8, 7, bit(6));
+          setFunc(matrix, 8, 8, bit(7));
+          setFunc(matrix, 7, 8, bit(8));
+          for (let i = 9; i <= 14; i++) setFunc(matrix, 14 - i, 8, bit(i));
+
+          for (let i = 0; i <= 7; i++) setFunc(matrix, size - 1 - i, 8, bit(i));
+          for (let i = 8; i <= 14; i++) setFunc(matrix, 8, size - 15 + i, bit(i));
+          setFunc(matrix, 8, size - 8, true);
+        }
+
+        function cloneMatrix(matrix) {
+          return {
+            модуля: matrix.модуля.map((row) => row.slice()),
+            isFunc: matrix.isFunc.map((row) => row.slice())
+          };
+        }
+
+        function penaltyScore(matrix) {
+          const size = matrix.модуля.length;
+          let score = 0;
+
+          for (let y = 0; y < size; y++) {
+            let runColor = matrix.модуля[y][0];
+            let runLen = 1;
+            for (let x = 1; x < size; x++) {
+              const color = matrix.модуля[y][x];
+              if (color === runColor) {
+                runLen++;
+              } else {
+                if (runLen >= 5) score += 3 + (runLen - 5);
+                runColor = color;
+                runLen = 1;
+              }
+            }
+            if (runLen >= 5) score += 3 + (runLen - 5);
+          }
+
+          for (let x = 0; x < size; x++) {
+            let runColor = matrix.модуля[0][x];
+            let runLen = 1;
+            for (let y = 1; y < size; y++) {
+              const color = matrix.модуля[y][x];
+              if (color === runColor) {
+                runLen++;
+              } else {
+                if (runLen >= 5) score += 3 + (runLen - 5);
+                runColor = color;
+                runLen = 1;
+              }
+            }
+            if (runLen >= 5) score += 3 + (runLen - 5);
+          }
+
+          for (let y = 0; y < size - 1; y++) {
+            for (let x = 0; x < size - 1; x++) {
+              const c = matrix.модуля[y][x];
+              if (
+                c === matrix.модуля[y][x + 1] &&
+                c === matrix.модуля[y + 1][x] &&
+                c === matrix.модуля[y + 1][x + 1]
+              ) {
+                score += 3;
+              }
+            }
+          }
+
+          function isPattern(arr, i) {
+            return (
+              arr[i] && !arr[i + 1] && arr[i + 2] && arr[i + 3] && arr[i + 4] && !arr[i + 5] && arr[i + 6]
+            );
+          }
+
+          function hasQuiet(arr, start, end) {
+            for (let i = start; i < end; i++) {
+              if (i < 0 || i >= arr.length) return false;
+              if (arr[i]) return false;
+            }
+            return true;
+          }
+
+          for (let y = 0; y < size; y++) {
+            const row = matrix.модуля[y];
+            for (let x = 0; x <= size - 7; x++) {
+              if (isPattern(row, x) && (hasQuiet(row, x - 4, x) || hasQuiet(row, x + 7, x + 11))) {
+                score += 40;
+              }
+            }
+          }
+
+          for (let x = 0; x < size; x++) {
+            const col = [];
+            for (let y = 0; y < size; y++) col.push(matrix.модуля[y][x]);
+            for (let y = 0; y <= size - 7; y++) {
+              if (isPattern(col, y) && (hasQuiet(col, y - 4, y) || hasQuiet(col, y + 7, y + 11))) {
+                score += 40;
+              }
+            }
+          }
+
+          let dark = 0;
+          for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+              if (matrix.модуля[y][x]) dark++;
+            }
+          }
+          const total = size * size;
+          const k = Math.floor(Math.abs(dark * 20 - total * 10) / total);
+          score += k * 10;
+
+          return score;
+        }
+
+        function encodeQr(text) {
+          const chars = Array.from(text);
+          if (chars.length > 120) {
+            throw new Error('Превышен лимит: не более 120 символов.');
+          }
+
+          const bytes = utf8Bytes(text);
+          const version = chooseVersion(bytes.length);
+          if (!version) {
+            throw new Error('Текст слишком длинный для версий QR 2-4 (ECC L). Уменьшите длину.');
+          }
+
+          const info = VERSION_INFO[version];
+          const dataCw = buildDataCodewords(bytes, version);
+          const ecc = reedSolomonCompute(dataCw, info.eccCodewords);
+          const allCodewords = dataCw.concat(ecc);
+
+          const base = makeMatrix(info.size);
+          drawFunctionPatterns(base, version);
+          placeCodewords(base, allCodewords);
+
+          let bestMask = 0;
+          let bestScore = Infinity;
+          let bestMatrix = null;
+
+          for (let mask = 0; mask < 8; mask++) {
+            const candidate = cloneMatrix(base);
+            applyMask(candidate, mask);
+            drawFormatBits(candidate, mask);
+            const score = penaltyScore(candidate);
+            if (score < bestScore) {
+              bestScore = score;
+              bestMask = mask;
+              bestMatrix = candidate;
+            }
+          }
+
+          return {
+            version,
+            mask: bestMask,
+            size: info.size,
+            matrix: bestMatrix.модуля,
+            bytes: bytes.length,
+            capacityBytes: CAP_BYTES[version],
+            penalty: bestScore
+          };
+        }
+
+        function drawToCanvas(matrix, scale, quiet) {
+          const size = matrix.length;
+          const dim = (size + quiet * 2) * scale;
+          const canvas = document.getElementById('qrCanvas');
+          canvas.width = dim;
+          canvas.height = dim;
+          const ctx = canvas.getContext('2d');
+
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, dim, dim);
+
+          ctx.fillStyle = '#000';
+          for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+              if (matrix[y][x]) {
+                ctx.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
+              }
+            }
+          }
+        }
+
+        function postHeight() {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'moduleHeight', module: 'module-qr.html', height: document.body.scrollHeight }, '*');
+          }
+        }
+
+        function setInfo(result, dec) {
+          const info = document.getElementById('info');
+          if (!result) {
+            info.textContent = 'QR-код еще не сгенерирован.';
+            return;
+          }
+          info.textContent =
+            'version=' + result.version +
+            ', mask=' + result.mask +
+            ', size=' + result.size + 'x' + result.size +
+            ', bytes=' + result.bytes + '/' + result.capacityBytes +
+            ', penalty=' + result.penalty.toFixed(dec);
+        }
+
+        const err = document.getElementById('err');
+        let qrReady = false;
+
+        document.getElementById('generateBtn').addEventListener('click', function () {
+          err.textContent = '';
+          qrReady = false;
+          try {
+            const text = document.getElementById('qrText').value.trim();
+            if (!text) {
+              throw new Error('Необходимо ввести текст.');
+            }
+
+            const result = encodeQr(text);
+            const scale = Number(document.getElementById('scale').value);
+            const quiet = Number(document.getElementById('quiet').value);
+            const dec = Number(document.getElementById('rounding').value);
+
+            drawToCanvas(result.matrix, scale, quiet);
+            setInfo(result, dec);
+            qrReady = true;
+          } catch (e) {
+            err.textContent = e.message;
+            setInfo(null, 1);
+          }
+          postHeight();
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', function () {
+          if (!qrReady) {
+            err.textContent = 'Сначала сгенерируйте QR-код.';
+            postHeight();
+            return;
+          }
+          const canvas = document.getElementById('qrCanvas');
+          const link = document.createElement('a');
+          link.download = 'qr-demo.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', function () {
+          document.getElementById('qrText').value = '';
+          err.textContent = '';
+          setInfo(null, 1);
+          qrReady = false;
+          const canvas = document.getElementById('qrCanvas');
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          postHeight();
+        });
+
+        window.addEventListener('load', function () {
+          const canvas = document.getElementById('qrCanvas');
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          postHeight();
+        });
+        window.addEventListener('resize', postHeight);
+      })();
+    </script>
+  </body>
+</html>

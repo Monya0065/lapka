@@ -1,0 +1,134 @@
+{
+  "name": "VetSafe Cloud API",
+  "version": "1.0.0",
+  "baseUrl": "/api/v1",
+  "auth": {
+    "type": "Bearer JWT",
+    "twoFactor": true,
+    "roles": ["Owner", "Doctor", "Clinic Admin"]
+  },
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "description": "Register user account with role",
+      "access": "public",
+      "request": {
+        "email": "string",
+        "password": "string",
+        "role": "Owner|Doctor|Clinic Admin",
+        "clinicId": "number|null",
+        "fullName": "string"
+      },
+      "response": {
+        "userId": "number",
+        "twoFaRequired": true,
+        "message": "Registration successful"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "description": "Login with email/password + 2FA token",
+      "access": "public",
+      "request": {
+        "email": "string",
+        "password": "string",
+        "twoFaCode": "string"
+      },
+      "response": {
+        "accessToken": "string",
+        "refreshToken": "string",
+        "role": "Owner|Doctor|Clinic Admin"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/triage",
+      "description": "Safety triage request",
+      "access": "Owner, Doctor",
+      "request": {
+        "petId": "number",
+        "species": "string",
+        "age": "number",
+        "symptoms": "string",
+        "durationHours": "number",
+        "temperatureC": "number",
+        "activity": "normal|low|none",
+        "appetite": "normal|low|none"
+      },
+      "response": {
+        "riskLevel": "GREEN|YELLOW|RED",
+        "safeActions": ["string"],
+        "recommendation": "string",
+        "notice": "This tool provides triage information only."
+      },
+      "constraints": [
+        "Must not return diagnosis",
+        "Must not return drug names",
+        "Must not return dosages",
+        "Must not return treatment instructions"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/doctor-note",
+      "description": "Create structured doctor note for visit",
+      "access": "Doctor",
+      "request": {
+        "visitId": "number",
+        "subjective": "string",
+        "objective": "string",
+        "assessment": "string",
+        "plan": "string"
+      },
+      "response": {
+        "noteId": "number",
+        "saved": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/pets",
+      "description": "List pets for owner or clinic",
+      "access": "Owner, Doctor, Clinic Admin",
+      "query": {
+        "ownerUserId": "number|optional",
+        "clinicId": "number|optional"
+      },
+      "response": {
+        "items": [
+          {
+            "id": "number",
+            "name": "string",
+            "species": "string",
+            "ageYears": "number"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/visits",
+      "description": "List visits with triage context",
+      "access": "Doctor, Clinic Admin",
+      "query": {
+        "petId": "number|optional",
+        "doctorUserId": "number|optional",
+        "dateFrom": "ISODate|optional",
+        "dateTo": "ISODate|optional"
+      },
+      "response": {
+        "items": [
+          {
+            "id": "number",
+            "petId": "number",
+            "triageRisk": "GREEN|YELLOW|RED",
+            "startedAt": "ISODate",
+            "endedAt": "ISODate|null"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="1200" height="800" rx="48" fill="url(#bg)"/>
+<g filter="url(#shadow)">
+<rect x="176" y="132" width="848" height="536" rx="36" fill="white"/>
+</g>
+<rect x="176" y="132" width="848" height="120" rx="36" fill="#6C8BD8"/>
+<text x="236" y="208" fill="white" font-family="Arial, sans-serif" font-size="54" font-weight="700">Леветирацетам</text>
+<text x="236" y="300" fill="#244B73" font-family="Arial, sans-serif" font-size="42" font-weight="700">Противосудорожный</text>
+<text x="236" y="356" fill="#4B6F92" font-family="Arial, sans-serif" font-size="30">Таблетки / раствор</text>
+<rect x="236" y="420" width="350" height="96" rx="28" fill="#EEF3FF"/>
+<text x="276" y="478" fill="#5272C8" font-family="Arial, sans-serif" font-size="34" font-weight="700">Vet clinical only</text>
+<circle cx="810" cy="410" r="100" fill="#EDF2FF"/>
+<path d="M770 410H850" stroke="#6C8BD8" stroke-width="30" stroke-linecap="round"/>
+<path d="M810 370V450" stroke="#58C0C6" stroke-width="30" stroke-linecap="round"/>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1200" y2="800" gradientUnits="userSpaceOnUse">
+<stop stop-color="#F0F7FF"/>
+<stop offset="1" stop-color="#E1EEF7"/>
+</linearGradient>
+<filter id="shadow" x="140" y="108" width="920" height="608" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#5C8BA9" flood-opacity=".18"/>
+</filter>
+</defs>
+</svg>

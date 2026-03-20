@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Triage Demo</title>
+  <style>
+    :root {
+      --bg: #f4faf5;
+      --panel: #ffffff;
+      --text: #102519;
+      --muted: #4f6658;
+      --brand: #1f7a4b;
+      --line: #d5e6d9;
+      --green: #1f9f4b;
+      --yellow: #d99a00;
+      --red: #ca2e2e;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: "Manrope", "Segoe UI", sans-serif; }
+    .wrap { width: min(980px, 92%); margin: 24px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+    h1 { margin-top: 0; }
+    label { display: block; font-weight: 700; margin-top: 8px; }
+    input, textarea, select {
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      font: inherit;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    button {
+      margin-top: 14px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 700;
+      padding: 11px 16px;
+      cursor: pointer;
+      width: 100%;
+    }
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+    .muted { color: var(--muted); }
+    .warn {
+      background: #fff3f3;
+      border: 1px solid #ffc9c9;
+      color: #8f1f1f;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 10px;
+      display: none;
+    }
+    ul { margin-top: 8px; }
+    @media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <h1>Safety AI Triage</h1>
+      <p class="muted">Inputs: species, age, symptoms, duration, temperature, activity, appetite.</p>
+
+      <label>Species
+        <select id="species">
+          <option>Dog</option>
+          <option>Cat</option>
+          <option>Other</option>
+        </select>
+      </label>
+
+      <label>Age (years)
+        <input type="number" id="age" min="0" max="40" value="4" />
+      </label>
+
+      <label>Symptoms
+        <textarea id="symptoms" placeholder="Describe what you observe"></textarea>
+      </label>
+
+      <label>Duration (hours)
+        <input type="number" id="duration" min="0" value="8" />
+      </label>
+
+      <label>Temperature (C)
+        <input type="number" id="temp" step="0.1" value="38.4" />
+      </label>
+
+      <label>Activity
+        <select id="activity">
+          <option value="normal">Normal</option>
+          <option value="low">Low</option>
+          <option value="none">Very low / not moving normally</option>
+        </select>
+      </label>
+
+      <label>Appetite
+        <select id="appetite">
+          <option value="normal">Normal</option>
+          <option value="low">Reduced</option>
+          <option value="none">Not eating</option>
+        </select>
+      </label>
+
+      <button id="runBtn">Run Triage</button>
+      <p class="muted">Red flags: seizures, unconsciousness, breathing distress, severe bleeding, toxin ingestion, major trauma.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Triage Output</h2>
+      <div id="riskBadge" class="badge" style="background:#889;">PENDING</div>
+      <div id="emergency" class="warn">Emergency warning: red flags detected. Seek emergency veterinary care immediately.</div>
+      <p><strong>Risk Level:</strong> <span id="risk">-</span></p>
+      <p><strong>Urgency:</strong> <span id="urgency">-</span></p>
+      <p><strong>Safe Actions:</strong></p>
+      <ul id="actions"></ul>
+      <p><strong>Recommendation:</strong> <span id="recommendation">-</span></p>
+      <p><strong>Safety Notice:</strong> <span id="notice">This tool provides triage information only.</span></p>
+      <hr />
+      <p class="muted">Algorithm steps: 1) detect red flags 2) calculate risk score 3) apply age multiplier 4) classify urgency 5) generate safe response.</p>
+    </section>
+  </div>
+
+  <script>
+    const redFlags = [
+      "seizure",
+      "seizures",
+      "unconscious",
+      "breathing distress",
+      "severe bleeding",
+      "toxin",
+      "poison",
+      "major trauma"
+    ];
+
+    function classify(score) {
+      if (score >= 6) return { risk: "RED", urgency: "Emergency" };
+      if (score >= 3) return { risk: "YELLOW", urgency: "Urgent (same day)" };
+      return { risk: "GREEN", urgency: "Monitor" };
+    }
+
+    function levelStyle(risk) {
+      if (risk === "RED") return { color: "#fff", bg: "#ca2e2e" };
+      if (risk === "YELLOW") return { color: "#fff", bg: "#d99a00" };
+      return { color: "#fff", bg: "#1f9f4b" };
+    }
+
+    function safeActionsFor(risk) {
+      if (risk === "RED") {
+        return [
+          "Go to an emergency veterinary clinic immediately.",
+          "Keep the pet warm, calm, and safely transported.",
+          "Bring recent records and timeline of symptoms."
+        ];
+      }
+      if (risk === "YELLOW") {
+        return [
+          "Arrange a veterinary visit today.",
+          "Limit activity and continue observation.",
+          "Track appetite, temperature, and behavior changes."
+        ];
+      }
+      return [
+        "Monitor closely for the next 12-24 hours.",
+        "Keep water available and reduce stress.",
+        "Book a routine vet check if symptoms persist or worsen."
+      ];
+    }
+
+    document.getElementById("runBtn").addEventListener("click", () => {
+      const age = Number(document.getElementById("age").value || 0);
+      const duration = Number(document.getElementById("duration").value || 0);
+      const temp = Number(document.getElementById("temp").value || 0);
+      const activity = document.getElementById("activity").value;
+      const appetite = document.getElementById("appetite").value;
+      const symptomsText = document.getElementById("symptoms").value.toLowerCase();
+
+      const hasRedFlag = redFlags.some(flag => symptomsText.includes(flag));
+      let risk;
+      let urgency;
+
+      if (hasRedFlag) {
+        risk = "RED";
+        urgency = "Emergency";
+      } else {
+        let score = 0;
+
+        if (temp > 39.4 || temp < 37.5) score += 2;
+        if (duration > 24) score += 1;
+        if (duration > 72) score += 1;
+        if (activity === "low") score += 2;
+        if (activity === "none") score += 3;
+        if (appetite === "low") score += 1;
+        if (appetite === "none") score += 2;
+
+        const ageMultiplier = age < 1 || age > 10 ? 1.25 : 1;
+        score = Math.round(score * ageMultiplier);
+
+        const result = classify(score);
+        risk = result.risk;
+        urgency = result.urgency;
+      }
+
+      const actions = safeActionsFor(risk);
+      const recommendation = risk === "RED"
+        ? "Immediate emergency visit recommended."
+        : risk === "YELLOW"
+          ? "Veterinary visit recommended today."
+          : "Routine visit recommended if signs continue.";
+
+      const style = levelStyle(risk);
+      const badge = document.getElementById("riskBadge");
+      badge.style.background = style.bg;
+      badge.style.color = style.color;
+      badge.textContent = risk;
+
+      document.getElementById("risk").textContent = risk;
+      document.getElementById("urgency").textContent = urgency;
+      document.getElementById("recommendation").textContent = recommendation;
+      document.getElementById("notice").textContent = "This tool provides triage information only.";
+
+      const list = document.getElementById("actions");
+      list.innerHTML = "";
+      actions.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        list.appendChild(li);
+      });
+
+      document.getElementById("emergency").style.display = hasRedFlag ? "block" : "none";
+    });
+  </script>
+</body>
+</html>

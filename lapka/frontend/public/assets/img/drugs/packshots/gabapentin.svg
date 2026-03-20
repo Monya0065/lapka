@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="88" fill="#F6F7FF"/>
+  <rect x="224" y="214" width="580" height="598" rx="40" fill="#FFFFFF" stroke="#D9DDF7" stroke-width="12"/>
+  <rect x="224" y="214" width="580" height="140" rx="40" fill="#7B7CE6"/>
+  <text x="282" y="296" fill="#FFFFFF" font-size="68" font-family="Arial" font-weight="700">GABAPENTIN</text>
+  <rect x="284" y="412" width="452" height="84" rx="18" fill="#EEF0FF"/>
+  <text x="338" y="465" fill="#5053A6" font-size="42" font-family="Arial" font-weight="700">Capsules</text>
+  <rect x="298" y="548" width="430" height="166" rx="28" fill="#F8F9FF" stroke="#D9DDF7" stroke-width="8"/>
+  <circle cx="422" cy="632" r="42" fill="#7B7CE6"/>
+  <circle cx="510" cy="632" r="42" fill="#38BDF8"/>
+  <circle cx="598" cy="632" r="42" fill="#14B8A6"/>
+</svg>

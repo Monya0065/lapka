@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="88" fill="#F3FAFF"/>
+  <rect x="224" y="206" width="576" height="612" rx="36" fill="#FFFFFF" stroke="#C8DDF2" stroke-width="12"/>
+  <rect x="224" y="206" width="576" height="138" rx="36" fill="#35B6A4"/>
+  <text x="288" y="286" fill="#FFFFFF" font-size="64" font-family="Arial" font-weight="700">AMOXICILLIN</text>
+  <rect x="286" y="404" width="454" height="82" rx="18" fill="#EAF6FF"/>
+  <text x="320" y="457" fill="#28557A" font-size="42" font-family="Arial" font-weight="700">Tablets / Suspension</text>
+  <rect x="286" y="530" width="252" height="180" rx="24" fill="#F9FBFD" stroke="#D5E4F1" stroke-width="8"/>
+  <circle cx="412" cy="620" r="42" fill="#38BDF8"/>
+  <circle cx="412" cy="620" r="18" fill="#FFFFFF"/>
+  <rect x="586" y="534" width="116" height="170" rx="24" fill="#EAF6FF" stroke="#D5E4F1" stroke-width="8"/>
+  <rect x="612" y="566" width="64" height="108" rx="18" fill="#FFFFFF"/>
+</svg>

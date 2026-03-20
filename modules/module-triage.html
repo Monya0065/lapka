@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI triage-демо (детерминированное, безопасное)</title>
+    <style>
+      :root {
+        --blue: #4c7cf3;
+        --soft: #eaf1ff;
+        --mint: #7ed6c2;
+        --success: #2ecc71;
+        --warning: #f5a623;
+        --danger: #e74c3c;
+        --gray: #e6e8ee;
+        --text: #2b2f3a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        color: var(--text);
+        background: linear-gradient(180deg, #f5f9ff 0%, #fff 220px);
+      }
+      .card {
+        max-width: 980px;
+        margin: 0 auto;
+        border: 1px solid var(--gray);
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(43, 47, 58, 0.08);
+        padding: 16px;
+      }
+      h1 { margin-top: 0; font-size: 1.3rem; }
+      .small { color: #586174; font-size: 0.86rem; }
+      .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      label { display: block; margin-bottom: 4px; font-weight: 700; font-size: 0.9rem; }
+      input, select, textarea {
+        width: 100%;
+        border: 1px solid #cfd5e2;
+        border-radius: 12px;
+        padding: 10px;
+        font: inherit;
+      }
+      .checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .check-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        background: #fafcff;
+        border: 1px solid #dde5f8;
+        border-radius: 10px;
+        padding: 8px;
+        font-size: 0.9rem;
+      }
+      .check-item input {
+        width: auto;
+        margin-top: 2px;
+      }
+      details.group {
+        border: 1px solid #d3dcf4;
+        border-radius: 12px;
+        padding: 8px 10px;
+        background: #fff;
+      }
+      details.group + details.group { margin-top: 8px; }
+      summary { cursor: pointer; font-weight: 700; }
+      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+      button {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .primary { background: var(--blue); color: #fff; }
+      .secondary { background: #fff; border: 1px solid var(--gray); }
+      .danger { background: var(--danger); color: #fff; }
+      .error { color: #a12e1f; font-weight: 700; min-height: 22px; margin-top: 8px; }
+      .output {
+        margin-top: 14px;
+        border-radius: 12px;
+        border: 1px solid #d2ddfb;
+        background: var(--soft);
+        padding: 12px;
+      }
+      .badge {
+        display: inline-flex;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 0.9rem;
+      }
+      .green { background: #e6f9ef; color: #17663c; }
+      .yellow { background: #fff2da; color: #754500; }
+      .red { background: #ffe5e1; color: #8d2114; }
+      .panic {
+        margin-top: 12px;
+        border: 2px solid #ffb4a9;
+        border-radius: 14px;
+        background: #fff0ee;
+        padding: 12px;
+      }
+      .panic h3 {
+        margin: 0 0 8px;
+        font-size: 1.45rem;
+        color: #b11f10;
+      }
+      .disclaimer {
+        margin-top: 12px;
+        border: 1px solid #ffd2cb;
+        background: #fff3f1;
+        border-radius: 12px;
+        padding: 10px;
+        font-size: 0.92rem;
+      }
+      .hidden { display: none !important; }
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        background: rgba(10, 14, 21, 0.5);
+        padding: 12px;
+      }
+      .modal.show { display: grid; }
+      .modal-card {
+        width: min(520px, 96vw);
+        border-radius: 14px;
+        background: #fff;
+        border: 1px solid var(--gray);
+        box-shadow: 0 12px 28px rgba(43, 47, 58, 0.2);
+        padding: 14px;
+      }
+      @media (max-width: 900px) {
+        .grid,
+        .grid-2,
+        .checkbox-grid {
+          grid-template-columns: 1fr;
+        }
+        button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="card">
+      <h1>AI TRIAGE-ДЕМО (детерминированно и безопасно)</h1>
+      <p class="small">Не диагноз. Только оценка срочности: GREEN / YELLOW / RED.</p>
+
+      <form id="triageForm" novalidate>
+        <div class="grid">
+          <div>
+            <label for="species">Вид животного</label>
+            <select id="species" required>
+              <option value="dog">собака</option>
+              <option value="cat">кошка</option>
+              <option value="other">другое</option>
+            </select>
+          </div>
+          <div>
+            <label for="ageMode">Режим ввода возраста</label>
+            <select id="ageMode">
+              <option value="months">возраст_в_месяцах</option>
+              <option value="years">возраст_в_годах</option>
+            </select>
+          </div>
+          <div>
+            <label for="ageValue">Значение возраста</label>
+            <input id="ageValue" inputmode="decimal" placeholder="например, 10" required />
+          </div>
+          <div>
+            <label for="durationValue">Длительность</label>
+            <input id="durationValue" inputmode="decimal" placeholder="например, 6" required />
+          </div>
+          <div>
+            <label for="durationUnit">Единица длительности</label>
+            <select id="durationUnit">
+              <option value="hours">часы</option>
+              <option value="days">дни</option>
+            </select>
+          </div>
+          <div>
+            <label for="temperature">temperature_c (необязательно)</label>
+            <input id="temperature" inputmode="decimal" placeholder="e.g. 38,6" />
+          </div>
+          <div>
+            <label for="activity">Активность</label>
+            <select id="activity">
+              <option value="normal">нормальная</option>
+              <option value="reduced">снижена</option>
+              <option value="severely_reduced">резко снижена</option>
+            </select>
+          </div>
+          <div>
+            <label for="appetite">Аппетит</label>
+            <select id="appetite">
+              <option value="normal">нормальная</option>
+              <option value="reduced">снижена</option>
+              <option value="not_eating">не ест</option>
+            </select>
+          </div>
+          <div>
+            <label><input type="checkbox" id="senior" style="width:auto; margin-right: 6px;" /> старший возраст</label>
+          </div>
+        </div>
+
+        <section style="margin-top: 14px;">
+          <h2 style="margin-bottom: 8px; font-size: 1.05rem;">RED-флаги (немедленная остановка)</h2>
+          <div class="checkbox-grid" id="redFlagsBox">
+            <label class="check-item"><input type="checkbox" value="seizures" /> судороги</label>
+            <label class="check-item"><input type="checkbox" value="trouble_breathing" /> затрудненное дыхание / синеватые/бледные десны</label>
+            <label class="check-item"><input type="checkbox" value="collapse" /> потеря сознания/коллапс</label>
+            <label class="check-item"><input type="checkbox" value="bleeding" /> неконтролируемое кровотечение</label>
+            <label class="check-item"><input type="checkbox" value="poisoning" /> подозрение на отравление/токсин</label>
+            <label class="check-item"><input type="checkbox" value="major_trauma" /> тяжелая травма (сбила машина, падение с высоты)</label>
+            <label class="check-item"><input type="checkbox" value="vomit_weak" /> повторная рвота + слабость/не удерживает воду</label>
+            <label class="check-item"><input type="checkbox" value="abdominal_distension" /> сильная боль/вздутие живота</label>
+            <label class="check-item"><input type="checkbox" value="cannot_urinate" /> невозможность помочиться с беспокойством</label>
+            <label class="check-item"><input type="checkbox" value="heatstroke" /> подозрение на тепловой удар / сильный перегрев</label>
+          </div>
+        </section>
+
+        <section style="margin-top: 14px;">
+          <h2 style="margin-bottom: 8px; font-size: 1.05rem;">Группы симптомов</h2>
+          <p class="small">~160 пунктов, сгруппированных в раскрывающихся разделах.</p>
+          <div id="symptomGroups"></div>
+        </section>
+
+        <div class="actions">
+          <button class="primary" type="submit">Запустить triage</button>
+          <button class="secondary" type="reset">Сброс</button>
+        </div>
+        <p id="err" class="error" aria-live="polite"></p>
+      </form>
+
+      <section id="output" class="output hidden" aria-live="polite">
+        <p>
+          <strong>уровень_риска:</strong>
+          <span id="riskBadge" class="badge green">GREEN</span>
+          <span class="small" id="scoreLine"></span>
+        </p>
+        <p id="shortExplain">-</p>
+
+        <div id="panicBlock" class="panic hidden">
+          <h3>Срочно в клинику</h3>
+          <ul id="panicSteps">
+            <li>Сохраняйте спокойствие и подготовьте транспортировку.</li>
+            <li>Укутайте питомца при необходимости теплом, избегайте перегрева.</li>
+            <li>Не давайте лекарства самостоятельно.</li>
+            <li>Езжайте в ближайшую круглосуточную клинику.</li>
+          </ul>
+          <button id="findClinicBtn" class="danger" type="button">Найти клинику</button>
+        </div>
+
+        <div id="normalBlock">
+          <h3>что_делать_сейчас</h3>
+          <ul id="doNow"></ul>
+
+          <h3>когда_ехать_в_клинику</h3>
+          <ul id="whenToGo"></ul>
+
+          <h3>вопросы_ветврачу</h3>
+          <ul id="askVet"></ul>
+        </div>
+
+        <div class="disclaimer">
+          <p>RU: "Это triage-инструмент. Не диагноз. При ухудшении — срочно в клинику."</p>
+          <p>EN: "This is a triage tool, not a diagnosis. If the condition worsens, seek veterinary care immediately."</p>
+        </div>
+      </section>
+    </section>
+
+    <div id="clinicModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="clinicTitle">
+      <div class="modal-card">
+        <h3 id="clinicTitle">Найти клинику</h3>
+        <p>Демо-совет: выберите ближайшую круглосуточную ветеринарную клинику, позвоните заранее и сообщите ключевые симптомы и время начала ухудшения.</p>
+        <p>Чеклист перевозки: переносите аккуратно, держите в тепле (без перегрева), не кормите в пути, не давайте лекарства без прямого указания врача.</p>
+        <button id="closeClinicModal" class="secondary" type="button">Закрыть</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const symptomCatalog = {
+          'Breathing': [
+            ['Rapid breathing at rest', 'moderate'],
+            ['Open-mouth breathing', 'severe'],
+            ['Noisy breathing', 'moderate'],
+            ['Wheezing sounds', 'moderate'],
+            ['Coughing episodes (frequent)', 'moderate'],
+            ['Persistent cough >24h', 'moderate'],
+            ['Breathing pauses during rest', 'severe'],
+            ['Blue-tinged tongue/gums observed', 'severe'],
+            ['Chest effort visibly increased', 'severe'],
+            ['Shallow breathing', 'moderate'],
+            ['Posture with neck extended to breathe', 'severe'],
+            ['Panting without heat/exercise', 'moderate'],
+            ['Foamy saliva with breathing distress', 'severe'],
+            ['Breathing asymmetry', 'severe'],
+            ['Breathing rate suddenly changed', 'moderate'],
+            ['Mild intermittent snoring-like sound', 'mild']
+          ],
+          'Neurological': [
+            ['Disorientation episodes', 'moderate'],
+            ['Head tilt', 'moderate'],
+            ['Circle walking', 'moderate'],
+            ['Tremors mild', 'mild'],
+            ['Tremors persistent', 'moderate'],
+            ['Seizure-like event history today', 'severe'],
+            ['Sudden weakness in hind limbs', 'severe'],
+            ['Loss of balance', 'moderate'],
+            ['Unable to stand steadily', 'severe'],
+            ['Unusual vocalization without trigger', 'moderate'],
+            ['Confusion after rest', 'moderate'],
+            ['Facial twitching', 'moderate'],
+            ['Neck stiffness observed', 'moderate'],
+            ['Abnormal pupil reaction', 'severe'],
+            ['Collapse event recovered quickly', 'severe'],
+            ['Mild delayed response to commands', 'mild']
+          ],
+          'GI': [
+            ['Single vomiting episode', 'mild'],
+            ['Repeated vomiting', 'severe'],
+            ['Diarrhea mild', 'mild'],
+            ['Diarrhea frequent watery', 'moderate'],
+            ['Blood in stool observed', 'severe'],
+            ['Black tarry stool', 'severe'],
+            ['Abdominal bloating', 'severe'],
+            ['Abdominal tenderness', 'moderate'],
+            ['Refuses water', 'moderate'],
+            ['Cannot keep water down', 'severe'],
+            ['Drooling with nausea signs', 'moderate'],
+            ['Retching without output', 'severe'],
+            ['Constipation over 48h', 'moderate'],
+            ['Gas discomfort signs', 'mild'],
+            ['Sudden appetite drop', 'moderate'],
+            ['Weight drop in recent days', 'moderate']
+          ],
+          'Urinary': [
+            ['Frequent urination attempts', 'moderate', 'urinary'],
+            ['Straining to urinate', 'severe', 'urinary'],
+            ['No urine produced despite attempts', 'severe', 'urinary'],
+            ['Blood in urine seen', 'severe', 'urinary'],
+            ['Very small urine volumes', 'moderate', 'urinary'],
+            ['Urination accidents indoors', 'mild', 'urinary'],
+            ['Pain vocalization during urination', 'severe', 'urinary'],
+            ['Strong urine odor change', 'mild', 'urinary'],
+            ['Cloudy urine appearance', 'moderate', 'urinary'],
+            ['Increased thirst + urination', 'moderate', 'urinary'],
+            ['Licking urinary area frequently', 'moderate', 'urinary'],
+            ['Urine dribbling', 'moderate', 'urinary'],
+            ['Urinary posture with no output', 'severe', 'urinary'],
+            ['Night urination increase', 'mild', 'urinary'],
+            ['Lower abdomen discomfort signs', 'moderate', 'urinary'],
+            ['Sudden urinary behavior change', 'moderate', 'urinary']
+          ],
+          'Trauma': [
+            ['Recent fall from height', 'severe'],
+            ['Hit by moving object', 'severe'],
+            ['Limping mild', 'mild'],
+            ['Non-weight-bearing limb', 'severe'],
+            ['Swelling after injury', 'moderate'],
+            ['Visible wound superficial', 'moderate'],
+            ['Deep wound suspected', 'severe'],
+            ['Pain after jump', 'moderate'],
+            ['Reluctant to move after impact', 'severe'],
+            ['Back pain after accident', 'severe'],
+            ['Head impact observed', 'severe'],
+            ['Bruising visible', 'moderate'],
+            ['Tail pain after incident', 'moderate'],
+            ['Bleeding controlled but recent', 'moderate'],
+            ['Possible fracture signs', 'severe'],
+            ['Mild stiffness post-play', 'mild']
+          ],
+          'Toxic exposure': [
+            ['Possible household chemical contact', 'severe'],
+            ['Unknown substance licked', 'severe'],
+            ['Garbage ingestion suspected', 'moderate'],
+            ['Plant ingestion uncertain', 'moderate'],
+            ['Rodent bait suspicion', 'severe'],
+            ['Chocolate-like food ingestion concern', 'moderate'],
+            ['Essential oil exposure concern', 'moderate'],
+            ['Cleaning agent inhalation concern', 'severe'],
+            ['Medication package chewed (unknown)', 'severe'],
+            ['Moldy food ingestion concern', 'moderate'],
+            ['Outdoor unknown liquid intake', 'severe'],
+            ['Battery/chemical leak contact', 'severe'],
+            ['Paint/solvent contact', 'severe'],
+            ['Fertilizer contact concern', 'moderate'],
+            ['Sudden signs after walk exposure', 'moderate'],
+            ['Mild skin contact with unknown material', 'mild']
+          ],
+          'Skin/Allergy': [
+            ['Mild itching', 'mild'],
+            ['Intense scratching', 'moderate'],
+            ['Facial swelling', 'severe'],
+            ['Hives-like bumps', 'moderate'],
+            ['Red rash expanding', 'moderate'],
+            ['Skin hot spots', 'moderate'],
+            ['Ear scratching with redness', 'mild'],
+            ['Paw licking persistent', 'mild'],
+            ['Hair loss patchy', 'moderate'],
+            ['Skin wound from scratching', 'moderate'],
+            ['Lip swelling episodes', 'severe'],
+            ['Generalized swelling signs', 'severe'],
+            ['Sudden allergic-appearing flare', 'severe'],
+            ['Dry flaky skin', 'mild'],
+            ['Small scabs multiple', 'moderate'],
+            ['Localized redness only', 'mild']
+          ],
+          'General condition': [
+            ['Reduced activity', 'moderate'],
+            ['Severely reduced activity', 'severe'],
+            ['Not eating for one meal', 'mild'],
+            ['Not eating over 24h', 'severe'],
+            ['Increased sleep unusual', 'moderate'],
+            ['Hiding behavior', 'moderate'],
+            ['Weak response to interaction', 'moderate'],
+            ['Sudden behavior change', 'moderate'],
+            ['Extreme fatigue', 'severe'],
+            ['Feverish touch perception', 'moderate'],
+            ['Shivering without cold', 'moderate'],
+            ['Pale mucous membranes', 'severe'],
+            ['Sticky gums / dry mouth', 'moderate'],
+            ['Possible dehydration signs', 'moderate'],
+            ['Weight loss concern', 'moderate'],
+            ['Mild restlessness', 'mild']
+          ],
+          'Pain indicators': [
+            ['Whining or crying with movement', 'moderate'],
+            ['Guarding abdomen', 'severe'],
+            ['Reluctance to be touched', 'moderate'],
+            ['Praying posture repeatedly', 'severe'],
+            ['Back arched posture', 'moderate'],
+            ['Teeth grinding', 'moderate'],
+            ['Fast shallow breathing with pain signs', 'severe'],
+            ['Pacing from discomfort', 'moderate'],
+            ['Unable to settle', 'moderate'],
+            ['Limping due to pain', 'moderate'],
+            ['Yelp when lifted', 'moderate'],
+            ['Severe abdominal guarding', 'severe'],
+            ['Tense body posture constant', 'moderate'],
+            ['Painful urination posture', 'severe'],
+            ['Neck pain signs', 'moderate'],
+            ['Mild soreness after activity', 'mild']
+          ],
+          'Eye/Ear issues': [
+            ['Eye discharge mild', 'mild'],
+            ['Eye discharge thick', 'moderate'],
+            ['Eye kept closed', 'moderate'],
+            ['Visible eye injury', 'severe'],
+            ['Cloudy eye appearance', 'moderate'],
+            ['Sudden vision concern', 'severe'],
+            ['Head shaking frequent', 'moderate'],
+            ['Ear odor strong', 'mild'],
+            ['Ear pain on touch', 'moderate'],
+            ['Ear bleeding observed', 'severe'],
+            ['Foreign body suspected in eye', 'severe'],
+            ['Foreign body suspected in ear', 'moderate'],
+            ['Swollen eyelids', 'moderate'],
+            ['Pupil size asymmetry', 'severe'],
+            ['Scratching eye repeatedly', 'moderate'],
+            ['Mild tearing only', 'mild']
+          ]
+        };
+
+        const severityPoints = {
+          mild: [6, 8, 10, 12, 14],
+          moderate: [22, 28, 34, 40, 46],
+          severe: [85, 92, 100, 108, 116]
+        };
+
+        const form = document.getElementById('triageForm');
+        const groupsEl = document.getElementById('symptomGroups');
+        const err = document.getElementById('err');
+        const output = document.getElementById('output');
+        const riskBadge = document.getElementById('riskBadge');
+        const scoreLine = document.getElementById('scoreLine');
+        const shortExplain = document.getElementById('shortExplain');
+        const panicBlock = document.getElementById('panicBlock');
+        const normalBlock = document.getElementById('normalBlock');
+        const doNow = document.getElementById('doNow');
+        const whenToGo = document.getElementById('whenToGo');
+        const askVet = document.getElementById('askVet');
+
+        function postHeight() {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'moduleHeight', module: 'module-triage.html', height: document.body.scrollHeight }, '*');
+          }
+        }
+
+        function parseLocaleNumber(value) {
+          const cleaned = String(value || '').trim().replace(',', '.');
+          if (cleaned === '') return null;
+          const num = Number(cleaned);
+          if (!Number.isFinite(num)) return NaN;
+          return num;
+        }
+
+        function pointsBySeverity(level, idx) {
+          const arr = severityPoints[level] || severityPoints.mild;
+          return arr[idx % arr.length];
+        }
+
+        const categoryRu = {
+          'Breathing': 'Дыхание',
+          'Neurological': 'Неврология',
+          'GI': 'ЖКТ',
+          'Urinary': 'Мочевыделение',
+          'Trauma': 'Травма',
+          'Toxic exposure': 'Токсическое воздействие',
+          'Skin/Allergy': 'Кожа/аллергия',
+          'General condition': 'Общее состояние',
+          'Pain indicators': 'Признаки боли',
+          'Eye/Ear issues': 'Глаза/уши'
+        };
+
+        const severityRu = {
+          mild: 'легкий',
+          moderate: 'умеренный',
+          severe: 'тяжелый'
+        };
+
+        function translateSymptomLabel(label) {
+          let text = (' ' + String(label).toLowerCase() + ' ');
+          const map = [
+            ['open-mouth', 'с открытым ртом'],
+            ['blue-tinged', 'синеватые'],
+            ['snoring-like', 'похожий на храп'],
+            ['non-weight-bearing', 'без опоры'],
+            ['hives-like', 'похожие на крапивницу'],
+            ['chocolate-like', 'похожий на шоколад'],
+            ['battery/chemical', 'батарейка/химия'],
+            ['paint/solvent', 'краска/растворитель'],
+            ['tongue/gums', 'язык/десны'],
+            ['heat/exercise', 'жары/нагрузки'],
+            ['rapid', 'учащенное'],
+            ['breathing', 'дыхание'],
+            ['at', 'в'],
+            ['rest', 'покое'],
+            ['noisy', 'шумное'],
+            ['wheezing', 'свисты'],
+            ['sounds', 'звуки'],
+            ['coughing', 'кашель'],
+            ['episodes', 'эпизоды'],
+            ['frequent', 'частые'],
+            ['persistent', 'стойкий'],
+            ['cough', 'кашель'],
+            ['pauses', 'паузы'],
+            ['during', 'во время'],
+            ['observed', 'отмечены'],
+            ['chest', 'грудная'],
+            ['effort', 'усилие'],
+            ['visibly', 'заметно'],
+            ['increased', 'увеличено'],
+            ['shallow', 'поверхностное'],
+            ['posture', 'поза'],
+            ['with', 'с'],
+            ['neck', 'шея'],
+            ['extended', 'вытянута'],
+            ['to', 'для'],
+            ['breathe', 'дыхания'],
+            ['panting', 'одышка'],
+            ['without', 'без'],
+            ['foamy', 'пенистая'],
+            ['saliva', 'слюна'],
+            ['distress', 'дистресс'],
+            ['asymmetry', 'асимметрия'],
+            ['rate', 'частота'],
+            ['suddenly', 'внезапно'],
+            ['changed', 'изменилась'],
+            ['mild', 'легкий'],
+            ['intermittent', 'периодический'],
+            ['sound', 'звук'],
+            ['disorientation', 'дезориентация'],
+            ['head', 'голова'],
+            ['tilt', 'наклон'],
+            ['circle', 'кружение'],
+            ['walking', 'ходьба'],
+            ['tremors', 'тремор'],
+            ['seizure-like', 'похожий на судороги'],
+            ['event', 'эпизод'],
+            ['history', 'история'],
+            ['today', 'сегодня'],
+            ['sudden', 'внезапная'],
+            ['weakness', 'слабость'],
+            ['hind', 'задних'],
+            ['limbs', 'конечностей'],
+            ['loss', 'потеря'],
+            ['balance', 'равновесия'],
+            ['unable', 'невозможность'],
+            ['stand', 'стоять'],
+            ['steadily', 'устойчиво'],
+            ['unusual', 'необычная'],
+            ['vocalization', 'вокализация'],
+            ['trigger', 'триггер'],
+            ['confusion', 'спутанность'],
+            ['after', 'после'],
+            ['facial', 'лицевые'],
+            ['twitching', 'подергивания'],
+            ['stiffness', 'скованность'],
+            ['abnormal', 'аномальная'],
+            ['pupil', 'зрачка'],
+            ['reaction', 'реакция'],
+            ['collapse', 'коллапс'],
+            ['recovered', 'восстановился'],
+            ['quickly', 'быстро'],
+            ['delayed', 'замедленная'],
+            ['response', 'реакция'],
+            ['commands', 'команды'],
+            ['single', 'однократный'],
+            ['vomiting', 'рвота'],
+            ['repeated', 'повторная'],
+            ['diarrhea', 'диарея'],
+            ['watery', 'водянистая'],
+            ['blood', 'кровь'],
+            ['stool', 'стул'],
+            ['black', 'черный'],
+            ['tarry', 'дегтеобразный'],
+            ['abdominal', 'абдоминальный'],
+            ['bloating', 'вздутие'],
+            ['tenderness', 'болезненность'],
+            ['refuses', 'отказывается'],
+            ['water', 'вода'],
+            ['cannot', 'не может'],
+            ['keep', 'удерживать'],
+            ['down', 'внутри'],
+            ['drooling', 'слюнотечение'],
+            ['nausea', 'тошнота'],
+            ['signs', 'признаки'],
+            ['retching', 'позывы'],
+            ['output', 'выделения'],
+            ['constipation', 'запор'],
+            ['over', 'более'],
+            ['h', 'ч'],
+            ['gas', 'газовый'],
+            ['discomfort', 'дискомфорт'],
+            ['appetite', 'аппетит'],
+            ['drop', 'снижение'],
+            ['weight', 'вес'],
+            ['in', 'в'],
+            ['recent', 'последние'],
+            ['days', 'дни'],
+            ['urination', 'мочеиспускание'],
+            ['attempts', 'попытки'],
+            ['straining', 'натуживание'],
+            ['urinate', 'мочиться'],
+            ['no', 'нет'],
+            ['urine', 'мочи'],
+            ['produced', 'выделяется'],
+            ['despite', 'несмотря на'],
+            ['seen', 'видна'],
+            ['very', 'очень'],
+            ['small', 'малые'],
+            ['volumes', 'объемы'],
+            ['accidents', 'промахи'],
+            ['indoors', 'дома'],
+            ['pain', 'боль'],
+            ['odor', 'запах'],
+            ['change', 'изменение'],
+            ['cloudy', 'мутный'],
+            ['appearance', 'вид'],
+            ['thirst', 'жажда'],
+            ['licking', 'вылизывание'],
+            ['area', 'области'],
+            ['dribbling', 'подтекание'],
+            ['night', 'ночное'],
+            ['increase', 'увеличение'],
+            ['lower', 'нижний'],
+            ['abdomen', 'живот'],
+            ['behavior', 'поведение'],
+            ['fall', 'падение'],
+            ['from', 'с'],
+            ['height', 'высоты'],
+            ['hit', 'удар'],
+            ['moving', 'движущийся'],
+            ['object', 'объект'],
+            ['limping', 'хромота'],
+            ['limb', 'конечность'],
+            ['swelling', 'отек'],
+            ['injury', 'травма'],
+            ['visible', 'видимая'],
+            ['wound', 'рана'],
+            ['superficial', 'поверхностная'],
+            ['deep', 'глубокая'],
+            ['suspected', 'подозрение'],
+            ['reluctant', 'неохотно'],
+            ['move', 'двигается'],
+            ['impact', 'удара'],
+            ['back', 'спина'],
+            ['bruising', 'синяки'],
+            ['tail', 'хвост'],
+            ['incident', 'инцидента'],
+            ['bleeding', 'кровотечение'],
+            ['controlled', 'контролируемое'],
+            ['but', 'но'],
+            ['possible', 'возможные'],
+            ['fracture', 'перелома'],
+            ['post-play', 'после игры'],
+            ['household', 'бытовой'],
+            ['chemical', 'химический'],
+            ['contact', 'контакт'],
+            ['unknown', 'неизвестное'],
+            ['substance', 'вещество'],
+            ['licked', 'слизано'],
+            ['garbage', 'мусор'],
+            ['ingestion', 'проглатывание'],
+            ['plant', 'растение'],
+            ['uncertain', 'неуточненное'],
+            ['rodent', 'крысиная'],
+            ['bait', 'приманка'],
+            ['essential', 'эфирные'],
+            ['oil', 'масла'],
+            ['exposure', 'воздействие'],
+            ['concern', 'подозрение'],
+            ['cleaning', 'чистящее'],
+            ['agent', 'средство'],
+            ['inhalation', 'вдыхание'],
+            ['medication', 'упаковка лекарства'],
+            ['package', 'упаковка'],
+            ['chewed', 'разгрызена'],
+            ['moldy', 'плесневелая'],
+            ['food', 'еда'],
+            ['outdoor', 'на улице'],
+            ['liquid', 'жидкость'],
+            ['intake', 'прием'],
+            ['leak', 'утечка'],
+            ['paint', 'краска'],
+            ['solvent', 'растворитель'],
+            ['fertilizer', 'удобрение'],
+            ['walk', 'прогулки'],
+            ['itching', 'зуд'],
+            ['intense', 'сильный'],
+            ['scratching', 'расчесывание'],
+            ['hives', 'волдыри'],
+            ['bumps', 'бугорки'],
+            ['red', 'красная'],
+            ['rash', 'сыпь'],
+            ['expanding', 'распространяется'],
+            ['skin', 'кожа'],
+            ['hot', 'горячие'],
+            ['spots', 'очаги'],
+            ['ear', 'ухо'],
+            ['redness', 'покраснение'],
+            ['paw', 'лапы'],
+            ['hair', 'шерсть'],
+            ['loss', 'выпадение'],
+            ['patchy', 'очаговое'],
+            ['lip', 'губы'],
+            ['generalized', 'генерализованные'],
+            ['allergic-appearing', 'аллергоподобное'],
+            ['flare', 'обострение'],
+            ['dry', 'сухая'],
+            ['flaky', 'шелушение'],
+            ['scabs', 'корочки'],
+            ['multiple', 'множественные'],
+            ['localized', 'локальное'],
+            ['only', 'только'],
+            ['reduced', 'сниженная'],
+            ['severely', 'резко'],
+            ['not', 'не'],
+            ['eating', 'ест'],
+            ['one', 'одно'],
+            ['meal', 'кормление'],
+            ['sleep', 'сон'],
+            ['unusual', 'необычный'],
+            ['hiding', 'прятание'],
+            ['weak', 'слабый'],
+            ['interaction', 'контакт'],
+            ['extreme', 'выраженная'],
+            ['fatigue', 'усталость'],
+            ['feverish', 'лихорадочное'],
+            ['perception', 'ощущение'],
+            ['shivering', 'дрожь'],
+            ['cold', 'холода'],
+            ['pale', 'бледные'],
+            ['mucous', 'слизистые'],
+            ['membranes', 'оболочки'],
+            ['sticky', 'липкие'],
+            ['gums', 'десны'],
+            ['dehydration', 'дегидратация'],
+            ['concern', 'подозрение'],
+            ['restlessness', 'беспокойство'],
+            ['whining', 'скуление'],
+            ['or', 'или'],
+            ['crying', 'вокализация'],
+            ['movement', 'движении'],
+            ['guarding', 'защитное напряжение'],
+            ['reluctance', 'нежелание'],
+            ['be', 'быть'],
+            ['touched', 'трогать'],
+            ['praying', 'молитвенная'],
+            ['repeatedly', 'повторно'],
+            ['arched', 'выгнутая'],
+            ['teeth', 'зубами'],
+            ['grinding', 'скрежет'],
+            ['fast', 'частое'],
+            ['pacing', 'метание'],
+            ['settle', 'успокоиться'],
+            ['due', 'из-за'],
+            ['yelp', 'визг'],
+            ['when', 'при'],
+            ['lifted', 'поднятии'],
+            ['tense', 'напряженная'],
+            ['constant', 'постоянно'],
+            ['painful', 'болезненная'],
+            ['discharge', 'выделения'],
+            ['thick', 'густые'],
+            ['kept', 'держит'],
+            ['closed', 'закрытым'],
+            ['cloudy', 'мутный'],
+            ['vision', 'зрение'],
+            ['shaking', 'трясет'],
+            ['strong', 'сильный'],
+            ['foreign', 'инородное'],
+            ['body', 'тело'],
+            ['swollen', 'отечные'],
+            ['eyelids', 'веки'],
+            ['size', 'размер'],
+            ['asymmetry', 'асимметрия'],
+            ['tearing', 'слезотечение']
+          ];
+
+          function escapeRegExp(value) {
+            return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          }
+
+          map.forEach(function (pair) {
+            const source = pair[0];
+            const target = pair[1];
+            if (source.length < 3) {
+              return;
+            }
+            const isSimpleWord = /^[a-z]+$/.test(source);
+            const pattern = isSimpleWord
+              ? new RegExp('\\b' + escapeRegExp(source) + '\\b', 'g')
+              : new RegExp(escapeRegExp(source), 'g');
+            text = text.replace(pattern, target);
+          });
+          text = text.replace(/\s+/g, ' ').trim();
+          return text.charAt(0).toUpperCase() + text.slice(1);
+        }
+
+        function renderSymptoms() {
+          let catIndex = 0;
+          for (const [category, items] of Object.entries(symptomCatalog)) {
+            const details = document.createElement('details');
+            details.className = 'group';
+            if (catIndex < 2) details.open = true;
+
+            const summary = document.createElement('summary');
+            summary.textContent = (categoryRu[category] || category) + ' (' + items.length + ')';
+            details.appendChild(summary);
+
+            const grid = document.createElement('div');
+            grid.className = 'checkbox-grid';
+            grid.style.marginTop = '8px';
+
+            items.forEach((item, idx) => {
+              const [label, severity, tag] = item;
+              const id = 'sym_' + category.replace(/[^a-z0-9]/gi, '_') + '_' + idx;
+              const points = pointsBySeverity(severity, idx);
+
+              const row = document.createElement('label');
+              row.className = 'check-item';
+              row.innerHTML =
+                '<input type="checkbox" id="' + id + '" data-severity="' + severity + '" data-points="' + points + '" data-tag="' + (tag || '') + '" />' +
+                '<span>' + translateSymptomLabel(label) + ' <span class="small">(' + (severityRu[severity] || severity) + ' +' + points + ')</span></span>';
+              grid.appendChild(row);
+            });
+
+            details.appendChild(grid);
+            groupsEl.appendChild(details);
+            catIndex++;
+          }
+        }
+
+        function setBadge(level) {
+          riskBadge.className = 'badge';
+          if (level === 'GREEN') {
+            riskBadge.classList.add('green');
+          } else if (level === 'YELLOW') {
+            riskBadge.classList.add('yellow');
+          } else {
+            riskBadge.classList.add('red');
+          }
+          riskBadge.textContent = level;
+        }
+
+        function fillList(node, items) {
+          node.innerHTML = '';
+          items.forEach((text) => {
+            const li = document.createElement('li');
+            li.textContent = text;
+            node.appendChild(li);
+          });
+        }
+
+        function getAgeMonths(ageMode, ageValue) {
+          if (ageMode === 'years') return ageValue * 12;
+          return ageValue;
+        }
+
+        function selectedRedFlags() {
+          return Array.from(document.querySelectorAll('#redFlagsBox input[type="checkbox"]:checked')).map((x) => x.value);
+        }
+
+        function evaluateTriage() {
+          const species = document.getElementById('species').value;
+          const ageMode = document.getElementById('ageMode').value;
+          const ageValue = parseLocaleNumber(document.getElementById('ageValue').value);
+          const durationValue = parseLocaleNumber(document.getElementById('durationValue').value);
+          const durationUnit = document.getElementById('durationUnit').value;
+          const temperature = parseLocaleNumber(document.getElementById('temperature').value);
+          const activity = document.getElementById('activity').value;
+          const appetite = document.getElementById('appetite').value;
+          const senior = document.getElementById('senior').checked;
+
+          if (ageValue === null || Number.isNaN(ageValue) || ageValue < 0) {
+            throw new Error('значение возраста: требуется корректное неотрицательное число.');
+          }
+          if (durationValue === null || Number.isNaN(durationValue) || durationValue < 0) {
+            throw new Error('длительность: требуется корректное неотрицательное число.');
+          }
+          if (temperature !== null && Number.isNaN(temperature)) {
+            throw new Error('temperature_c: некорректное число.');
+          }
+
+          const redFlags = selectedRedFlags();
+          if (redFlags.length > 0) {
+            return {
+              level: 'RED',
+              score: null,
+              reason: 'Обнаружен RED-флаг: немедленная остановка.',
+              redFlags,
+              panic: true
+            };
+          }
+
+          let score = 0;
+          let urinaryCount = 0;
+
+          const selectedSymptoms = Array.from(document.querySelectorAll('#symptomGroups input[type="checkbox"]:checked'));
+          selectedSymptoms.forEach((checkbox) => {
+            const pts = Number(checkbox.dataset.points);
+            if (Number.isFinite(pts)) score += pts;
+            if (checkbox.dataset.tag === 'urinary') urinaryCount++;
+          });
+
+          if (activity === 'reduced') score += 16;
+          if (activity === 'severely_reduced') score += 42;
+
+          if (appetite === 'reduced') score += 14;
+          if (appetite === 'not_eating') score += 38;
+
+          if (temperature !== null) {
+            if (temperature < 37 || temperature > 40.5) {
+              score += 100;
+            } else if (temperature < 37.8 || temperature > 39.5) {
+              score += 28;
+            }
+          }
+
+          const durationHours = durationUnit === 'days' ? durationValue * 24 : durationValue;
+          if (durationHours >= 48) score += 18;
+          else if (durationHours >= 24) score += 10;
+
+          const ageMonths = getAgeMonths(ageMode, ageValue);
+          let multiplier = 1;
+          if (ageMonths < 6) multiplier *= 1.2;
+          if (senior) multiplier *= 1.15;
+          if (species === 'cat' && urinaryCount > 0) multiplier *= 1.25;
+          score *= multiplier;
+
+          const finalScore = Math.round(score);
+          let level = 'GREEN';
+          if (finalScore >= 100) level = 'RED';
+          else if (finalScore >= 40) level = 'YELLOW';
+
+          if (ageMonths < 6 || senior) {
+            if (level === 'GREEN') level = 'YELLOW';
+            else if (level === 'YELLOW') level = 'RED';
+          }
+
+          return {
+            level,
+            score: finalScore,
+            reason: 'Детерминированный взвешенный triage-балл.',
+            redFlags: [],
+            panic: level === 'RED'
+          };
+        }
+
+        function renderResult(result) {
+          output.classList.remove('hidden');
+          setBadge(result.level);
+
+          if (result.score === null) {
+            scoreLine.textContent = '(балл не рассчитывается из-за RED-флага)';
+          } else {
+            scoreLine.textContent = '(балл=' + result.score + ')';
+          }
+
+          if (result.level === 'GREEN') {
+            shortExplain.textContent = 'Сейчас нет признаков немедленной критичности по выбранным пунктам, но состояние нужно наблюдать.';
+            panicBlock.classList.add('hidden');
+            normalBlock.classList.remove('hidden');
+
+            fillList(doNow, [
+              'Сохраняйте спокойствие и наблюдайте динамику симптомов.',
+              'Обеспечьте доступ к воде и комфортной температуре.',
+              'Запишите время начала и частоту симптомов для врача.',
+              'Не давайте лекарства самостоятельно.'
+            ]);
+            fillList(whenToGo, [
+              'Если появляются RED-флаги из списка.',
+              'Если активность или аппетит заметно ухудшаются.',
+              'Если симптомы сохраняются или усиливаются.'
+            ]);
+            fillList(askVet, [
+              'Какие наблюдения критичны в ближайшие 6-12 часов?',
+              'Какие параметры измерять дома до визита?',
+              'Когда нужен повторный осмотр?' 
+            ]);
+          }
+
+          if (result.level === 'YELLOW') {
+            shortExplain.textContent = 'Есть признаки повышенного риска. Нужна связь с клиникой и план осмотра в ближайшее время.';
+            panicBlock.classList.add('hidden');
+            normalBlock.classList.remove('hidden');
+
+            fillList(doNow, [
+              'Свяжитесь с клиникой и опишите динамику симптомов.',
+              'Ограничьте активность питомца и обеспечьте покой.',
+              'Контролируйте дыхание, температуру и питьевой режим.',
+              'Не давайте лекарства без назначения.'
+            ]);
+            fillList(whenToGo, [
+              'При появлении RED-флагов — сразу в экстренную клинику.',
+              'Если состояние ухудшается в течение часов.',
+              'Если питомец не может пить/удерживать воду.'
+            ]);
+            fillList(askVet, [
+              'Как быстро нужно приехать на осмотр?',
+              'Какие наблюдения важны до приёма?',
+              'Нужна ли изоляция питомца до визита?' 
+            ]);
+          }
+
+          if (result.level === 'RED') {
+            shortExplain.textContent = 'Высокая срочность. Нужна экстренная транспортировка в клинику.';
+            panicBlock.classList.remove('hidden');
+            normalBlock.classList.add('hidden');
+          }
+        }
+
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          err.textContent = '';
+          try {
+            const result = evaluateTriage();
+            renderResult(result);
+          } catch (error) {
+            err.textContent = error.message;
+            output.classList.add('hidden');
+          }
+          postHeight();
+        });
+
+        form.addEventListener('reset', function () {
+          err.textContent = '';
+          output.classList.add('hidden');
+          panicBlock.classList.add('hidden');
+          normalBlock.classList.remove('hidden');
+          setTimeout(postHeight, 0);
+        });
+
+        const clinicModal = document.getElementById('clinicModal');
+        document.getElementById('findClinicBtn').addEventListener('click', function () {
+          clinicModal.classList.add('show');
+          clinicModal.setAttribute('aria-hidden', 'false');
+          postHeight();
+        });
+        document.getElementById('closeClinicModal').addEventListener('click', function () {
+          clinicModal.classList.remove('show');
+          clinicModal.setAttribute('aria-hidden', 'true');
+          postHeight();
+        });
+        clinicModal.addEventListener('click', function (e) {
+          if (e.target === clinicModal) {
+            clinicModal.classList.remove('show');
+            clinicModal.setAttribute('aria-hidden', 'true');
+            postHeight();
+          }
+        });
+
+        renderSymptoms();
+        window.addEventListener('load', postHeight);
+        window.addEventListener('resize', postHeight);
+      })();
+    </script>
+  </body>
+</html>

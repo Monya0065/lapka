@@ -1,0 +1,44 @@
+{
+  "project": "VetSafe Cloud",
+  "version": "1.0.0",
+  "typography": {
+    "fontPrimary": "Manrope, Segoe UI, sans-serif",
+    "fontSecondary": "Merriweather, Georgia, serif",
+    "scale": {
+      "h1": "clamp(30px, 5vw, 54px)",
+      "h2": "clamp(24px, 4vw, 36px)",
+      "h3": "22px",
+      "body": "16px",
+      "small": "14px"
+    }
+  },
+  "colors": {
+    "ink": "#13211a",
+    "muted": "#54645a",
+    "brand": "#176a45",
+    "accent": "#ff8a3d",
+    "surface": "#ffffff",
+    "background": "#f5f7f4",
+    "line": "#d6e1d8",
+    "risk": {
+      "green": "#1f9f4b",
+      "yellow": "#d99a00",
+      "red": "#ca2e2e"
+    }
+  },
+  "spacing": {
+    "xs": 6,
+    "sm": 10,
+    "md": 16,
+    "lg": 24,
+    "xl": 40,
+    "section": 72
+  },
+  "radius": {
+    "card": 16,
+    "pill": 999
+  },
+  "shadow": {
+    "card": "0 10px 30px rgba(19, 33, 26, 0.08)"
+  }
+}

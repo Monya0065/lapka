@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="88" fill="#F1FBFA"/>
+  <rect x="216" y="208" width="592" height="608" rx="40" fill="#FFFFFF" stroke="#CCE7E3" stroke-width="12"/>
+  <rect x="216" y="208" width="592" height="140" rx="40" fill="#1FA39B"/>
+  <text x="292" y="294" fill="#FFFFFF" font-size="70" font-family="Arial" font-weight="700">MELOXICAM</text>
+  <rect x="284" y="406" width="460" height="90" rx="20" fill="#E6FBF8"/>
+  <text x="332" y="463" fill="#25606A" font-size="44" font-family="Arial" font-weight="700">Oral suspension</text>
+  <rect x="306" y="550" width="174" height="170" rx="28" fill="#FFFFFF" stroke="#D6EAE7" stroke-width="8"/>
+  <rect x="358" y="508" width="70" height="58" rx="12" fill="#1FA39B"/>
+  <rect x="552" y="548" width="176" height="172" rx="28" fill="#E8FAFF" stroke="#D6EAE7" stroke-width="8"/>
+  <circle cx="640" cy="633" r="52" fill="#38BDF8"/>
+</svg>

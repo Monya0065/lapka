@@ -1,0 +1,20 @@
+<svg width="640" height="420" viewBox="0 0 640 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g12" x1="0" y1="0" x2="640" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c7e9f1" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.98"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="620" height="400" rx="34" fill="url(#g12)" stroke="#b7d7ef" stroke-width="3"/>
+  <rect x="70" y="70" width="500" height="280" rx="24" fill="#ffffff" fill-opacity="0.86"/>
+  <rect x="108" y="110" width="188" height="188" rx="20" fill="#eaf6ff"/>
+  <path d="M165 204c0-25 20-45 45-45s45 20 45 45-20 45-45 45-45-20-45-45z" fill="#44a7d8"/>
+  <path d="M192 170c0-12 9-21 21-21s21 9 21 21-9 21-21 21-21-9-21-21z" fill="#6fd3c2"/>
+  <rect x="328" y="126" width="188" height="22" rx="11" fill="#9ec6e8"/>
+  <rect x="328" y="161" width="146" height="16" rx="8" fill="#c4ddf4"/>
+  <rect x="328" y="186" width="166" height="16" rx="8" fill="#c4ddf4"/>
+  <rect x="328" y="211" width="120" height="16" rx="8" fill="#c4ddf4"/>
+  <rect x="328" y="246" width="102" height="34" rx="17" fill="#3bb0e0"/>
+  <text x="379" y="268" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#ffffff">RX 12</text>
+  <text x="320" y="334" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#2a5d84">LAPKA MED</text>
+</svg>

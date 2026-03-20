@@ -1,0 +1,101 @@
+services:
+  db:
+    image: postgres:16
+    container_name: lapka-db
+    environment:
+      POSTGRES_DB: lapka
+      POSTGRES_USER: lapka
+      POSTGRES_PASSWORD: lapka
+    ports:
+      - "5432:5432"
+    volumes:
+      - lapka-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lapka -d lapka"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: lapka-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - lapka-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lapka-api
+    environment:
+      APP_NAME: Lapka API
+      DATABASE_URL: postgresql+asyncpg://lapka:lapka@db:5432/lapka
+      SYNC_DATABASE_URL: postgresql://lapka:lapka@db:5432/lapka
+      JWT_SECRET: change_me_super_secret
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      PHARMACY_PROVIDER: demo
+      PHARMACY_AVAILABILITY_RATE_LIMIT: 40
+      PHARMACY_AVAILABILITY_WINDOW_SEC: 60
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: lapka-frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+  backup:
+    image: postgres:16
+    container_name: lapka-backup
+    profiles: ["backup"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: lapka
+      DB_USER: lapka
+      DB_PASSWORD: lapka
+      BACKUP_DIR: /backups/db
+      BACKUP_INTERVAL_SEC: 86400
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups/db:/backups/db
+    command: >
+      bash -lc '
+      while true; do
+        bash /scripts/backup_db.sh;
+        sleep "$${BACKUP_INTERVAL_SEC}";
+      done
+      '
+
+volumes:
+  lapka-postgres-data:
+  lapka-redis-data:

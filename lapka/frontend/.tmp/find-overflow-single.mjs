@@ -1,0 +1,12 @@
+import { chromium, request } from 'playwright';
+const base='http://localhost:3000'; const api='http://localhost:8000';
+const ctx=await request.newContext();
+const res=await ctx.post(`${api}/api/v1/auth/login`,{headers:{'Content-Type':'application/json'},data:{email:'admin@lapka.local',password:'demo12345'}});
+const auth=await res.json(); await ctx.dispose();
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1280,height:1100}});
+await page.addInitScript((p)=>{localStorage.setItem('lapka.role',p.role);localStorage.setItem('lapka.email',p.email);localStorage.setItem('lapka.access_token',p.access);localStorage.setItem('lapka.refresh_token',p.refresh);localStorage.setItem('lapka.user',JSON.stringify({email:p.email,role:p.role}));},{role:'clinic_admin',email:'admin@lapka.local',access:auth.access_token,refresh:auth.refresh_token});
+await page.goto(`${base}/clinic/checkin`,{waitUntil:'networkidle'}); await page.waitForTimeout(300);
+const result=await page.evaluate(() => { const offenders=[]; document.querySelectorAll('body *').forEach((el)=>{ const r=el.getBoundingClientRect(); const overflow=Math.round(r.right-window.innerWidth); if(r.width && overflow>4) offenders.push({tag:el.tagName.toLowerCase(), cls:el.className, text:(el.textContent||'').trim().slice(0,160), right:Math.round(r.right), left:Math.round(r.left), width:Math.round(r.width), overflow});}); offenders.sort((a,b)=>b.overflow-a.overflow); return {title:document.querySelector('h1')?.textContent?.trim(), offenders:offenders.slice(0,12), scrollWidth:document.documentElement.scrollWidth};});
+console.log(JSON.stringify(result,null,2));
+await browser.close();

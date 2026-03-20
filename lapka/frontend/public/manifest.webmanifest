@@ -1,0 +1,19 @@
+{
+  "name": "Лапка — ветеринарная платформа",
+  "short_name": "Лапка",
+  "description": "Единая ветеринарная платформа для владельцев, врачей и клиник.",
+  "start_url": "/login",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#eef5ff",
+  "theme_color": "#2f9ce0",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/assets/img/logo-paw.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 820" role="img" aria-label="Лапка hero">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eaf6ff"/>
+      <stop offset="1" stop-color="#dff1ff"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#f2fbff" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#52c7ab"/>
+      <stop offset="1" stop-color="#34a3e1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="820" fill="url(#bg)"/>
+  <circle cx="170" cy="130" r="110" fill="#a5d8ff" opacity="0.32"/>
+  <circle cx="1120" cy="160" r="140" fill="#9fe4d3" opacity="0.28"/>
+  <rect x="70" y="90" width="620" height="420" rx="30" fill="url(#card)" stroke="#c2dff6"/>
+  <text x="120" y="175" font-size="66" font-family="Arial, sans-serif" fill="#1e3f71" font-weight="700">Единая карта</text>
+  <text x="120" y="246" font-size="66" font-family="Arial, sans-serif" fill="#1e3f71" font-weight="700">здоровья питомца</text>
+  <text x="120" y="304" font-size="34" font-family="Arial, sans-serif" fill="#5476a1">owner · vet · clinic_admin</text>
+  <rect x="120" y="338" width="300" height="72" rx="16" fill="url(#mint)"/>
+  <text x="165" y="385" font-size="34" font-family="Arial, sans-serif" fill="#fff" font-weight="700">Создать профиль</text>
+  <rect x="438" y="338" width="215" height="72" rx="16" fill="#fff" stroke="#b9d8f2"/>
+  <text x="490" y="385" font-size="34" font-family="Arial, sans-serif" fill="#2a5f93" font-weight="700">Вход</text>
+
+  <g transform="translate(760 90)">
+    <rect width="450" height="620" rx="34" fill="#fff" stroke="#c2dff6"/>
+    <circle cx="170" cy="210" r="92" fill="#ffd6bf"/>
+    <ellipse cx="172" cy="360" rx="128" ry="120" fill="#e7f2ff"/>
+    <rect x="90" y="340" width="164" height="212" rx="82" fill="#f1f7ff" stroke="#c9e3f7"/>
+    <circle cx="305" cy="198" r="74" fill="#d9ebff"/>
+    <rect x="262" y="260" width="116" height="244" rx="56" fill="#dff0ff"/>
+    <rect x="294" y="308" width="52" height="94" rx="10" fill="#53b9e7"/>
+    <path d="M320 260 L336 274 L356 256" stroke="#2a5e92" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <ellipse cx="208" cy="514" rx="160" ry="34" fill="#d6e9fa"/>
+    <g transform="translate(98 376)">
+      <circle cx="78" cy="76" r="68" fill="#f6b977"/>
+      <polygon points="32,30 60,-8 74,38" fill="#ea9e57"/>
+      <polygon points="124,30 96,-8 82,38" fill="#ea9e57"/>
+      <circle cx="58" cy="72" r="8" fill="#374b5f"/>
+      <circle cx="98" cy="72" r="8" fill="#374b5f"/>
+      <path d="M62 102 Q78 116 94 102" stroke="#374b5f" stroke-width="6" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <rect x="70" y="540" width="1140" height="220" rx="26" fill="#ffffff" stroke="#c8e2f6"/>
+  <g font-family="Arial, sans-serif" fill="#264f80">
+    <rect x="110" y="580" width="250" height="140" rx="18" fill="#f2f9ff" stroke="#c9e2f6"/>
+    <text x="138" y="640" font-size="34" font-weight="700">Питомец</text>
+    <text x="138" y="684" font-size="26" fill="#5a7da5">Профиль и история</text>
+
+    <rect x="390" y="580" width="250" height="140" rx="18" fill="#f2f9ff" stroke="#c9e2f6"/>
+    <text x="420" y="640" font-size="34" font-weight="700">Визиты</text>
+    <text x="420" y="684" font-size="26" fill="#5a7da5">Клиники и врачи</text>
+
+    <rect x="670" y="580" width="250" height="140" rx="18" fill="#f2f9ff" stroke="#c9e2f6"/>
+    <text x="700" y="640" font-size="34" font-weight="700">Документы</text>
+    <text x="700" y="684" font-size="26" fill="#5a7da5">AI расшифровка</text>
+
+    <rect x="950" y="580" width="220" height="140" rx="18" fill="#f2f9ff" stroke="#c9e2f6"/>
+    <text x="980" y="640" font-size="34" font-weight="700">QR</text>
+    <text x="980" y="684" font-size="26" fill="#5a7da5">Public token</text>
+  </g>
+</svg>

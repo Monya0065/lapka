@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visit Protocol Generator</title>
+  <style>
+    :root {
+      --bg: #f8f6ff;
+      --panel: #fff;
+      --text: #221b35;
+      --muted: #6e638d;
+      --brand: #4f3b9f;
+      --line: #ddd7f2;
+    }
+    body { margin: 0; font-family: "Manrope", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { width: min(980px, 92%); margin: 24px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+    h1 { margin-top: 0; }
+    label { display: block; margin-top: 10px; font-weight: 700; }
+    input, textarea, select, button { width: 100%; margin-top: 6px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); font: inherit; }
+    textarea { min-height: 88px; resize: vertical; }
+    button { border: 0; background: var(--brand); color: #fff; font-weight: 700; cursor: pointer; }
+    .protocol { white-space: pre-wrap; background: #faf8ff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-height: 300px; }
+    .muted { color: var(--muted); }
+    @media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <h1>Visit Protocol Generator</h1>
+      <label>Pet name
+        <input id="petName" type="text" value="Milo" />
+      </label>
+      <label>Species
+        <input id="species" type="text" value="Cat" />
+      </label>
+      <label>Main concern
+        <input id="concern" type="text" value="Low appetite and reduced activity" />
+      </label>
+      <label>Triage level
+        <select id="triage">
+          <option>GREEN</option>
+          <option>YELLOW</option>
+          <option>RED</option>
+        </select>
+      </label>
+      <label>Exam findings
+        <textarea id="findings">Owner reports 24h appetite drop, no trauma signs, stable hydration signs.</textarea>
+      </label>
+      <label>Follow-up date
+        <input id="followup" type="date" />
+      </label>
+      <button id="buildBtn">Generate Protocol</button>
+      <p class="muted">No diagnosis or medication instructions generated in this template.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Protocol Output</h2>
+      <div id="out" class="protocol">Fill the form and generate protocol.</div>
+    </section>
+  </div>
+
+  <script>
+    document.getElementById("buildBtn").addEventListener("click", () => {
+      const petName = document.getElementById("petName").value.trim();
+      const species = document.getElementById("species").value.trim();
+      const concern = document.getElementById("concern").value.trim();
+      const triage = document.getElementById("triage").value;
+      const findings = document.getElementById("findings").value.trim();
+      const followup = document.getElementById("followup").value || "TBD";
+
+      const output = `VISIT PROTOCOL\n\nPatient: ${petName} (${species})\nConcern: ${concern}\nTriage Level: ${triage}\n\nStructured Findings:\n${findings}\n\nSafe Plan:\n- Provide calm environment and observation guidance.\n- Share warning signs that require urgent clinic contact.\n- Schedule follow-up evaluation.\n\nFollow-up: ${followup}\n\nSafety notice: This tool provides triage information only.`;
+
+      document.getElementById("out").textContent = output;
+    });
+  </script>
+</body>
+</html>

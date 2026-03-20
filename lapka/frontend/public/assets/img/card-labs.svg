@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f4fbff"/>
+      <stop offset="100%" stop-color="#d7efff"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8ec4ef" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#6ccfb0" stop-opacity="0.35"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <path d="M0 520 C220 430, 440 620, 620 540 C840 438, 1010 610, 1200 520 L1200 700 L0 700 Z" fill="url(#wave)"/>
+  <circle cx="1050" cy="110" r="66" fill="#53a9dd" opacity="0.86"/>
+  <path d="M1050 82 V138 M1022 110 H1078" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <g transform="translate(280 120)">
+  <rect x="70" y="50" width="260" height="210" rx="24" fill="#ffffff" stroke="#8dc7e9" stroke-width="5"/>
+  <rect x="98" y="86" width="204" height="20" rx="8" fill="#d8edfb"/>
+  <rect x="98" y="124" width="164" height="20" rx="8" fill="#d8edfb"/>
+  <rect x="98" y="162" width="186" height="20" rx="8" fill="#d8edfb"/>
+  <circle cx="328" cy="202" r="30" fill="#57b0df"/>
+  <path d="M318 202 L328 212 L344 194" stroke="white" stroke-width="7" fill="none"/>
+</g>
+</svg>

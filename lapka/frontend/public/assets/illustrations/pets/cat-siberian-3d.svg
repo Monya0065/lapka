@@ -1,0 +1,29 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="148" y1="84" x2="884" y2="930" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F3FBFF"/>
+      <stop offset="1" stop-color="#E7F5EC"/>
+    </linearGradient>
+    <radialGradient id="fur" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(512 452) rotate(90) scale(414 360)">
+      <stop stop-color="#C89253"/>
+      <stop offset="1" stop-color="#87542E"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="88" fill="url(#bg)"/>
+  <ellipse cx="520" cy="806" rx="250" ry="46" fill="#CFE3E8"/>
+  <path d="M300 336L402 180L456 350L300 336Z" fill="#8B592F"/>
+  <path d="M726 336L622 180L568 350L726 336Z" fill="#8B592F"/>
+  <path d="M330 364C413 258 574 228 685 304C790 376 812 525 741 646C681 747 555 807 437 784C316 759 230 652 232 533C232 465 260 409 330 364Z" fill="url(#fur)"/>
+  <path d="M381 404C417 354 475 326 536 326C638 326 716 412 716 512C716 600 649 676 562 691C466 708 373 641 350 545C338 497 348 449 381 404Z" fill="#F5E7D6"/>
+  <ellipse cx="444" cy="494" rx="24" ry="30" fill="#254C6B"/>
+  <ellipse cx="592" cy="494" rx="24" ry="30" fill="#254C6B"/>
+  <circle cx="450" cy="488" r="8" fill="#fff"/>
+  <circle cx="598" cy="488" r="8" fill="#fff"/>
+  <path d="M520 538L480 590H558L520 538Z" fill="#E097A3"/>
+  <path d="M446 626C470 654 494 667 520 667C546 667 570 654 594 626" stroke="#4E6E88" stroke-width="18" stroke-linecap="round"/>
+  <path d="M334 560L220 530" stroke="#4E6E88" stroke-width="14" stroke-linecap="round"/>
+  <path d="M338 600L212 604" stroke="#4E6E88" stroke-width="14" stroke-linecap="round"/>
+  <path d="M690 560L804 530" stroke="#4E6E88" stroke-width="14" stroke-linecap="round"/>
+  <path d="M686 600L812 604" stroke="#4E6E88" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="792" cy="216" r="62" fill="#10B981" fill-opacity="0.14"/>
+</svg>

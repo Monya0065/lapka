@@ -1,0 +1,70 @@
+from fastapi import APIRouter
+
+from src.api.routes import (
+    ai_assistant,
+    ai_safe,
+    appointments,
+    audit,
+    auth,
+    calculators,
+    catalog,
+    clinical,
+    clinic_suite,
+    clinics,
+    consents,
+    diseases,
+    documents,
+    drugs,
+    growth,
+    inpatient,
+    market,
+    medical_engine,
+    notifications,
+    patient_search,
+    pets,
+    places,
+    platform_ai,
+    protocols,
+    public_links,
+    reminders,
+    reviews,
+    services,
+    symptoms,
+    system,
+    templates,
+    visits,
+)
+
+api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(auth.router)
+api_router.include_router(clinics.router)
+api_router.include_router(clinic_suite.router)
+api_router.include_router(consents.router)
+api_router.include_router(pets.router)
+api_router.include_router(places.router)
+api_router.include_router(growth.router)
+api_router.include_router(reminders.router)
+api_router.include_router(visits.router)
+api_router.include_router(documents.router)
+api_router.include_router(drugs.router)
+api_router.include_router(inpatient.router)
+api_router.include_router(market.router)
+api_router.include_router(medical_engine.router)
+api_router.include_router(notifications.router)
+api_router.include_router(patient_search.router)
+api_router.include_router(platform_ai.router)
+api_router.include_router(audit.router)
+api_router.include_router(public_links.router)
+api_router.include_router(protocols.router)
+api_router.include_router(appointments.router)
+api_router.include_router(templates.router)
+api_router.include_router(reviews.router)
+api_router.include_router(catalog.router)
+api_router.include_router(diseases.router)
+api_router.include_router(calculators.router)
+api_router.include_router(clinical.router)
+api_router.include_router(ai_assistant.router)
+api_router.include_router(ai_safe.router)
+api_router.include_router(services.router)
+api_router.include_router(symptoms.router)
+api_router.include_router(system.router)

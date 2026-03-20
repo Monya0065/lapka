@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Калькулятор CRI с безопасными единицами (демо)</title>
+    <style>
+      :root {
+        --blue: #4c7cf3;
+        --soft: #eaf1ff;
+        --gray: #e6e8ee;
+        --text: #2b2f3a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        color: var(--text);
+        background: linear-gradient(180deg, #f5f9ff 0%, #fff 220px);
+      }
+      .card {
+        max-width: 820px;
+        margin: 0 auto;
+        border: 1px solid var(--gray);
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(43, 47, 58, 0.08);
+        padding: 16px;
+      }
+      h1 { margin-top: 0; font-size: 1.24rem; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; }
+      input, select {
+        width: 100%;
+        border: 1px solid #cfd5e2;
+        border-radius: 12px;
+        padding: 10px;
+        font: inherit;
+      }
+      .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+      button {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .primary { background: var(--blue); color: #fff; }
+      .secondary { background: #fff; border: 1px solid var(--gray); }
+      .error { color: #9f2b1c; min-height: 22px; font-weight: 700; margin-top: 8px; }
+      .result { margin-top: 12px; background: var(--soft); border-radius: 12px; padding: 12px; }
+      .note {
+        margin-top: 10px;
+        border-radius: 12px;
+        border: 1px solid #c4d6ff;
+        background: #f7fbff;
+        padding: 10px;
+        font-size: 0.92rem;
+      }
+      .safety {
+        margin-top: 12px;
+        border: 1px solid #ffd2cb;
+        background: #fff3f1;
+        border-radius: 12px;
+        padding: 10px;
+        font-size: 0.92rem;
+      }
+      @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } button { width: 100%; } }
+    </style>
+  </head>
+  <body>
+    <section class="card">
+      <h1>МОДУЛЬ C: Калькулятор CRI с безопасными единицами (только математика)</h1>
+      <p>По скорости инфузии и концентрации рассчитывает доставляемую дозу в двух системах единиц.</p>
+      <form id="criForm" novalidate>
+        <div class="grid">
+          <div>
+            <label for="weightKg">вес_кг (0.1..200)</label>
+            <input id="weightKg" inputmode="decimal" placeholder="e.g. 7,8" />
+          </div>
+          <div>
+            <label for="conc">концентрация_мг_на_мл (0.01..2000)</label>
+            <input id="conc" inputmode="decimal" placeholder="e.g. 1.5" />
+          </div>
+          <div>
+            <label for="rate">скорость_инфузии_мл_в_час (0..2000)</label>
+            <input id="rate" inputmode="decimal" placeholder="e.g. 2.2" />
+          </div>
+          <div>
+            <label for="mode">Переключение единиц</label>
+            <select id="mode">
+              <option value="mcg_per_kg_min">цель: mcg/kg/min</option>
+              <option value="mg_per_kg_hr">цель: mg/kg/hr</option>
+            </select>
+          </div>
+          <div>
+            <label for="rounding">Округление</label>
+            <select id="rounding">
+              <option value="0">0 знаков</option>
+              <option value="1">1 знак</option>
+              <option value="2" selected>2 знаков</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="primary">Рассчитать</button>
+          <button type="reset" class="secondary">Сброс</button>
+        </div>
+        <p id="err" class="error" aria-live="polite"></p>
+      </form>
+
+      <div class="result" aria-live="polite">
+        <strong>Результат:</strong>
+        <p>mg_per_hr: <span id="mgHr">-</span></p>
+        <p>delivered_mg_per_kg_hr: <span id="mgKgHr">-</span></p>
+        <p>delivered_mcg_per_kg_min: <span id="mcgKgMin">-</span></p>
+        <p>выбранный режим: <span id="modeOut">-</span></p>
+      </div>
+
+      <div class="note">
+        <strong>Пояснение пересчёта:</strong>
+        <p>
+          База: <code>mg_per_hr = концентрация_мг_на_мл * скорость_инфузии_мл_в_час</code>.<br />
+          Далее <code>mg/kg/hr = mg_per_hr / вес_кг</code> и
+          <code>mcg/kg/min = (mg_per_hr * 1000) / (вес_кг * 60)</code>.
+        </p>
+      </div>
+
+      <div class="safety">
+        <strong>Ограничения и безопасность</strong>
+        <p>RU: "Математический расчёт по введённым данным. Проверяйте единицы. Решение принимает специалист."</p>
+        <p>EN: "Math-only calculation based on your inputs. Verify units. Decisions belong to a professional."</p>
+      </div>
+    </section>
+
+    <script>
+      (function () {
+        const form = document.getElementById('criForm');
+        const err = document.getElementById('err');
+
+        function postHeight() {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'moduleHeight', module: 'module-cri.html', height: document.body.scrollHeight }, '*');
+          }
+        }
+
+        function parseLocaleNumber(value) {
+          const cleaned = String(value || '').trim().replace(',', '.');
+          if (cleaned === '') return null;
+          const num = Number(cleaned);
+          if (!Number.isFinite(num)) return NaN;
+          return num;
+        }
+
+        function readNum(id, min, max) {
+          const value = parseLocaleNumber(document.getElementById(id).value);
+          if (value === null) throw new Error(id + ': поле обязательно.');
+          if (Number.isNaN(value)) throw new Error(id + ': некорректное число.');
+          if (value < min || value > max) throw new Error(id + ': допустимый диапазон ' + min + '..' + max + '.');
+          return value;
+        }
+
+        function fmt(v, d) {
+          if (!Number.isFinite(v)) return '-';
+          return v.toFixed(d);
+        }
+
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          err.textContent = '';
+          try {
+            const weightKg = readNum('weightKg', 0.1, 200);
+            const conc = readNum('conc', 0.01, 2000);
+            const rate = readNum('rate', 0, 2000);
+            const mode = document.getElementById('mode').value;
+            const dec = Number(document.getElementById('rounding').value);
+
+            const mgPerHr = conc * rate;
+            const deliveredMgKgHr = mgPerHr / weightKg;
+            const deliveredMcgKgMin = (mgPerHr * 1000) / (weightKg * 60);
+
+            if (![mgPerHr, deliveredMgKgHr, deliveredMcgKgMin].every(Number.isFinite)) {
+              throw new Error('Расчёт вернул некорректное число.');
+            }
+
+            document.getElementById('mgHr').textContent = fmt(mgPerHr, dec) + ' mg/hr';
+            document.getElementById('mgKgHr').textContent = fmt(deliveredMgKgHr, dec) + ' mg/kg/hr';
+            document.getElementById('mcgKgMin').textContent = fmt(deliveredMcgKgMin, dec) + ' mcg/kg/min';
+            document.getElementById('modeOut').textContent = mode === 'mg_per_kg_hr'
+              ? 'mg/kg/hr => ' + fmt(deliveredMgKgHr, dec)
+              : 'mcg/kg/min => ' + fmt(deliveredMcgKgMin, dec);
+          } catch (error) {
+            err.textContent = error.message;
+            document.getElementById('mgHr').textContent = '-';
+            document.getElementById('mgKgHr').textContent = '-';
+            document.getElementById('mcgKgMin').textContent = '-';
+            document.getElementById('modeOut').textContent = '-';
+          }
+          postHeight();
+        });
+
+        form.addEventListener('reset', function () {
+          err.textContent = '';
+          document.getElementById('mgHr').textContent = '-';
+          document.getElementById('mgKgHr').textContent = '-';
+          document.getElementById('mcgKgMin').textContent = '-';
+          document.getElementById('modeOut').textContent = '-';
+          setTimeout(postHeight, 0);
+        });
+
+        window.addEventListener('load', postHeight);
+        window.addEventListener('resize', postHeight);
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-ru="Безопасность и соответствие — «Лапка»" data-en="Security and compliance — Лапка">Безопасность и соответствие — «Лапка»</title>
+    <meta
+      name="description"
+      data-ru="Концепция безопасности платформы: RBAC, аудит, шифрование, инциденты, локализация данных и безопасная маршрутизация AI."
+      data-en="Platform security concept: RBAC, audit logs, encryption, incident response, data localization, and safe AI routing."
+      content="Концепция безопасности платформы: RBAC, аудит, шифрование, инциденты, локализация данных и безопасная маршрутизация AI."
+    />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <script defer src="../assets/js/app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-row">
+        <a href="./index.html" class="brand"><span class="brand-logo" aria-hidden="true">🛡️</span>Лапка</a>
+        <button class="nav-toggle" aria-expanded="false" aria-controls="mainNav">☰</button>
+        <nav class="site-nav" id="mainNav" aria-label="Main navigation">
+          <a href="./index.html" data-ru="Главная" data-en="Home">Главная</a>
+          <a href="./owners.html" data-ru="Для владельцев" data-en="For owners">Для владельцев</a>
+          <a href="./clinics.html" data-ru="Для клиник" data-en="For clinics">Для клиник</a>
+          <a href="./pricing.html" data-ru="Тарифы" data-en="Pricing">Тарифы</a>
+          <a href="./security.html" aria-current="page" data-ru="Безопасность" data-en="Security">Безопасность</a>
+          <a href="./faq.html" data-ru="Вопросы" data-en="FAQ">Вопросы</a>
+          <a href="./auth.html" data-ru="Демо-вход" data-en="Demo auth">Демо-вход</a>
+          <a href="./cabinet.html" data-ru="Кабинет" data-en="Cabinet">Кабинет</a>
+        </nav>
+        <div class="header-actions">
+          <button class="btn btn-primary" type="button" data-open-demo data-ru="Запросить демо" data-en="Request demo">Запросить демо</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="container">
+        <section class="section card">
+          <h1 data-ru="Безопасность и соответствие (концептуально)" data-en="Security & Compliance (conceptual)">Безопасность и соответствие (концептуально)</h1>
+          <p data-ru="Демо-сайт показывает подходы к безопасной архитектуре. Это не юридическая консультация и не сертифицированное медицинское ПО." data-en="This demo site illustrates a secure architecture approach. It is not legal advice and not certified medical software.">
+            Демо-сайт показывает подходы к безопасной архитектуре. Это не юридическая консультация и не сертифицированное медицинское ПО.
+          </p>
+          <p class="notice notice-success" data-ru="Демо-сайт не хранит персональные данные." data-en="This demo site stores no personal data.">Демо-сайт не хранит персональные данные.</p>
+        </section>
+
+        <section class="section card">
+          <h2 data-ru="Коротко о модели безопасности" data-en="Security model in short">Коротко о модели безопасности</h2>
+          <div class="grid grid-2">
+            <p data-ru="1) Минимальные права доступа по ролям (RBAC)." data-en="1) Least-privilege access by role (RBAC).">1) Минимальные права доступа по ролям (RBAC).</p>
+            <p data-ru="2) Проверка и фильтрация AI-вывода перед показом пользователю." data-en="2) AI output is filtered and validated before being shown.">2) Проверка и фильтрация AI-вывода перед показом пользователю.</p>
+            <p data-ru="3) План реагирования на инциденты и аудит критичных действий." data-en="3) Реагирование на инциденты process and audit for critical actions.">3) План реагирования на инциденты и аудит критичных действий.</p>
+            <p data-ru="4) Концепция локализации и хранения данных в нужной юрисдикции." data-en="4) Data localization and retention by jurisdiction concept.">4) Концепция локализации и хранения данных в нужной юрисдикции.</p>
+          </div>
+        </section>
+
+        <section class="section grid grid-2">
+          <article class="card">
+            <h2>RBAC</h2>
+            <p data-ru="Доступ разделяется по ролям: Владелец, Врач, Администратор клиники. Каждая роль получает только необходимые функции (принцип минимальных привилегий)." data-en="Access is role-based: Владелец, Врач, Администратор клиники. Each role receives only required capabilities (least privilege).">
+              Доступ разделяется по ролям: Владелец, Врач, Администратор клиники. Каждая роль получает только необходимые функции (принцип минимальных привилегий).
+            </p>
+          </article>
+          <article class="card">
+            <h2 data-ru="Журналы аудита" data-en="Журналы аудита">Журналы аудита</h2>
+            <p data-ru="Критичные действия фиксируются в неизменяемом журнале: вход, изменения записей, экспорт документов, админ-операции." data-en="Critical actions are recorded in immutable logs: sign-in, record edits, document exports, and admin operations.">
+              Критичные действия фиксируются в неизменяемом журнале: вход, изменения записей, экспорт документов, админ-операции.
+            </p>
+          </article>
+          <article class="card">
+            <h2 data-ru="Шифрование" data-en="Encryption">Шифрование</h2>
+            <p data-ru="Передача данных: TLS в канале. Хранение: шифрование на уровне диска/БД и управление ключами с ротацией." data-en="Data in transit: TLS. Data at rest: storage/database encryption and managed key rotation.">
+              Передача данных: TLS в канале. Хранение: шифрование на уровне диска/БД и управление ключами с ротацией.
+            </p>
+          </article>
+          <article class="card">
+            <h2 data-ru="Резервные копии и хранение" data-en="Резервные копии и хранение">Резервные копии и хранение</h2>
+            <p data-ru="Регулярные резервные копии, тест восстановления и политика хранения по категориям данных и срокам." data-en="Regular backups, restore drills, and retention policies by data category and retention period.">
+              Регулярные резервные копии, тест восстановления и политика хранения по категориям данных и срокам.
+            </p>
+          </article>
+          <article class="card">
+            <h2 data-ru="Реагирование на инциденты" data-en="Реагирование на инциденты">Реагирование на инциденты</h2>
+            <p data-ru="Процедуры: обнаружение, классификация критичности, локализация, устранение, пост-мортем и уведомления по политике." data-en="Procedures: detection, severity classification, containment, remediation, post-mortem, and policy-based notifications.">
+              Процедуры: обнаружение, классификация критичности, локализация, устранение, пост-мортем и уведомления по политике.
+            </p>
+          </article>
+          <article class="card">
+            <h2 data-ru="Локализация данных" data-en="Data localization">Локализация данных</h2>
+            <p data-ru="Для РФ может потребоваться локализация персональных данных в РФ и отдельные трансграничные процедуры. Этот раздел носит концептуальный характер и не является юридической консультацией." data-en="For Russia, personal data localization requirements may apply, with additional cross-border transfer procedures. This section is conceptual and not legal advice.">
+              Для РФ может потребоваться локализация персональных данных в РФ и отдельные трансграничные процедуры. Этот раздел носит концептуальный характер и не является юридической консультацией.
+            </p>
+          </article>
+        </section>
+
+        <section class="section card">
+          <h2 data-ru="AI/LLM: анализ между разными семействами" data-en="AI/LLM: analysis across different families">AI/LLM: анализ между разными семействами</h2>
+          <p data-ru="Оценки приведены для продуктового выбора на уровне семейств моделей (без указания конкретных версий)." data-en="Assessments are for product-level selection across model families (without specific model versions).">
+            Оценки приведены для продуктового выбора на уровне семейств моделей (без указания конкретных версий).
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th data-ru="Семейство" data-en="Family">Семейство</th>
+                  <th data-ru="Логическое рассуждение" data-en="Логическое рассуждение">Логическое рассуждение</th>
+                  <th data-ru="Следование инструкциям" data-en="Instruction following">Следование инструкциям</th>
+                  <th data-ru="Риск галлюцинаций" data-en="Hallucination risk">Риск галлюцинаций</th>
+                  <th data-ru="Согласованность по безопасности" data-en="Согласованность по безопасности">Согласованность по безопасности</th>
+                  <th data-ru="Задержка" data-en="Задержка">Задержка</th>
+                  <th data-ru="Стоимость" data-en="Стоимость">Стоимость</th>
+                  <th data-ru="Контроль приватности" data-en="Контроль приватности">Контроль приватности</th>
+                  <th data-ru="Локально (локальный on-prem)" data-en="Локально (локальный on-prem)">Локально (локальный on-prem)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>OpenAI GPT (семейство)</td>
+                  <td data-ru="Очень сильное (5/5), стабильно на сложных инструкциях" data-en="Very strong (5/5), consistent on complex instructions">Очень сильное (5/5), стабильно на сложных инструкциях</td>
+                  <td data-ru="Сильное (5/5), хорошо держит структуру политики" data-en="Strong (5/5), reliably follows policy structure">Сильное (5/5), хорошо держит структуру политики</td>
+                  <td data-ru="Средний риск (2/5), нужна пост-валидация" data-en="Medium risk (2/5), still needs пост-валидация">Средний риск (2/5), нужна пост-валидация</td>
+                  <td data-ru="Высокий (5/5) при корректном policy-барьере" data-en="High (5/5) with proper policy guard">Высокий (5/5) при корректном policy-барьере</td>
+                  <td data-ru="Низкая/средняя задержка" data-en="Low to medium latency">Низкая/средняя задержка</td>
+                  <td data-ru="Средняя/выше средней" data-en="Medium to high">Средняя/выше средней</td>
+                  <td data-ru="Хорошие корпоративные опции" data-en="Strong enterprise controls">Хорошие корпоративные опции</td>
+                  <td data-ru="Обычно облачный управляемый режим" data-en="Typically облачный управляемый режим">Обычно облачный управляемый режим</td>
+                </tr>
+                <tr>
+                  <td>Anthropic Claude (семейство)</td>
+                  <td data-ru="Очень сильное (5/5), качественная аргументация" data-en="Very strong (5/5), high-quality reasoning">Очень сильное (5/5), качественная аргументация</td>
+                  <td data-ru="Очень сильное (5/5), аккуратное следование рамкам" data-en="Very strong (5/5), careful policy adherence">Очень сильное (5/5), аккуратное следование рамкам</td>
+                  <td data-ru="Низко-средний риск (2/5)" data-en="Low-medium risk (2/5)">Низко-средний риск (2/5)</td>
+                  <td data-ru="Высокий (5/5)" data-en="High (5/5)">Высокий (5/5)</td>
+                  <td data-ru="Средняя задержка" data-en="Medium latency">Средняя задержка</td>
+                  <td data-ru="Средняя/выше средней" data-en="Medium to high">Средняя/выше средней</td>
+                  <td data-ru="Хорошие корпоративные контуры" data-en="Strong enterprise controls">Хорошие корпоративные контуры</td>
+                  <td data-ru="Приоритет облака" data-en="Приоритет облака">Приоритет облака</td>
+                </tr>
+                <tr>
+                  <td>Google Gemini (семейство)</td>
+                  <td data-ru="Сильное (4/5), особенно в мультимодальности" data-en="Strong (4/5), especially multimodal tasks">Сильное (4/5), особенно в мультимодальности</td>
+                  <td data-ru="Сильное (4/5)" data-en="Strong (4/5)">Сильное (4/5)</td>
+                  <td data-ru="Средний риск (3/5), важна валидация" data-en="Medium risk (3/5), requires validation">Средний риск (3/5), важна валидация</td>
+                  <td data-ru="Сильный (4/5)" data-en="Strong (4/5)">Сильный (4/5)</td>
+                  <td data-ru="Низкая/средняя" data-en="Low to medium">Низкая/средняя</td>
+                  <td data-ru="Средняя" data-en="Medium">Средняя</td>
+                  <td data-ru="Развитые облачные контроли" data-en="Mature cloud privacy controls">Развитые облачные контроли</td>
+                  <td data-ru="Ограниченный локальный on-prem" data-en="Limited локальный on-prem">Ограниченный локальный on-prem</td>
+                </tr>
+                <tr>
+                  <td>Mistral (семейство)</td>
+                  <td data-ru="Сильное (4/5)" data-en="Strong (4/5)">Сильное (4/5)</td>
+                  <td data-ru="Средне-сильное (4/5)" data-en="Medium-strong (4/5)">Средне-сильное (4/5)</td>
+                  <td data-ru="Средний риск (3/5)" data-en="Medium risk (3/5)">Средний риск (3/5)</td>
+                  <td data-ru="Средне-высокий (4/5)" data-en="Medium-high (4/5)">Средне-высокий (4/5)</td>
+                  <td data-ru="Низкая" data-en="Low latency">Низкая</td>
+                  <td data-ru="Ниже средней" data-en="Below medium">Ниже средней</td>
+                  <td data-ru="Гибкие варианты развёртывания" data-en="Flexible deployment controls">Гибкие варианты развёртывания</td>
+                  <td data-ru="Возможен self-host (самостоятельное размещение)" data-en="Self-host possible">Возможен self-host (самостоятельное размещение)</td>
+                </tr>
+                <tr>
+                  <td>Llama (self-host, семейство)</td>
+                  <td data-ru="От среднего до сильного (3–4/5)" data-en="Medium to strong (3–4/5)">От среднего до сильного (3–4/5)</td>
+                  <td data-ru="Среднее/сильное (3–4/5), зависит от тюнинга" data-en="Medium to strong (3–4/5), depends on tuning">Среднее/сильное (3–4/5), зависит от тюнинга</td>
+                  <td data-ru="Средне-высокий риск (3–4/5) без строгих защитных ограничений" data-en="Medium-high risk (3–4/5) without strict guardrails">Средне-высокий риск (3–4/5) без строгих защитных ограничений</td>
+                  <td data-ru="Зависит от вашей обвязки (3/5)" data-en="Depends on your guardrails (3/5)">Зависит от вашей обвязки (3/5)</td>
+                  <td data-ru="Зависит от железа" data-en="Hardware-dependent">Зависит от железа</td>
+                  <td data-ru="Контролируемая себестоимость при self-host (самостоятельном размещении)" data-en="Controlled cost at self-host scale">Контролируемая себестоимость при self-host (самостоятельном размещении)</td>
+                  <td data-ru="Максимальный контроль приватности" data-en="Maximum privacy control">Максимальный контроль приватности</td>
+                  <td data-ru="Да, локальный on-prem в приоритете" data-en="Yes, локальный on-prem friendly">Да, локальный on-prem в приоритете</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section card">
+          <h2 data-ru="Матрица маршрутизации задач" data-en="Матрица маршрутизации задач">Матрица маршрутизации задач</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Задача</th>
+                  <th data-ru="Основное семейство" data-en="Основное семейство">Основное семейство</th>
+                  <th data-ru="Резервное семейство" data-en="Резервное семейство">Резервное семейство</th>
+                  <th data-ru="Оффлайн-резерв" data-en="Оффлайн-резерв">Оффлайн-резерв</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-ru="triage (максимальный риск)" data-en="triage (максимальный риск)">triage (максимальный риск)</td>
+                  <td data-ru="Детерминированные правила + policy-слой" data-en="Deterministic rules + policy layer">Детерминированные правила + policy-слой</td>
+                  <td data-ru="OpenAI GPT (семейство) / Claude (семейство) для структурирования текста без диагноза" data-en="OpenAI GPT (семейство) / Claude (семейство) for non-diagnostic wording">OpenAI GPT (семейство) / Claude (семейство) для структурирования текста без диагноза</td>
+                  <td data-ru="Детерминированные правила (демо triage-модуль)" data-en="Deterministic rules (this demo triage module)">Детерминированные правила (демо triage-модуль)</td>
+                </tr>
+                <tr>
+                  <td data-ru="переписывание заметок врача (средний риск)" data-en="переписывание заметок врача (средний риск)">переписывание заметок врача (средний риск)</td>
+                  <td>Claude (семейство)</td>
+                  <td>OpenAI GPT (семейство)</td>
+                  <td data-ru="Только форматирование текста" data-en="Formatting-only mode">Только форматирование текста</td>
+                </tr>
+                <tr>
+                  <td data-ru="чат обучения владельца (средний риск)" data-en="чат обучения владельца (средний риск)">чат обучения владельца (средний риск)</td>
+                  <td>OpenAI GPT (семейство)</td>
+                  <td>Gemini (семейство)</td>
+                  <td data-ru="Кураторские FAQ-сниппеты" data-en="Curated FAQ snippets">Кураторские FAQ-сниппеты</td>
+                </tr>
+                <tr>
+                  <td data-ru="админ-сводки (низкий риск)" data-en="админ-сводки (низкий риск)">админ-сводки (низкий риск)</td>
+                  <td>Mistral (семейство)</td>
+                  <td>Llama (self-host, семейство)</td>
+                  <td data-ru="Шаблонный отчёт без LLM" data-en="Template report without LLM">Шаблонный отчёт без LLM</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section card">
+          <h2 data-ru="Архитектура AI-роутера (текстовая схема)" data-en="Архитектура AI-роутера (текстовая схема)">Архитектура AI-роутера (текстовая схема)</h2>
+          <pre style="white-space: pre-wrap; background: #f5f8ff; border-radius: 12px; padding: 12px; border: 1px solid #d5def7">
+Вход -> Санитайзер входа (редакция PII)
+      -> Policy Guard (блок диагноза/лекарств/доз)
+      -> Model Router (выбор семейства по риску и задаче)
+      -> Output Validator (regex + детерминированные правила безопасности)
+      -> Fallback Handler (детерминированные/оффлайн-ответы)
+      -> Observability (редактированные логи + метрики безопасности)
+          </pre>
+        </section>
+
+        <section class="section card">
+          <h2 data-ru="Правила валидации вывода" data-en="Правила валидации вывода">Правила валидации вывода</h2>
+          <ul class="list-clean">
+            <li data-ru="Блокировать названия лекарств по словарю: «drug vocabulary list in production»." data-en="Block drug names via maintained dictionary: \"drug vocabulary list in production\".">Блокировать названия лекарств по словарю: «drug vocabulary list in production».</li>
+            <li data-ru="Блокировать паттерны дозирования: mg/kg, ml/kg, слова «dose», «prescribe»." data-en="Block dosing patterns: mg/kg, ml/kg, and terms \"dose\", \"prescribe\".">Блокировать паттерны дозирования: mg/kg, ml/kg, слова «dose», «prescribe».</li>
+            <li data-ru="Блокировать фразы диагностической уверенности: «это точно», «скорее всего», «у вашего питомца»." data-en="Block diagnosis-certainty phrases: \"это точно\", \"скорее всего\", \"у вашего питомца\".">Блокировать фразы диагностической уверенности: «это точно», «скорее всего», «у вашего питомца».</li>
+            <li data-ru="Если правило нарушено — заменить ответ на безопасный шаблон эскалации в клинику." data-en="If any rule is violated, replace output with safe escalation template to clinic.">Если правило нарушено — заменить ответ на безопасный шаблон эскалации в клинику.</li>
+          </ul>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <div class="container footer-row">
+        <p class="small" data-ru="Только концепт. Не является юридической консультацией." data-en="Только концепт. Не является юридической консультацией.">Только концепт. Не является юридической консультацией.</p>
+      </div>
+    </footer>
+
+    <div class="modal" id="demoModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="demoModalTitle">
+      <div class="modal-card">
+        <h2 id="demoModalTitle" data-ru="Запросить демо" data-en="Request a demo">Запросить демо</h2>
+        <form>
+          <div class="form-grid">
+            <div>
+              <label for="secName" data-ru="Имя" data-en="Name">Имя</label>
+              <input id="secName" required />
+            </div>
+            <div>
+              <label for="secEmail">Эл. почта</label>
+              <input id="secEmail" type="email" required />
+            </div>
+          </div>
+          <div style="margin-top: 10px">
+            <label for="secMsg" data-ru="Запрос" data-en="Request">Запрос</label>
+            <textarea id="secMsg" data-placeholder-ru="Например: требования по безопасности и архитектуре" data-placeholder-en="For example: security and architecture requirements" placeholder="Например: требования по безопасности и архитектуре"></textarea>
+          </div>
+          <div class="inline-actions" style="margin-top: 12px">
+            <button class="btn btn-primary" type="submit" data-ru="Отправить" data-en="Submit">Отправить</button>
+            <button class="btn btn-secondary" type="button" data-close-modal data-ru="Закрыть" data-en="Close">Закрыть</button>
+          </div>
+          <p class="small" aria-live="polite" data-demo-result></p>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

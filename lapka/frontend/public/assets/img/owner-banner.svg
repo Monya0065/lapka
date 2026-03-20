@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5fbff"/>
+      <stop offset="100%" stop-color="#dff0ff"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8ec4ef" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#6ccfb0" stop-opacity="0.35"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <path d="M0 520 C220 430, 440 620, 620 540 C840 438, 1010 610, 1200 520 L1200 700 L0 700 Z" fill="url(#wave)"/>
+  <circle cx="1050" cy="110" r="66" fill="#62b7ea" opacity="0.86"/>
+  <path d="M1050 82 V138 M1022 110 H1078" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <g transform="translate(240 90)">
+  <circle cx="200" cy="110" r="56" fill="#f2c4a3"/>
+  <rect x="144" y="168" width="112" height="154" rx="28" fill="#91bced"/>
+  <circle cx="316" cy="220" r="74" fill="#f8d7b9"/>
+  <circle cx="288" cy="198" r="12" fill="#7a5641"/>
+  <circle cx="342" cy="198" r="12" fill="#7a5641"/>
+  <ellipse cx="316" cy="226" rx="20" ry="12" fill="#f4ae9f"/>
+</g>
+</svg>

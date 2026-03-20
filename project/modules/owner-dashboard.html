@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Owner Dashboard</title>
+  <style>
+    :root {
+      --bg: #fcfaf6;
+      --panel: #fff;
+      --text: #251c12;
+      --muted: #74624f;
+      --brand: #c26a26;
+      --line: #ebdccf;
+    }
+    body { margin: 0; font-family: "Manrope", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .top { padding: 16px; border-bottom: 1px solid var(--line); background: #fff; display: flex; justify-content: space-between; }
+    .wrap { width: min(1120px, 94%); margin: 18px auto; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+    h1, h2, h3 { margin-top: 0; }
+    .muted { color: var(--muted); }
+    a { color: var(--brand); text-decoration: none; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <strong>Owner Portal</strong>
+    <a href="/pages/index.html">Back to site</a>
+  </header>
+
+  <main class="wrap">
+    <h1>Hello, Alex</h1>
+    <p class="muted">Lapka-style care center for your pets.</p>
+
+    <section class="grid">
+      <article class="card"><h3>My Pets</h3><p class="muted">Milo (Cat, 4y), Nika (Dog, 2y)</p></article>
+      <article class="card"><h3>Medical History</h3><p class="muted">Latest visit: 2026-02-20, routine check.</p></article>
+      <article class="card"><h3>Vaccinations</h3><p class="muted">Next due: Rabies booster in 26 days.</p></article>
+      <article class="card"><h3>Lab Results</h3><p class="muted">2 reports available for download.</p></article>
+      <article class="card"><h3>Documents</h3><p class="muted">Insurance form and consent templates.</p></article>
+      <article class="card"><h3>Reminders</h3><p class="muted">Medication reminders disabled in demo; visit reminders active.</p></article>
+      <article class="card"><h3>Symptom Diary</h3><p class="muted">Last note: appetite reduced for 12h.</p></article>
+      <article class="card"><h3>AI Triage</h3><p class="muted"><a href="/modules/triage.html">Open triage module</a></p></article>
+      <article class="card"><h3>Chat</h3><p class="muted">1 unread message from clinic nurse.</p></article>
+    </section>
+  </main>
+</body>
+</html>

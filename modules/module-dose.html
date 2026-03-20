@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Калькулятор математической дозы (демо)</title>
+    <style>
+      :root {
+        --primary-blue: #4c7cf3;
+        --soft-blue: #eaf1ff;
+        --mint-accent: #7ed6c2;
+        --white: #fff;
+        --dark-text: #2b2f3a;
+        --danger: #e74c3c;
+        --gray: #e6e8ee;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        color: var(--dark-text);
+        background: linear-gradient(180deg, #f5f9ff 0%, #fff 220px);
+      }
+      .card {
+        max-width: 760px;
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid var(--gray);
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(43, 47, 58, 0.08);
+        padding: 16px;
+      }
+      h1 { margin: 0 0 10px; font-size: 1.25rem; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; }
+      input, select {
+        width: 100%;
+        border: 1px solid #cfd5e2;
+        border-radius: 12px;
+        padding: 10px;
+        font: inherit;
+      }
+      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+      button {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .primary { background: var(--primary-blue); color: #fff; }
+      .secondary { background: #fff; border: 1px solid var(--gray); color: var(--dark-text); }
+      .error { color: #9f2b1c; font-weight: 700; min-height: 22px; margin-top: 8px; }
+      .result {
+        margin-top: 12px;
+        background: var(--soft-blue);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .safety {
+        margin-top: 12px;
+        border: 1px solid #ffd2cb;
+        background: #fff3f1;
+        border-radius: 12px;
+        padding: 10px;
+        font-size: 0.92rem;
+      }
+      .small { color: #586074; font-size: 0.85rem; }
+      @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } button { width: 100%; } }
+    </style>
+  </head>
+  <body>
+    <section class="card">
+      <h1>МОДУЛЬ A: Калькулятор математической дозы</h1>
+      <p class="small">Только математический калькулятор. Без диагноза и лечебных назначений.</p>
+      <form id="doseForm" novalidate>
+        <div class="grid">
+          <div>
+            <label for="weightKg">вес_кг (0.1..200)</label>
+            <input id="weightKg" name="weightKg" inputmode="decimal" placeholder="e.g. 5,2" />
+          </div>
+          <div>
+            <label for="doseMgKg">доза_мг_на_кг (0..500)</label>
+            <input id="doseMgKg" name="doseMgKg" inputmode="decimal" placeholder="e.g. 2.5" />
+          </div>
+          <div>
+            <label for="concMgMl">концентрация_мг_на_мл (необязательно, 0.01..2000)</label>
+            <input id="concMgMl" name="concMgMl" inputmode="decimal" placeholder="optional" />
+          </div>
+          <div>
+            <label for="rounding">Округление</label>
+            <select id="rounding" name="rounding">
+              <option value="0">0 знаков</option>
+              <option value="1">1 знак</option>
+              <option value="2" selected>2 знаков</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="primary">Рассчитать</button>
+          <button type="reset" class="secondary">Сброс</button>
+        </div>
+
+        <p id="err" class="error" aria-live="polite"></p>
+      </form>
+
+      <div class="result" id="result" aria-live="polite">
+        <strong>Результат:</strong>
+        <p>итого_мг: <span id="totalMg">-</span></p>
+        <p>объем_мл: <span id="volumeMl">-</span></p>
+      </div>
+
+      <div class="safety">
+        <strong>Ограничения и безопасность</strong>
+        <p>RU: "Математический расчёт по введённым данным. Проверяйте единицы. Решение принимает специалист."</p>
+        <p>EN: "Math-only calculation based on your inputs. Verify units. Decisions belong to a professional."</p>
+      </div>
+    </section>
+
+    <script>
+      (function () {
+        const form = document.getElementById('doseForm');
+        const err = document.getElementById('err');
+        const totalMgEl = document.getElementById('totalMg');
+        const volumeMlEl = document.getElementById('volumeMl');
+
+        function postHeight() {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'moduleHeight', module: 'module-dose.html', height: document.body.scrollHeight }, '*');
+          }
+        }
+
+        function parseLocaleNumber(value) {
+          const cleaned = String(value || '').trim().replace(',', '.');
+          if (cleaned === '') {
+            return null;
+          }
+          const num = Number(cleaned);
+          if (!Number.isFinite(num)) {
+            return NaN;
+          }
+          return num;
+        }
+
+        function formatNum(value, dec) {
+          if (!Number.isFinite(value)) {
+            return '-';
+          }
+          return value.toFixed(dec);
+        }
+
+        function readNumber(id, min, max, required) {
+          const value = parseLocaleNumber(document.getElementById(id).value);
+          if (value === null) {
+            if (required) {
+              throw new Error(id + ': поле обязательно.');
+            }
+            return null;
+          }
+          if (Number.isNaN(value)) {
+            throw new Error(id + ': некорректное число.');
+          }
+          if (value < min || value > max) {
+            throw new Error(id + ': допустимый диапазон ' + min + '..' + max + '.');
+          }
+          return value;
+        }
+
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          err.textContent = '';
+          try {
+            const weightKg = readNumber('weightKg', 0.1, 200, true);
+            const doseMgKg = readNumber('doseMgKg', 0, 500, true);
+            const conc = readNumber('concMgMl', 0.01, 2000, false);
+            const знаков = Number(document.getElementById('rounding').value);
+
+            const totalMg = weightKg * doseMgKg;
+            totalMgEl.textContent = formatNum(totalMg, знаков) + ' mg';
+
+            if (conc !== null) {
+              const volumeMl = totalMg / conc;
+              if (!Number.isFinite(volumeMl)) {
+                throw new Error('объем_мл: invalid result.');
+              }
+              volumeMlEl.textContent = formatNum(volumeMl, знаков) + ' ml';
+            } else {
+              volumeMlEl.textContent = 'не указано';
+            }
+          } catch (error) {
+            err.textContent = error.message;
+            totalMgEl.textContent = '-';
+            volumeMlEl.textContent = '-';
+          }
+          postHeight();
+        });
+
+        form.addEventListener('reset', function () {
+          err.textContent = '';
+          totalMgEl.textContent = '-';
+          volumeMlEl.textContent = '-';
+          setTimeout(postHeight, 0);
+        });
+
+        window.addEventListener('load', postHeight);
+        window.addEventListener('resize', postHeight);
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Генератор протокола визита (демо)</title>
+    <style>
+      :root {
+        --blue: #4c7cf3;
+        --soft: #eaf1ff;
+        --gray: #e6e8ee;
+        --text: #2b2f3a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        color: var(--text);
+        background: linear-gradient(180deg, #f5f9ff 0%, #fff 220px);
+      }
+      .card {
+        max-width: 980px;
+        margin: 0 auto;
+        border: 1px solid var(--gray);
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(43, 47, 58, 0.08);
+        background: #fff;
+        padding: 16px;
+      }
+      h1 { margin-top: 0; font-size: 1.3rem; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      label { display: block; margin-bottom: 4px; font-weight: 700; font-size: 0.9rem; }
+      input, select, textarea {
+        width: 100%;
+        border: 1px solid #cfd5e2;
+        border-radius: 12px;
+        padding: 10px;
+        font: inherit;
+      }
+      textarea { min-height: 90px; resize: vertical; }
+      .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+      button {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .primary { background: var(--blue); color: #fff; }
+      .secondary { background: #fff; border: 1px solid var(--gray); }
+      .result {
+        margin-top: 16px;
+        border: 1px solid #cad6f8;
+        border-radius: 12px;
+        background: var(--soft);
+        padding: 14px;
+      }
+      .preview {
+        margin-top: 10px;
+        border: 1px solid #d2dcf7;
+        background: #fff;
+        border-radius: 12px;
+        padding: 14px;
+      }
+      .small { color: #5e6678; font-size: 0.85rem; }
+      .error { color: #9f2b1c; min-height: 22px; font-weight: 700; margin-top: 6px; }
+      @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } button { width: 100%; } }
+
+      @media print {
+        body {
+          background: #fff;
+          padding: 0;
+        }
+        form,
+        .actions,
+        .small,
+        .error,
+        .noprint {
+          display: none !important;
+        }
+        .card {
+          box-shadow: none;
+          border: none;
+          margin: 0;
+          max-width: 100%;
+          padding: 0;
+        }
+        .result {
+          border: none;
+          background: #fff;
+          padding: 0;
+        }
+        .preview {
+          border: none;
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="card">
+      <h1>Протокол визита + печать PDF (window.print)</h1>
+      <p class="small">Только текст, введённый врачом. Здесь не генерируется AI-диагноз.</p>
+
+      <form id="protocolForm" novalidate>
+        <div class="grid">
+          <div>
+            <label for="petName">имя_питомца *</label>
+            <input id="petName" required />
+          </div>
+          <div>
+            <label for="species">вид *</label>
+            <select id="species" required>
+              <option value="">Выберите</option>
+              <option value="dog">собака</option>
+              <option value="cat">кошка</option>
+              <option value="other">другое</option>
+            </select>
+          </div>
+          <div>
+            <label for="breed">порода (необязательно)</label>
+            <input id="breed" />
+          </div>
+          <div>
+            <label for="age">возраст *</label>
+            <input id="age" required placeholder="e.g. 4 years" />
+          </div>
+          <div>
+            <label for="weight">вес *</label>
+            <input id="weight" required placeholder="e.g. 5.4 kg" />
+          </div>
+          <div>
+            <label for="clinic">шаблон клиники</label>
+            <input id="clinic" value="[Clinic Name Placeholder]" />
+          </div>
+          <div>
+            <label for="doctor">шаблон врача</label>
+            <input id="doctor" value="[Doctor Name Placeholder]" />
+          </div>
+        </div>
+
+        <div style="margin-top: 10px">
+          <label for="complaints">жалобы *</label>
+          <textarea id="complaints" required></textarea>
+        </div>
+        <div style="margin-top: 10px">
+          <label for="exam">осмотр *</label>
+          <textarea id="exam" required></textarea>
+        </div>
+        <div style="margin-top: 10px">
+          <label for="assessment">оценка (текст врача, без AI-диагноза) *</label>
+          <textarea id="assessment" required></textarea>
+        </div>
+        <div style="margin-top: 10px">
+          <label for="plan">план (текст врача) *</label>
+          <textarea id="plan" required></textarea>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="primary">Сформировать</button>
+          <button type="button" id="copyBtn" class="secondary">Копировать</button>
+          <button type="button" id="printBtn" class="secondary">Экспорт PDF</button>
+          <button type="reset" class="secondary">Сброс</button>
+        </div>
+        <p id="err" class="error" aria-live="polite"></p>
+      </form>
+
+      <section class="result" aria-live="polite">
+        <h2>Предпросмотр протокола</h2>
+        <div class="preview" id="preview">
+          <p><strong>Дата/время:</strong> <span id="prevDate">-</span></p>
+          <p><strong>Клиника:</strong> <span id="prevClinic">-</span></p>
+          <p><strong>Врач:</strong> <span id="prevDoctor">-</span></p>
+          <hr />
+          <p><strong>Питомец:</strong> <span id="prevPet">-</span></p>
+          <p><strong>Вид:</strong> <span id="prevSpecies">-</span></p>
+          <p><strong>Порода:</strong> <span id="prevBreed">-</span></p>
+          <p><strong>Возраст:</strong> <span id="prevAge">-</span></p>
+          <p><strong>Вес:</strong> <span id="prevWeight">-</span></p>
+          <hr />
+          <p><strong>Жалобы:</strong><br /><span id="prevComplaints">-</span></p>
+          <p><strong>Осмотр:</strong><br /><span id="prevExam">-</span></p>
+          <p><strong>Оценка:</strong><br /><span id="prevAssessment">-</span></p>
+          <p><strong>План:</strong><br /><span id="prevPlan">-</span></p>
+        </div>
+      </section>
+    </section>
+
+    <script>
+      (function () {
+        const form = document.getElementById('protocolForm');
+        const err = document.getElementById('err');
+        const preview = document.getElementById('preview');
+
+        function postHeight() {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'moduleHeight', module: 'module-protocol.html', height: document.body.scrollHeight }, '*');
+          }
+        }
+
+        function getValue(id) {
+          return String(document.getElementById(id).value || '').trim();
+        }
+
+        function setText(id, value) {
+          document.getElementById(id).textContent = value || '-';
+        }
+
+        function escapeText(value) {
+          return String(value || '').replace(/[<>]/g, '');
+        }
+
+        function multilineSafe(value) {
+          return escapeText(value).replace(/\n/g, '\n');
+        }
+
+        function validateRequired(ids) {
+          for (const id of ids) {
+            if (!getValue(id)) {
+              throw new Error(id + ': обязательное поле пусто.');
+            }
+          }
+        }
+
+        function generateProtocol() {
+          validateRequired(['petName', 'species', 'age', 'weight', 'complaints', 'exam', 'assessment', 'plan']);
+
+          const now = new Date();
+          const dateString = now.toLocaleString('ru-RU', { hour12: false });
+
+          setText('prevDate', dateString);
+          setText('prevClinic', escapeText(getValue('clinic')) || '[Clinic Name Placeholder]');
+          setText('prevDoctor', escapeText(getValue('doctor')) || '[Doctor Name Placeholder]');
+          setText('prevPet', escapeText(getValue('petName')));
+          setText('prevSpecies', escapeText(getValue('species')));
+          setText('prevBreed', escapeText(getValue('breed')) || '-');
+          setText('prevAge', escapeText(getValue('age')));
+          setText('prevWeight', escapeText(getValue('weight')));
+          setText('prevComplaints', multilineSafe(getValue('complaints')));
+          setText('prevExam', multilineSafe(getValue('exam')));
+          setText('prevAssessment', multilineSafe(getValue('assessment')));
+          setText('prevPlan', multilineSafe(getValue('plan')));
+        }
+
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          err.textContent = '';
+          try {
+            generateProtocol();
+          } catch (error) {
+            err.textContent = error.message;
+          }
+          postHeight();
+        });
+
+        form.addEventListener('reset', function () {
+          err.textContent = '';
+          ['prevDate','prevClinic','prevDoctor','prevPet','prevSpecies','prevBreed','prevAge','prevWeight','prevComplaints','prevExam','prevAssessment','prevPlan']
+            .forEach(function (id) { setText(id, '-'); });
+          setTimeout(postHeight, 0);
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', async function () {
+          try {
+            const text = preview.innerText;
+            await navigator.clipboard.writeText(text);
+            err.style.color = '#1f7a44';
+            err.textContent = 'Протокол скопирован в буфер обмена.';
+          } catch (copyError) {
+            err.style.color = '#9f2b1c';
+            err.textContent = 'Копировать failed. Browser clipboard permission may be blocked.';
+          }
+          postHeight();
+        });
+
+        document.getElementById('printBtn').addEventListener('click', function () {
+          window.print();
+        });
+
+        window.addEventListener('load', postHeight);
+        window.addEventListener('resize', postHeight);
+      })();
+    </script>
+  </body>
+</html>

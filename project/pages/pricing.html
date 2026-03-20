@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pricing | VetSafe Cloud</title>
+  <style>
+    :root {
+      --bg: #f4f4fa;
+      --panel: #ffffff;
+      --text: #1b1730;
+      --muted: #665f81;
+      --brand: #22407e;
+      --line: #dddeef;
+      --accent: #ea7a29;
+      --radius: 14px;
+    }
+    body { margin: 0; font-family: "Manrope", "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
+    .wrap { width: min(1100px, 92%); margin: 0 auto; }
+    header { background: #fff; border-bottom: 1px solid var(--line); }
+    .bar { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; }
+    .hero { padding: 56px 0 24px; }
+    h1 { margin: 0 0 10px; font-size: clamp(30px, 5vw, 44px); }
+    .muted { color: var(--muted); }
+    .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .tier { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+    .price { font-size: 34px; font-weight: 800; margin: 10px 0; }
+    .badge { display: inline-block; background: #f3f6ff; color: var(--brand); border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 700; }
+    ul { padding-left: 18px; }
+    a { color: var(--brand); text-decoration: none; }
+    .highlight { border: 2px solid var(--accent); }
+    @media (max-width: 900px) { .tiers { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <strong>VetSafe Cloud</strong>
+      <nav><a href="/pages/index.html">Home</a> | <a href="/pages/auth.html">Start</a></nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>Pricing for growing veterinary teams</h1>
+      <p class="muted">All plans include triage safety controls, role-based access, and secure records.</p>
+    </section>
+
+    <section class="tiers">
+      <article class="tier">
+        <span class="badge">Starter</span>
+        <h2>Solo Clinic</h2>
+        <div class="price">$99<span style="font-size:14px;">/month</span></div>
+        <ul>
+          <li>1 clinic location</li>
+          <li>Up to 5 staff users</li>
+          <li>Owner portal + triage demo</li>
+          <li>Basic analytics</li>
+        </ul>
+      </article>
+
+      <article class="tier highlight">
+        <span class="badge">Most Popular</span>
+        <h2>Growth</h2>
+        <div class="price">$299<span style="font-size:14px;">/month</span></div>
+        <ul>
+          <li>3 clinic locations</li>
+          <li>Up to 30 staff users</li>
+          <li>Doctor + clinic dashboards</li>
+          <li>Advanced analytics and billing</li>
+        </ul>
+      </article>
+
+      <article class="tier">
+        <span class="badge">Enterprise</span>
+        <h2>Network</h2>
+        <div class="price">Custom</div>
+        <ul>
+          <li>Unlimited locations</li>
+          <li>SSO and custom compliance</li>
+          <li>Dedicated security controls</li>
+          <li>Priority support and SLA</li>
+        </ul>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

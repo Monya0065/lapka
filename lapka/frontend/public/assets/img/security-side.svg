@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" role="img" aria-label="Security image">
+  <rect width="640" height="440" fill="#e0f3f5"/>
+  <rect x="220" y="70" width="200" height="268" rx="24" fill="#fff" stroke="#b8d8ec"/>
+  <rect x="254" y="102" width="132" height="56" rx="12" fill="#dceef9"/>
+  <rect x="254" y="176" width="132" height="56" rx="12" fill="#dceef9"/>
+  <rect x="254" y="250" width="132" height="56" rx="12" fill="#dceef9"/>
+  <circle cx="320" cy="70" r="38" fill="#33ace3"/>
+  <path d="M320 52 V88 M302 70 H338" stroke="#fff" stroke-width="8" stroke-linecap="round"/>
+  <text x="78" y="394" font-size="36" font-family="Arial, sans-serif" fill="#2a5f93" font-weight="700">RBAC · Consent · Audit · Encryption</text>
+</svg>

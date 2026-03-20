@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>T-Invest Scalper</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="hero card">
+        <div>
+          <h1>T-Invest Scalper</h1>
+          <p class="subtitle">Локальная панель автотрейдинга MOEX (LONG-only)</p>
+        </div>
+        <div id="bot_status" class="status-pill">-</div>
+      </section>
+
+      <section class="card">
+        <h2>Состояние счета и позиции</h2>
+        <div class="metrics-grid">
+          <div class="metric">
+            <span>Режим</span>
+            <strong id="mode">-</strong>
+          </div>
+          <div class="metric">
+            <span>Инструмент</span>
+            <strong id="instrument">-</strong>
+          </div>
+          <div class="metric">
+            <span>Лотов в позиции</span>
+            <strong id="position_lots">0</strong>
+          </div>
+          <div class="metric">
+            <span>Цена входа</span>
+            <strong id="entry_price">0.0000</strong>
+          </div>
+          <div class="metric">
+            <span>Текущая цена</span>
+            <strong id="current_price">0.0000</strong>
+          </div>
+          <div class="metric">
+            <span>Нереализ. PnL (RUB)</span>
+            <strong id="unrealized_pnl_rub">0.00</strong>
+          </div>
+          <div class="metric">
+            <span>Нереализ. PnL (%)</span>
+            <strong id="unrealized_pnl_pct">0.000</strong>
+          </div>
+          <div class="metric">
+            <span>Дневной PnL (RUB)</span>
+            <strong id="daily_pnl_rub">0.00</strong>
+          </div>
+          <div class="metric">
+            <span>Риск-режим</span>
+            <strong id="risk_mode">-</strong>
+          </div>
+          <div class="metric">
+            <span>Плечо</span>
+            <strong id="leverage_used">0.000</strong>
+          </div>
+          <div class="metric">
+            <span>Режим стратегии</span>
+            <strong id="strategy_mode">-</strong>
+          </div>
+          <div class="metric">
+            <span>Пик цены</span>
+            <strong id="peak_price">0.0000</strong>
+          </div>
+          <div class="metric">
+            <span>Безубыток</span>
+            <strong id="breakeven_armed">NO</strong>
+          </div>
+          <div class="metric">
+            <span>TP1 выполнен</span>
+            <strong id="tp1_done">NO</strong>
+          </div>
+          <div class="metric">
+            <span>Латентность EWMA (мс)</span>
+            <strong id="latency_ms_ewma">0.0</strong>
+          </div>
+          <div class="metric">
+            <span>Скан/цикл</span>
+            <strong id="scanned_instruments">0</strong>
+          </div>
+          <div class="metric">
+            <span>Dynamic cap</span>
+            <strong id="dynamic_scan_cap">0</strong>
+          </div>
+          <div class="metric">
+            <span>API вызовы/цикл</span>
+            <strong id="api_calls_cycle">0</strong>
+          </div>
+          <div class="metric">
+            <span>API вызовы/мин</span>
+            <strong id="api_calls_minute">0</strong>
+          </div>
+          <div class="metric">
+            <span>Recovery API budget</span>
+            <strong id="api_budget_recovery">-</strong>
+          </div>
+          <div class="metric">
+            <span>Preflight</span>
+            <strong id="preflight_status">-</strong>
+          </div>
+          <div class="metric">
+            <span>Execution guard</span>
+            <strong id="execution_guard_state">-</strong>
+          </div>
+          <div class="metric">
+            <span>Фактор риска исполнения</span>
+            <strong id="execution_risk_factor">1.00</strong>
+          </div>
+          <div class="metric">
+            <span>Причина guard</span>
+            <strong id="execution_guard_reason">-</strong>
+          </div>
+          <div class="metric">
+            <span>Оборот за день (RUB)</span>
+            <strong id="notional_day_rub">0</strong>
+          </div>
+          <div class="metric">
+            <span>Оборот за час (RUB)</span>
+            <strong id="notional_hour_rub">0</strong>
+          </div>
+          <div class="metric">
+            <span>Ошибки ордеров подряд</span>
+            <strong id="consecutive_order_failures">0</strong>
+          </div>
+          <div class="metric">
+            <span>Свободно на диске (MB)</span>
+            <strong id="disk_free_mb">0</strong>
+          </div>
+          <div class="metric">
+            <span>Последний backup</span>
+            <strong id="last_backup_ts">-</strong>
+          </div>
+          <div class="metric">
+            <span>Go-live check</span>
+            <strong id="go_live_status">-</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Управление</h2>
+        <div class="controls">
+          <button id="start_btn">Запустить торговлю</button>
+          <button id="stop_btn">Остановить входы</button>
+          <button id="panic_btn" class="danger">Экстренно закрыть</button>
+          <button id="reset_killswitch_btn">Сбросить KILL-SWITCH</button>
+          <button id="reset_btn">Сбросить дневные лимиты</button>
+          <select id="mode_select">
+            <option value="REAL">REAL</option>
+            <option value="DRY_RUN">DRY_RUN</option>
+            <option value="PAPER">PAPER</option>
+          </select>
+          <button id="set_mode_btn">Сменить режим</button>
+          <select id="risk_preset_select">
+            <option value="CONSERVATIVE">CONSERVATIVE</option>
+            <option value="BALANCED">BALANCED</option>
+            <option value="AGGRESSIVE">AGGRESSIVE</option>
+          </select>
+          <button id="risk_preset_btn">Применить риск-профиль</button>
+          <button id="run_preflight_btn">Запустить preflight</button>
+          <button id="run_golive_btn">Запустить go-live check</button>
+          <input id="paper_cash_input" type="number" min="1" step="1000" placeholder="PAPER капитал, RUB" />
+          <button id="set_paper_cash_btn">Установить PAPER капитал</button>
+          <span id="control_msg"></span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Цена за последние 60 минут</h2>
+        <canvas id="price_chart" width="1120" height="300"></canvas>
+      </section>
+
+      <section class="card chart-grid">
+        <div>
+          <h2>Кривая капитала</h2>
+          <canvas id="equity_chart" width="550" height="220"></canvas>
+        </div>
+        <div>
+          <h2>Телеметрия API и латентности</h2>
+          <canvas id="telemetry_chart" width="550" height="220"></canvas>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Качество исполнения (по сделкам)</h2>
+        <canvas id="execution_quality_chart" width="1120" height="260"></canvas>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Лучшие кандидаты</h2>
+          <pre id="top_candidates" class="feed"></pre>
+        </div>
+        <div>
+          <h2>Последние сигналы</h2>
+          <pre id="signals" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Последние ордера</h2>
+          <pre id="orders" class="feed"></pre>
+        </div>
+        <div>
+          <h2>Риск-события</h2>
+          <pre id="risk_events" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Ошибки</h2>
+          <pre id="errors" class="feed"></pre>
+        </div>
+        <div>
+          <h2>Активные лимиты</h2>
+          <pre id="active_limits" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Закрытые сделки</h2>
+          <pre id="closed_trades" class="feed"></pre>
+        </div>
+        <div>
+          <h2>Итоги дня</h2>
+          <pre id="daily_summary" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Аудит-события</h2>
+          <pre id="audit_events" class="feed"></pre>
+        </div>
+        <div>
+          <h2>Runtime config</h2>
+          <pre id="runtime_config" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Серия низкой латентности</h2>
+          <pre id="low_latency_streak" class="feed"></pre>
+        </div>
+        <div>
+          <h2>Причины reject сигналов</h2>
+          <pre id="signal_reject_stats" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Системные метрики</h2>
+          <pre id="system_metrics" class="feed"></pre>
+        </div>
+        <div>
+          <h2>Использование API</h2>
+          <pre id="api_usage" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Качество исполнения</h2>
+          <pre id="execution_quality" class="feed"></pre>
+        </div>
+        <div>
+          <h2>KPI по окнам</h2>
+          <pre id="execution_windows" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Стабильность исполнения</h2>
+          <pre id="execution_stability" class="feed"></pre>
+        </div>
+        <div>
+          <h2>Производительность торговли</h2>
+          <pre id="trade_performance" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Здоровье сигналов</h2>
+        <pre id="signal_health" class="feed"></pre>
+      </section>
+
+      <section class="card split">
+        <div>
+          <h2>Детали preflight</h2>
+          <pre id="preflight" class="feed"></pre>
+        </div>
+        <div>
+          <h2>Состояние API guard</h2>
+          <pre id="api_guard" class="feed"></pre>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Go-live отчёт</h2>
+        <pre id="go_live_check" class="feed"></pre>
+      </section>
+
+      <section class="card">
+        <h2>Готовность к REAL</h2>
+        <pre id="real_readiness" class="feed"></pre>
+      </section>
+
+      <section class="card">
+        <h2>Обновление конфигурации (JSON)</h2>
+        <textarea id="config_patch" rows="6">{
+  "max_api_latency_ms": 3000,
+  "max_trades_per_hour": 6
+}</textarea>
+        <div class="controls controls-tight">
+          <button id="config_apply_btn">Применить patch</button>
+          <button id="config_rollback_btn">Откатить</button>
+          <span id="config_msg"></span>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

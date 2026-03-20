@@ -1,0 +1,11 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="88" fill="#FFF8F2"/>
+  <rect x="216" y="206" width="592" height="610" rx="40" fill="#FFFFFF" stroke="#F1DEC7" stroke-width="12"/>
+  <rect x="216" y="206" width="592" height="146" rx="40" fill="#F59E0B"/>
+  <text x="258" y="292" fill="#FFFFFF" font-size="62" font-family="Arial" font-weight="700">PREDNISOLONE</text>
+  <rect x="286" y="414" width="460" height="86" rx="18" fill="#FFF4E2"/>
+  <text x="334" y="468" fill="#8A5A11" font-size="40" font-family="Arial" font-weight="700">Tablets / Solution</text>
+  <rect x="312" y="548" width="174" height="176" rx="26" fill="#FFFFFF" stroke="#F1DEC7" stroke-width="8"/>
+  <rect x="544" y="546" width="174" height="178" rx="26" fill="#FFF8F0" stroke="#F1DEC7" stroke-width="8"/>
+  <circle cx="631" cy="634" r="52" fill="#F59E0B"/>
+</svg>

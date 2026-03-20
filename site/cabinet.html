@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-ru="Демо-кабинет «Лапка»" data-en="Лапка demo cabinet">Демо-кабинет «Лапка»</title>
+    <meta
+      name="description"
+      data-ru="Демо-кабинет с ролями Owner/Doctor/Администратор клиники и фейковыми данными: питомцы, визиты, расписание, биллинг."
+      data-en="Role-based demo cabinet (Owner/Doctor/Администратор клиники) with fake data: pets, visits, schedules, billing."
+      content="Демо-кабинет с ролями Owner/Doctor/Администратор клиники и фейковыми данными: питомцы, визиты, расписание, биллинг."
+    />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <script defer src="../assets/js/app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-row">
+        <a href="./index.html" class="brand"><span class="brand-logo" aria-hidden="true">📋</span>Лапка</a>
+        <button class="nav-toggle" aria-expanded="false" aria-controls="mainNav">☰</button>
+        <nav class="site-nav" id="mainNav" aria-label="Main navigation">
+          <a href="./index.html" data-ru="Главная" data-en="Home">Главная</a>
+          <a href="./owners.html" data-ru="Для владельцев" data-en="For owners">Для владельцев</a>
+          <a href="./clinics.html" data-ru="Для клиник" data-en="For clinics">Для клиник</a>
+          <a href="./pricing.html" data-ru="Тарифы" data-en="Pricing">Тарифы</a>
+          <a href="./security.html" data-ru="Безопасность" data-en="Security">Безопасность</a>
+          <a href="./faq.html" data-ru="Вопросы" data-en="FAQ">Вопросы</a>
+          <a href="./auth.html" data-ru="Демо-вход" data-en="Demo auth">Демо-вход</a>
+          <a href="./cabinet.html" aria-current="page" data-ru="Кабинет" data-en="Cabinet">Кабинет</a>
+        </nav>
+        <div class="header-actions">
+          <button class="btn btn-primary" type="button" data-open-demo data-ru="Запросить демо" data-en="Request demo">Запросить демо</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="container">
+        <section class="section card">
+          <h1 data-ru="Маршрутизатор демо-кабинета" data-en="Маршрутизатор демо-кабинета">Маршрутизатор демо-кабинета</h1>
+          <p class="notice" data-ru="Все данные ниже — демо-данные. Персональные данные не сохраняются." data-en="All records below are Demo data. No personal data is stored.">
+            Все данные ниже — демо-данные. Персональные данные не сохраняются.
+          </p>
+          <div style="max-width: 320px">
+            <label for="roleSwitcher" data-ru="Выберите роль" data-en="Select role">Выберите роль</label>
+            <select id="roleSwitcher">
+              <option value="owner" data-ru="Владелец" data-en="Owner">Владелец</option>
+              <option value="doctor" data-ru="Врач" data-en="Doctor">Врач</option>
+              <option value="admin" data-ru="Администратор клиники" data-en="Администратор клиники">Администратор клиники</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="section" data-role-panel="owner">
+          <article class="card">
+            <h2 data-ru="Кабинет владельца" data-en="Кабинет владельца">Кабинет владельца</h2>
+            <div data-tabs>
+              <div class="tabs" role="tablist" aria-label="Owner tabs">
+                <button type="button" class="tab-btn" data-tab-target="ownerPets" role="tab" data-ru="Мои питомцы" data-en="Мои питомцы">Мои питомцы</button>
+                <button type="button" class="tab-btn" data-tab-target="ownerRecords" role="tab" data-ru="Записи" data-en="Записи">Записи</button>
+                <button type="button" class="tab-btn" data-tab-target="ownerReminders" role="tab" data-ru="Напоминания" data-en="Напоминания">Напоминания</button>
+                <button type="button" class="tab-btn" data-tab-target="ownerDiary" role="tab" data-ru="Дневник симптомов" data-en="Дневник симптомов">Дневник симптомов</button>
+              </div>
+
+              <div id="ownerPets" class="tab-panel" data-tab-panel>
+                <ul class="list-clean">
+                  <li><strong>Демо-данные:</strong> Барни, собака, 4 года, 18.2 кг</li>
+                  <li><strong>Демо-данные:</strong> Луна, кошка, 2 года, 4.1 кг</li>
+                </ul>
+              </div>
+
+              <div id="ownerRecords" class="tab-panel" data-tab-panel>
+                <ul class="list-clean">
+                  <li><strong>Демо-данные:</strong> 2026-02-21 — профилактический осмотр</li>
+                  <li><strong>Демо-данные:</strong> 2026-02-27 — повторный визит по ЖКТ симптомам</li>
+                </ul>
+              </div>
+
+              <div id="ownerReminders" class="tab-panel" data-tab-panel>
+                <ul class="list-clean">
+                  <li><strong>Демо-данные:</strong> 2026-03-07 — контрольный визит</li>
+                  <li><strong>Демо-данные:</strong> 2026-03-10 — обновить дневник симптомов</li>
+                </ul>
+              </div>
+
+              <div id="ownerDiary" class="tab-panel" data-tab-panel>
+                <label for="ownerDiaryText" data-ru="Запись в дневник" data-en="Diary entry">Запись в дневник</label>
+                <textarea id="ownerDiaryText" data-placeholder-ru="Опишите изменения без персональных данных" data-placeholder-en="Describe changes without personal data" placeholder="Опишите изменения без персональных данных"></textarea>
+                <p class="small notice" data-ru="Не указывайте персональные данные. Демо-запись хранится только локально в интерфейсе." data-en="Do not enter personal data. Demo entry is local to this interface.">Не указывайте персональные данные. Демо-запись хранится только локально в интерфейсе.</p>
+              </div>
+            </div>
+            <div class="inline-actions" style="margin-top: 14px">
+              <a class="btn btn-primary" href="../modules/module-triage.html" target="_blank" rel="noopener" data-ru="Открыть triage-модуль" data-en="Открыть triage-модуль">Открыть triage-модуль</a>
+              <a class="btn btn-secondary" href="../modules/module-protocol.html" target="_blank" rel="noopener" data-ru="Документы / Протокол" data-en="Documents / Protocol">Документы / Протокол</a>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" data-role-panel="doctor" hidden>
+          <article class="card">
+            <h2 data-ru="Кабинет врача" data-en="Кабинет врача">Кабинет врача</h2>
+            <div class="grid grid-2">
+              <div>
+                <h3 data-ru="Сегодняшнее расписание" data-en="Today's schedule">Сегодняшнее расписание</h3>
+                <ul class="list-clean">
+                  <li><strong>Демо-данные:</strong> 09:30 — Барни (собака), повторный осмотр</li>
+                  <li><strong>Демо-данные:</strong> 11:00 — Мия (кошка), консультация</li>
+                  <li><strong>Демо-данные:</strong> 14:20 — Рекс (собака), контроль состояния</li>
+                </ul>
+              </div>
+              <div>
+                <h3 data-ru="Список пациентов" data-en="Patients list">Список пациентов</h3>
+                <ul class="list-clean">
+                  <li><strong>Демо-данные:</strong> Луна — кошка, 2 года, история доступна</li>
+                  <li><strong>Демо-данные:</strong> Оскар — собака, старшая возрастная группа</li>
+                  <li><strong>Демо-данные:</strong> Бруно — собака, уровень triage: YELLOW</li>
+                </ul>
+              </div>
+            </div>
+            <div class="inline-actions" style="margin-top: 14px">
+              <a class="btn btn-primary" href="../modules/module-protocol.html" target="_blank" rel="noopener" data-ru="Открыть генератор протокола" data-en="Open protocol generator">Открыть генератор протокола</a>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" data-role-panel="admin" hidden>
+          <article class="card">
+            <h2 data-ru="Кабинет администратора клиники" data-en="Кабинет администратора клиники">Кабинет администратора клиники</h2>
+            <div class="grid grid-2">
+              <div>
+                <h3 data-ru="Сотрудники" data-en="Staff list">Сотрудники</h3>
+                <ul class="list-clean">
+                  <li><strong>Демо-данные:</strong> 6 ветеринаров</li>
+                  <li><strong>Демо-данные:</strong> 4 ассистента</li>
+                  <li><strong>Демо-данные:</strong> 3 администратора регистратуры</li>
+                </ul>
+              </div>
+              <div>
+                <h3 data-ru="Расписание клиники" data-en="Schedule overview">Расписание клиники</h3>
+                <ul class="list-clean">
+                  <li><strong>Демо-данные:</strong> Средняя загрузка: 78%</li>
+                  <li><strong>Демо-данные:</strong> Пик: 12:00–16:00</li>
+                </ul>
+              </div>
+              <div>
+                <h3 data-ru="Обзор биллинга" data-en="Обзор биллинга">Обзор биллинга</h3>
+                <ul class="list-clean">
+                  <li><strong>Демо-данные:</strong> Индекс месячной выручки: 1.12x</li>
+                  <li><strong>Демо-данные:</strong> Неоплаченные счета: 4</li>
+                </ul>
+              </div>
+              <div>
+                <h3 data-ru="Обзор инвентаря" data-en="Обзор инвентаря">Обзор инвентаря</h3>
+                <ul class="list-clean">
+                  <li><strong>Демо-данные:</strong> Расходники: уровень запасов 82%</li>
+                  <li><strong>Демо-данные:</strong> 3 позиции требуют заказа</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <div class="container footer-row">
+        <p class="small" data-ru="Демо-кабинет: интерфейс ролей Владелец / Врач / Администратор клиники" data-en="Demo Cabinet: Owner / Doctor / Администратор клиники role interface">Демо-кабинет: интерфейс ролей Владелец / Врач / Администратор клиники</p>
+      </div>
+    </footer>
+
+    <div class="modal" id="demoModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="demoModalTitle">
+      <div class="modal-card">
+        <h2 id="demoModalTitle" data-ru="Запросить демо" data-en="Request a demo">Запросить демо</h2>
+        <form>
+          <div class="form-grid">
+            <div>
+              <label for="cabName" data-ru="Имя" data-en="Name">Имя</label>
+              <input id="cabName" required />
+            </div>
+            <div>
+              <label for="cabEmail">Эл. почта</label>
+              <input id="cabEmail" type="email" required />
+            </div>
+          </div>
+          <div class="inline-actions" style="margin-top: 12px">
+            <button class="btn btn-primary" type="submit" data-ru="Отправить" data-en="Submit">Отправить</button>
+            <button class="btn btn-secondary" type="button" data-close-modal data-ru="Закрыть" data-en="Close">Закрыть</button>
+          </div>
+          <p class="small" aria-live="polite" data-demo-result></p>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

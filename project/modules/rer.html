@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RER Calculator</title>
+  <style>
+    :root {
+      --bg: #f5f6fb;
+      --panel: #fff;
+      --text: #1d1e33;
+      --muted: #646786;
+      --brand: #2f478f;
+      --line: #d9dcf0;
+    }
+    body { margin: 0; font-family: "Manrope", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .box { width: min(720px, 92%); margin: 28px auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+    h1 { margin-top: 0; }
+    label { display: block; margin-top: 10px; font-weight: 700; }
+    input, select, button { width: 100%; margin-top: 6px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); font: inherit; }
+    button { border: 0; background: var(--brand); color: #fff; font-weight: 700; cursor: pointer; }
+    .result { margin-top: 14px; padding: 12px; border-radius: 10px; background: #f4f6ff; border: 1px solid var(--line); }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>RER Calculator</h1>
+    <p class="muted">Resting Energy Requirement: 70 * (weight in kg ^ 0.75)</p>
+
+    <label>Weight (kg)
+      <input id="weight" type="number" min="0.5" step="0.1" value="5.0" />
+    </label>
+
+    <label>Life stage</label>
+    <select id="stage">
+      <option value="1.0">Adult maintenance</option>
+      <option value="1.2">Senior support</option>
+      <option value="1.4">Young growth phase</option>
+    </select>
+
+    <button id="calcBtn">Calculate</button>
+
+    <div class="result" id="result">Enter values and calculate.</div>
+  </div>
+
+  <script>
+    document.getElementById("calcBtn").addEventListener("click", () => {
+      const weight = Number(document.getElementById("weight").value || 0);
+      const stageFactor = Number(document.getElementById("stage").value || 1);
+      const rer = Math.round(70 * Math.pow(weight, 0.75));
+      const adjusted = Math.round(rer * stageFactor);
+
+      document.getElementById("result").innerHTML = `
+        <strong>RER:</strong> ${rer} kcal/day<br />
+        <strong>Stage-adjusted estimate:</strong> ${adjusted} kcal/day<br />
+        <strong>Safety notice:</strong> This tool provides triage information only.
+      `;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="88" fill="#F4FBFF"/>
+  <rect x="220" y="208" width="584" height="612" rx="40" fill="#FFFFFF" stroke="#D3E7F2" stroke-width="12"/>
+  <rect x="220" y="208" width="584" height="142" rx="40" fill="#26A69A"/>
+  <text x="290" y="292" fill="#FFFFFF" font-size="68" font-family="Arial" font-weight="700">FUROSEMIDE</text>
+  <rect x="282" y="408" width="454" height="86" rx="18" fill="#EAFBF8"/>
+  <text x="346" y="462" fill="#1B5E67" font-size="40" font-family="Arial" font-weight="700">Tablets</text>
+  <path d="M356 578H668V704H356V578Z" fill="#F9FCFD" stroke="#D6E7EB" stroke-width="8"/>
+  <circle cx="432" cy="642" r="34" fill="#26A69A"/>
+  <circle cx="512" cy="642" r="34" fill="#38BDF8"/>
+  <circle cx="592" cy="642" r="34" fill="#26A69A"/>
+</svg>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-ru="Демо-аутентификация — «Лапка»" data-en="Demo authentication — Лапка">Демо-аутентификация — «Лапка»</title>
+    <meta
+      name="description"
+      data-ru="Демо-страница входа/регистрации/сброса пароля и 2FA (код 123456). Без реального бэкенда."
+      data-en="Demo login/register/reset and 2FA (code 123456). No real backend."
+      content="Демо-страница входа/регистрации/сброса пароля и 2FA (код 123456). Без реального бэкенда."
+    />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <script defer src="../assets/js/app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-row">
+        <a href="./index.html" class="brand"><span class="brand-logo" aria-hidden="true">🔐</span>Лапка</a>
+        <button class="nav-toggle" aria-expanded="false" aria-controls="mainNav">☰</button>
+        <nav class="site-nav" id="mainNav" aria-label="Main navigation">
+          <a href="./index.html" data-ru="Главная" data-en="Home">Главная</a>
+          <a href="./owners.html" data-ru="Для владельцев" data-en="For owners">Для владельцев</a>
+          <a href="./clinics.html" data-ru="Для клиник" data-en="For clinics">Для клиник</a>
+          <a href="./pricing.html" data-ru="Тарифы" data-en="Pricing">Тарифы</a>
+          <a href="./security.html" data-ru="Безопасность" data-en="Security">Безопасность</a>
+          <a href="./faq.html" data-ru="Вопросы" data-en="FAQ">Вопросы</a>
+          <a href="./auth.html" aria-current="page" data-ru="Демо-вход" data-en="Demo auth">Демо-вход</a>
+          <a href="./cabinet.html" data-ru="Кабинет" data-en="Cabinet">Кабинет</a>
+        </nav>
+        <div class="header-actions">
+          <button class="btn btn-primary" type="button" data-open-demo data-ru="Запросить демо" data-en="Request demo">Запросить демо</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="container">
+        <section class="section card">
+          <h1 data-ru="Демо-аутентификация (без бэкенда)" data-en="Auth demo (no backend)">Демо-аутентификация (без бэкенда)</h1>
+          <p class="notice" data-ru="Демо-код 2FA: 123456. Все действия демонстрационные, данные не отправляются на сервер." data-en="Demo 2FA code: 123456. All actions are local UI only; no server is used.">
+            Демо-код 2FA: 123456. Все действия демонстрационные, данные не отправляются на сервер.
+          </p>
+
+          <div data-tabs>
+            <div class="tabs" role="tablist" aria-label="Вкладки аутентификации">
+              <button class="tab-btn" type="button" role="tab" data-tab-target="loginTab" data-ru="Вход" data-en="Login">Вход</button>
+              <button class="tab-btn" type="button" role="tab" data-tab-target="registerTab" data-ru="Регистрация" data-en="Register">Регистрация</button>
+              <button class="tab-btn" type="button" role="tab" data-tab-target="resetTab" data-ru="Сброс пароля" data-en="Reset password">Сброс пароля</button>
+              <button class="tab-btn" type="button" role="tab" data-tab-target="twoFaTab">2FA</button>
+            </div>
+
+            <section class="tab-panel" id="loginTab" data-tab-panel>
+              <form data-demo-auth>
+                <div class="form-grid">
+                  <div>
+                    <label for="loginEmail">Эл. почта</label>
+                    <input id="loginEmail" type="email" required />
+                  </div>
+                  <div>
+                    <label for="loginPassword" data-ru="Пароль" data-en="Password">Пароль</label>
+                    <input id="loginPassword" type="password" required />
+                  </div>
+                </div>
+                <div class="inline-actions" style="margin-top: 12px">
+                  <button class="btn btn-primary" type="submit" data-ru="Войти" data-en="Sign in">Войти</button>
+                  <a class="btn btn-secondary" href="./cabinet.html" data-ru="Открыть кабинет" data-en="Open cabinet">Открыть кабинет</a>
+                </div>
+                <p class="small" aria-live="polite" data-auth-result></p>
+              </form>
+            </section>
+
+            <section class="tab-panel" id="registerTab" data-tab-panel>
+              <form data-demo-auth>
+                <div class="form-grid">
+                  <div>
+                    <label for="regName" data-ru="Имя" data-en="Name">Имя</label>
+                    <input id="regName" required />
+                  </div>
+                  <div>
+                    <label for="regEmail">Эл. почта</label>
+                    <input id="regEmail" type="email" required />
+                  </div>
+                  <div>
+                    <label for="regRole" data-ru="Роль" data-en="Role">Роль</label>
+                    <select id="regRole">
+                      <option value="owner" data-ru="Владелец" data-en="Owner">Владелец</option>
+                      <option value="doctor" data-ru="Ветеринар" data-en="Veterinarian">Ветеринар</option>
+                      <option value="admin" data-ru="Администратор клиники" data-en="Clinic admin">Администратор клиники</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="regPassword" data-ru="Пароль" data-en="Password">Пароль</label>
+                    <input id="regPassword" type="password" required />
+                  </div>
+                </div>
+                <div class="inline-actions" style="margin-top: 12px">
+                  <button class="btn btn-primary" type="submit" data-ru="Создать аккаунт" data-en="Create account">Создать аккаунт</button>
+                </div>
+                <p class="small" aria-live="polite" data-auth-result></p>
+              </form>
+            </section>
+
+            <section class="tab-panel" id="resetTab" data-tab-panel>
+              <form data-demo-auth>
+                <label for="resetEmail">Эл. почта</label>
+                <input id="resetEmail" type="email" required />
+                <div class="inline-actions" style="margin-top: 12px">
+                  <button class="btn btn-primary" type="submit" data-ru="Отправить ссылку" data-en="Send reset link">Отправить ссылку</button>
+                </div>
+                <p class="small" aria-live="polite" data-auth-result></p>
+              </form>
+            </section>
+
+            <section class="tab-panel" id="twoFaTab" data-tab-panel>
+              <form id="twoFaForm">
+                <label for="twoFaCode" data-ru="Введите 6-значный код" data-en="Enter 6-digit code">Введите 6-значный код</label>
+                <input id="twoFaCode" name="code" inputmode="numeric" maxlength="6" required />
+                <p class="small" data-ru="Демо-код: 123456" data-en="Demo code: 123456">Демо-код: 123456</p>
+                <div class="inline-actions" style="margin-top: 12px">
+                  <button class="btn btn-primary" type="submit">Проверить</button>
+                </div>
+                <p class="small" aria-live="polite" data-2fa-result></p>
+              </form>
+            </section>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <div class="container footer-row">
+        <p class="small" data-ru="Демо-аутентификация предназначена только для интерфейсной проверки." data-en="Demo authentication is for interface testing only.">Демо-аутентификация предназначена только для интерфейсной проверки.</p>
+      </div>
+    </footer>
+
+    <div class="modal" id="demoModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="demoModalTitle">
+      <div class="modal-card">
+        <h2 id="demoModalTitle" data-ru="Запросить демо" data-en="Request a demo">Запросить демо</h2>
+        <form>
+          <div class="form-grid">
+            <div>
+              <label for="authName" data-ru="Имя" data-en="Name">Имя</label>
+              <input id="authName" required />
+            </div>
+            <div>
+              <label for="authEmail">Эл. почта</label>
+              <input id="authEmail" type="email" required />
+            </div>
+          </div>
+          <div class="inline-actions" style="margin-top: 12px">
+            <button class="btn btn-primary" type="submit" data-ru="Отправить" data-en="Submit">Отправить</button>
+            <button class="btn btn-secondary" type="button" data-close-modal data-ru="Закрыть" data-en="Close">Закрыть</button>
+          </div>
+          <p class="small" aria-live="polite" data-demo-result></p>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

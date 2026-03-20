@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="88" fill="#F8FCFF"/>
+  <rect x="216" y="212" width="592" height="604" rx="40" fill="#FFFFFF" stroke="#D6E5EF" stroke-width="12"/>
+  <rect x="216" y="212" width="592" height="144" rx="40" fill="#0EA5E9"/>
+  <text x="278" y="298" fill="#FFFFFF" font-size="68" font-family="Arial" font-weight="700">OMEPRAZOLE</text>
+  <rect x="286" y="414" width="456" height="84" rx="18" fill="#EEF8FF"/>
+  <text x="334" y="468" fill="#0F5D87" font-size="40" font-family="Arial" font-weight="700">Capsules</text>
+  <path d="M316 548H714V716H316V548Z" fill="#F8FCFF" stroke="#D6E5EF" stroke-width="8"/>
+  <circle cx="412" cy="632" r="36" fill="#0EA5E9"/>
+  <circle cx="508" cy="632" r="36" fill="#14B8A6"/>
+  <circle cx="604" cy="632" r="36" fill="#38BDF8"/>
+</svg>

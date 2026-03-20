@@ -1,0 +1,32 @@
+<svg width="720" height="520" viewBox="0 0 720 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="720" height="520" rx="48" fill="url(#bg)"/>
+<ellipse cx="360" cy="422" rx="186" ry="34" fill="#B7D8E7" fill-opacity=".55"/>
+<path d="M258 178C244 124 288 100 328 132L320 196L258 178Z" fill="#A0704E"/>
+<path d="M462 178C476 124 432 100 392 132L400 196L462 178Z" fill="#A0704E"/>
+<circle cx="360" cy="248" r="120" fill="url(#fur)"/>
+<ellipse cx="360" cy="286" rx="80" ry="62" fill="#FFF7F0"/>
+<circle cx="320" cy="234" r="13" fill="#294E75"/>
+<circle cx="400" cy="234" r="13" fill="#294E75"/>
+<circle cx="323" cy="237" r="4" fill="white"/>
+<circle cx="403" cy="237" r="4" fill="white"/>
+<ellipse cx="360" cy="270" rx="20" ry="14" fill="#49342A"/>
+<path d="M345 300C352 314 368 314 375 300" stroke="#D38A95" stroke-width="8" stroke-linecap="round"/>
+<path d="M360 296L350 322H370L360 296Z" fill="#F2A0AE"/>
+<g filter="url(#card)">
+<rect x="40" y="40" width="196" height="74" rx="22" fill="white" fill-opacity=".88"/>
+</g>
+<text x="68" y="84" fill="#244B73" font-family="Arial, sans-serif" font-size="34" font-weight="700">Vet 3D</text>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="720" y2="520" gradientUnits="userSpaceOnUse">
+<stop stop-color="#EEF7FF"/>
+<stop offset="1" stop-color="#D8F0E6"/>
+</linearGradient>
+<linearGradient id="fur" x1="240" y1="128" x2="474" y2="372" gradientUnits="userSpaceOnUse">
+<stop stop-color="#D3A37E"/>
+<stop offset="1" stop-color="#A0704E"/>
+</linearGradient>
+<filter id="card" x="24" y="28" width="228" height="106" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#7CA7C4" flood-opacity=".22"/>
+</filter>
+</defs>
+</svg>

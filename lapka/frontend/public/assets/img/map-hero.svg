@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" role="img" aria-label="Map image">
+  <rect width="640" height="440" fill="#dff3f1"/>
+  <path d="M40 300 C150 280,180 110,280 120 C380 130,430 320,590 220" stroke="#8abed8" stroke-width="14" fill="none"/>
+  <circle cx="180" cy="185" r="26" fill="#39a6de"/>
+  <circle cx="320" cy="130" r="26" fill="#33c29d"/>
+  <circle cx="472" cy="224" r="26" fill="#f3b548"/>
+  <circle cx="280" cy="250" r="26" fill="#e55367"/>
+  <circle cx="180" cy="185" r="10" fill="#fff"/>
+  <circle cx="320" cy="130" r="10" fill="#fff"/>
+  <circle cx="472" cy="224" r="10" fill="#fff"/>
+  <circle cx="280" cy="250" r="10" fill="#fff"/>
+  <rect x="118" y="252" width="124" height="18" rx="9" fill="#2b5f93" opacity="0.14"/>
+  <rect x="268" y="86" width="116" height="18" rx="9" fill="#2b5f93" opacity="0.14"/>
+  <rect x="416" y="268" width="132" height="18" rx="9" fill="#2b5f93" opacity="0.14"/>
+  <rect x="212" y="318" width="156" height="18" rx="9" fill="#2b5f93" opacity="0.14"/>
+</svg>

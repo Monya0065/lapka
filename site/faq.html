@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-ru="Вопросы и ответы — «Лапка»" data-en="Вопросы и ответы — «Лапка»">Вопросы и ответы — «Лапка»</title>
+    <meta
+      name="description"
+      data-ru="Частые вопросы о Лапке: triage, безопасность, калькуляторы, Tilda-встраивание и демо-кабинет."
+      data-en="Frequently asked questions about Лапка: triage, safety, calculators, Tilda embedding, and demo cabinet."
+      content="Частые вопросы о Лапке: triage, безопасность, калькуляторы, Tilda-встраивание и демо-кабинет."
+    />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <script defer src="../assets/js/app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-row">
+        <a href="./index.html" class="brand"><span class="brand-logo" aria-hidden="true">❓</span>Лапка</a>
+        <button class="nav-toggle" aria-expanded="false" aria-controls="mainNav">☰</button>
+        <nav class="site-nav" id="mainNav" aria-label="Main navigation">
+          <a href="./index.html" data-ru="Главная" data-en="Home">Главная</a>
+          <a href="./owners.html" data-ru="Для владельцев" data-en="For owners">Для владельцев</a>
+          <a href="./clinics.html" data-ru="Для клиник" data-en="For clinics">Для клиник</a>
+          <a href="./pricing.html" data-ru="Тарифы" data-en="Pricing">Тарифы</a>
+          <a href="./security.html" data-ru="Безопасность" data-en="Security">Безопасность</a>
+          <a href="./faq.html" aria-current="page" data-ru="Вопросы" data-en="FAQ">Вопросы</a>
+          <a href="./auth.html" data-ru="Демо-вход" data-en="Demo auth">Демо-вход</a>
+          <a href="./cabinet.html" data-ru="Кабинет" data-en="Cabinet">Кабинет</a>
+        </nav>
+        <div class="header-actions">
+          <button class="btn btn-primary" type="button" data-open-demo data-ru="Запросить демо" data-en="Request demo">Запросить демо</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="container">
+        <section class="section card">
+          <h1>Вопросы</h1>
+          <p data-ru="Ответы на ключевые вопросы по безопасности, triage и возможностям демо." data-en="Answers to key questions about safety, triage, and demo capabilities.">Ответы на ключевые вопросы по безопасности, triage и возможностям демо.</p>
+        </section>
+
+        <section class="section card">
+          <details class="group">
+            <summary data-ru="Это медицинский диагноз?" data-en="Is this a medical diagnosis?">Это медицинский диагноз?</summary>
+            <p data-ru="Нет. Система выдаёт только уровень срочности triage (GREEN/YELLOW/RED) и безопасные действия до визита к ветеринару." data-en="No. The system provides only triage urgency level (GREEN/YELLOW/RED) and safe actions before a vet visit.">Нет. Система выдаёт только уровень срочности triage (GREEN/YELLOW/RED) и безопасные действия до визита к ветеринару.</p>
+          </details>
+          <details class="group">
+            <summary data-ru="Почему нет рекомендаций лекарств?" data-en="Why are there no drug recommendations?">Почему нет рекомендаций лекарств?</summary>
+            <p data-ru="Это принцип безопасности. Демо-платформа не даёт назначения, названия препаратов и расчётов доз для лечения." data-en="This is a core safety rule. The demo platform does not provide prescribing, drug naming, or treatment dosing recommendations.">Это принцип безопасности. Демо-платформа не даёт назначения, названия препаратов и расчётов доз для лечения.</p>
+          </details>
+          <details class="group">
+            <summary data-ru="Калькуляторы медицинские?" data-en="Are the calculators medical advice?">Калькуляторы медицинские?</summary>
+            <p data-ru="Нет. Это математические вычисления по введённым пользователем числам с явными единицами измерения." data-en="No. They are math-only computations based on user-entered values with explicit units.">Нет. Это математические вычисления по введённым пользователем числам с явными единицами измерения.</p>
+          </details>
+          <details class="group">
+            <summary data-ru="Можно встроить в Tilda? " data-en="Can this be embedded into Tilda?">Можно встроить в Tilda? </summary>
+            <p data-ru="Да. В docs/TILDA.md есть два пути: прямая вставка в T123-блоки или iframe с внешнего хостинга." data-en="Yes. See docs/TILDA.md for two options: direct paste into T123 blocks or iframe embedding from static hosting.">Да. В docs/TILDA.md есть два пути: прямая вставка в T123-блоки или iframe с внешнего хостинга.</p>
+          </details>
+          <details class="group">
+            <summary data-ru="Храните персональные данные?" data-en="Do you store personal data?">Храните персональные данные?</summary>
+            <p data-ru="В этом демо — нет. Все данные встроены как демо-данные в интерфейсе." data-en="Not in this demo. All data is embedded as демо-данные in the interface.">В этом демо — нет. Все данные встроены как демо-данные в интерфейсе.</p>
+          </details>
+          <details class="group">
+            <summary data-ru="Что делать, если есть RED-флаг?" data-en="What if a RED flag is present?">Что делать, если есть RED-флаг?</summary>
+            <p data-ru="Система переводит в RED и останавливает дальнейшие советы. Нужны только срочные действия по транспортировке в клинику." data-en="System immediately sets RED and stops further guidance. Only urgent transport steps are shown.">Система переводит в RED и останавливает дальнейшие советы. Нужны только срочные действия по транспортировке в клинику.</p>
+          </details>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <div class="container footer-row">
+        <p class="small" data-ru="Не диагноз. При ухудшении — срочно в клинику." data-en="Not a diagnosis. If the condition worsens, seek urgent veterinary care.">Не диагноз. При ухудшении — срочно в клинику.</p>
+      </div>
+    </footer>
+
+    <div class="modal" id="demoModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="demoModalTitle">
+      <div class="modal-card">
+        <h2 id="demoModalTitle" data-ru="Запросить демо" data-en="Request a demo">Запросить демо</h2>
+        <form>
+          <div class="form-grid">
+            <div>
+              <label for="faqName" data-ru="Имя" data-en="Name">Имя</label>
+              <input id="faqName" required />
+            </div>
+            <div>
+              <label for="faqEmail">Эл. почта</label>
+              <input id="faqEmail" type="email" required />
+            </div>
+          </div>
+          <div style="margin-top: 10px">
+            <label for="faqMsg" data-ru="Вопрос" data-en="Question">Вопрос</label>
+            <textarea id="faqMsg" data-placeholder-ru="Напишите ваш вопрос" data-placeholder-en="Write your question" placeholder="Напишите ваш вопрос"></textarea>
+          </div>
+          <div class="inline-actions" style="margin-top: 12px">
+            <button class="btn btn-primary" type="submit" data-ru="Отправить" data-en="Submit">Отправить</button>
+            <button class="btn btn-secondary" type="button" data-close-modal data-ru="Закрыть" data-en="Close">Закрыть</button>
+          </div>
+          <p class="small" aria-live="polite" data-demo-result></p>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

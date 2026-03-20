@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" role="img" aria-label="Owner panel image">
+  <defs>
+    <linearGradient id="o1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eff8ff"/>
+      <stop offset="1" stop-color="#dff0ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="440" fill="url(#o1)"/>
+  <circle cx="170" cy="170" r="78" fill="#ffd8c2"/>
+  <rect x="90" y="236" width="170" height="164" rx="82" fill="#ebf6ff"/>
+  <circle cx="356" cy="240" r="96" fill="#f8bb79"/>
+  <polygon points="300,182 336,128 350,196" fill="#e3a25c"/>
+  <polygon points="412,182 376,128 362,196" fill="#e3a25c"/>
+  <circle cx="334" cy="244" r="9" fill="#365068"/>
+  <circle cx="378" cy="244" r="9" fill="#365068"/>
+  <path d="M336 276 Q356 294 376 276" stroke="#365068" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <rect x="36" y="332" width="568" height="76" rx="18" fill="#ffffff" stroke="#c6dff4"/>
+  <text x="64" y="378" font-size="36" font-family="Arial, sans-serif" fill="#2b5f93" font-weight="700">Личный кабинет владельца</text>
+</svg>

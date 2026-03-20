@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinics | VetSafe Cloud</title>
+  <style>
+    :root {
+      --bg: #f2f6fb;
+      --panel: #ffffff;
+      --text: #142435;
+      --muted: #5e6b79;
+      --brand: #1f5fa7;
+      --line: #d8e3ef;
+      --radius: 14px;
+    }
+    body { margin: 0; font-family: "Manrope", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { width: min(1120px, 92%); margin: 0 auto; }
+    header, footer { background: #fff; border-bottom: 1px solid var(--line); }
+    footer { border-top: 1px solid var(--line); border-bottom: 0; margin-top: 40px; }
+    .bar { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; }
+    a { color: var(--brand); text-decoration: none; }
+    h1 { font-size: clamp(30px, 5vw, 46px); margin-bottom: 10px; }
+    .muted { color: var(--muted); }
+    .hero { padding: 60px 0 32px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+    .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
+    .phase { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+    @media (max-width: 920px) {
+      .grid, .timeline { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <strong>VetSafe Cloud</strong>
+      <nav><a href="/pages/index.html">Home</a> | <a href="/pages/pricing.html">Pricing</a> | <a href="/pages/auth.html">Sign in</a></nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>Clinic SaaS for operational control and safer patient flow</h1>
+      <p class="muted">Purpose-built CRM + medical operations + secure communication across front desk, doctors, and pet owners.</p>
+    </section>
+
+    <section>
+      <h2>Core Clinic Features</h2>
+      <div class="grid">
+        <article class="card"><h3>CRM</h3><p class="muted">Owner records, pet profiles, appointment pipeline, and visit lifecycle tracking.</p></article>
+        <article class="card"><h3>Schedule</h3><p class="muted">Doctor calendars, room occupancy view, and conflict-safe booking logic.</p></article>
+        <article class="card"><h3>Staff</h3><p class="muted">Role management, shift planning, and permissions for sensitive data actions.</p></article>
+        <article class="card"><h3>Analytics</h3><p class="muted">Visit volume, triage urgency mix, follow-up rates, and patient retention trends.</p></article>
+        <article class="card"><h3>Billing</h3><p class="muted">Invoice status dashboards, payment timeline, and reconciliation hooks.</p></article>
+        <article class="card"><h3>Audit Log</h3><p class="muted">Immutable event history for access, edits, triage outputs, and communication trails.</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Deployment Flow</h2>
+      <div class="timeline">
+        <div class="phase"><strong>Week 1</strong><br />Data mapping and role setup</div>
+        <div class="phase"><strong>Week 2</strong><br />Portal launch and auth integration</div>
+        <div class="phase"><strong>Week 3</strong><br />Triage + protocol module rollout</div>
+        <div class="phase"><strong>Week 4</strong><br />Analytics calibration and go-live</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap bar"><span class="muted">Clinic page is Tilda HTML block compatible.</span></div>
+  </footer>
+</body>
+</html>

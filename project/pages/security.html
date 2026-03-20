@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security | VetSafe Cloud</title>
+  <style>
+    :root {
+      --bg: #f3f8f8;
+      --panel: #ffffff;
+      --text: #0f2325;
+      --muted: #4f6669;
+      --brand: #1f7a73;
+      --line: #d5e5e4;
+      --radius: 14px;
+    }
+    body { margin: 0; font-family: "Manrope", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { width: min(1080px, 92%); margin: 0 auto; }
+    header { background: #fff; border-bottom: 1px solid var(--line); }
+    .bar { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; }
+    .hero { padding: 56px 0 24px; }
+    h1 { margin: 0 0 8px; font-size: clamp(30px, 5vw, 42px); }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+    .muted { color: var(--muted); }
+    a { color: var(--brand); text-decoration: none; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <strong>VetSafe Cloud</strong>
+      <nav><a href="/pages/index.html">Home</a> | <a href="/pages/faq.html">FAQ</a></nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>Data protection and AI safety by design</h1>
+      <p class="muted">Built for sensitive veterinary data with strict access control and transparent AI behavior.</p>
+    </section>
+
+    <section class="grid">
+      <article class="card"><h3>Encryption</h3><p class="muted">TLS in transit and encrypted storage for medical, identity, and document data.</p></article>
+      <article class="card"><h3>Role-Based Access</h3><p class="muted">Owner, Doctor, and Clinic Admin scopes with endpoint and UI-level guards.</p></article>
+      <article class="card"><h3>2FA Authentication</h3><p class="muted">Email/password plus one-time code verification for all privileged sessions.</p></article>
+      <article class="card"><h3>Audit Logging</h3><p class="muted">Immutable record of authentication, triage submissions, data edits, and document access.</p></article>
+      <article class="card"><h3>AI Guardrails</h3><p class="muted">AI triage can only output risk level, safe actions, and visit recommendation.</p></article>
+      <article class="card"><h3>Safety Banner</h3><p class="muted">Every AI response includes: "This tool provides triage information only."</p></article>
+    </section>
+  </main>
+</body>
+</html>
