@@ -1,0 +1,43 @@
+# Node
+node_modules/
+.npm/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Docker
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+.next/
+out/
+dist/
+
+# Test artifacts
+playwright-report/
+test-results/
+
+# Storage
+backend/storage/*.db
+backend/storage/*.png
+
+# Large files
+*.zip
+*.tar.gz
+
+# Secrets
+.env
+.env.local
+.env.*.local
