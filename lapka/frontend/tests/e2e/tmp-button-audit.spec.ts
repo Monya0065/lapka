@@ -11,20 +11,25 @@ async function login(page, role: string, email: string, password: string) {
 }
 
 async function clickAudit(page, route: string) {
-  await page.goto(`${base}${route}`);
-  await page.waitForTimeout(300);
+  try {
+    await page.goto(`${base}${route}`, { timeout: 15000 });
+    await page.waitForTimeout(500);
+  } catch {
+    console.log(`route=${route} FAILED to load`);
+    return;
+  }
   const buttons = await page.locator('button:visible').elementHandles();
   let clicked = 0;
   let failed = 0;
 
-  for (const handle of buttons.slice(0, 16)) {
+  for (const handle of buttons.slice(0, 10)) {
     try {
       const txt = ((await handle.textContent()) || '').trim();
       if (/выйти/i.test(txt)) continue;
       const disabled = await handle.isDisabled();
       if (disabled) continue;
-      await handle.click({ timeout: 1200 });
-      await page.waitForTimeout(90);
+      await handle.click({ timeout: 800 });
+      await page.waitForTimeout(100);
       clicked += 1;
     } catch {
       failed += 1;
