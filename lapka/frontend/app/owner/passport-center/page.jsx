@@ -8,15 +8,13 @@ import ErrorBanner from '@/components/ui/ErrorBanner';
 import Skeleton from '@/components/ui/Skeleton';
 import PetVisualGallery from '@/components/ui/PetVisualGallery';
 import { loadOwnerBaseData } from '@/lib/owner-data';
-import { buildPassportCenter } from '@/lib/owner-workspace';
 import { localizePetSpecies } from '@/lib/pets';
 
 export default function OwnerPassportCenterPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pets, setPets] = useState([]);
-  const [invoices, setInvoices] = useState([]);
-  const passports = useMemo(() => buildPassportCenter({ pets, invoices }), [invoices, pets]);
+  const passports = useMemo(() => pets || [], [pets]);
 
   const loadPage = useCallback(async () => {
     setLoading(true);
@@ -24,11 +22,9 @@ export default function OwnerPassportCenterPage() {
     try {
       const base = await loadOwnerBaseData();
       setPets(base.pets);
-      setInvoices(base.invoices);
     } catch (requestError) {
       setError(requestError.message || 'Не удалось загрузить центр паспортов');
       setPets([]);
-      setInvoices([]);
     } finally {
       setLoading(false);
     }
@@ -77,7 +73,6 @@ export default function OwnerPassportCenterPage() {
                     <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2">Чип: {item.chip_id || 'не указан'}</div>
                     <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2">Паспорт: {item.passport_id || 'не указан'}</div>
                     <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2">Lapka ID: {item.lapka_id || item.id}</div>
-                    <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2">{item.insuranceLabel}</div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link href={`/owner/pet/${item.id}/passport`} className="btn-primary">QR-паспорт</Link>

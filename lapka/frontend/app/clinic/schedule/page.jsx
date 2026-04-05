@@ -973,7 +973,7 @@ export default function ClinicSchedulePage() {
     <>
       <header className="page-header">
         <div>
-          <h1 className="page-title">Операционный календарь и поток клиники</h1>
+          <h1 className="page-title">Расписание клиники · операционный календарь и поток</h1>
           <p className="page-subtitle">
             Единый операционный слой для дня, недели, врачей, ресурсов и филиалов без перехода между разрозненными таблицами.
           </p>

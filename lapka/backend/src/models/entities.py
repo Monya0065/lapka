@@ -1590,6 +1590,11 @@ class PharmacyLocation(Base):
     __tablename__ = "pharmacy_locations"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clinic_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clinics.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     pharmacy_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("pharmacies.id", ondelete="CASCADE"))
     city: Mapped[str] = mapped_column(String(128), nullable=False)
     address: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1601,6 +1606,7 @@ class PharmacyLocation(Base):
     __table_args__ = (
         Index("idx_pharmacy_locations_city", "city"),
         Index("idx_pharmacy_locations_pharmacy", "pharmacy_id"),
+        Index("idx_pharmacy_locations_clinic", "clinic_id"),
     )
 
 
@@ -1616,6 +1622,7 @@ class PharmacyInventory(Base):
         UUID(as_uuid=True), ForeignKey("drug_variants.id", ondelete="SET NULL"), nullable=True
     )
     in_stock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     price_text: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -1624,6 +1631,7 @@ class PharmacyInventory(Base):
         UniqueConstraint("pharmacy_location_id", "drug_id", "variant_id", name="uq_inventory_location_drug_variant"),
         Index("idx_inventory_drug_stock", "drug_id", "in_stock"),
         Index("idx_inventory_location", "pharmacy_location_id"),
+        Index("idx_inventory_expires_at", "expires_at"),
     )
 
 

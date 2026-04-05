@@ -205,6 +205,9 @@ export default function OwnerMarketPage() {
                     <Link className="btn-secondary !px-3 !py-1.5" href={`/owner/clinic/${clinic.id}`}>
                       Профиль клиники
                     </Link>
+                    <Link className="btn-secondary !px-3 !py-1.5" href={`/public-booking/${clinic.id}`}>
+                      Онлайн-запись 24/7
+                    </Link>
                     <Link className="btn-primary !px-3 !py-1.5" href={`/owner/appointments?clinic_id=${clinic.id}`}>
                       Записаться
                     </Link>

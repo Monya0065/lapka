@@ -197,19 +197,25 @@ export async function logoutUser() {
 export async function validateStoredSession() {
   const session = getStoredSession();
   if (!session.accessToken) return null;
-  const user = await fetchCurrentUser(session.accessToken);
-  if (!user) {
+  try {
+    const user = await fetchCurrentUser(session.accessToken);
+    if (!user) {
+      clearSession();
+      return null;
+    }
+    saveSession({
+      role: user.role,
+      email: user.email,
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+      user,
+    });
+    return user;
+  } catch {
+    // Network / fetch failures: treat session as invalid to avoid RoleGate "checking" loops.
     clearSession();
     return null;
   }
-  saveSession({
-    role: user.role,
-    email: user.email,
-    accessToken: session.accessToken,
-    refreshToken: session.refreshToken,
-    user,
-  });
-  return user;
 }
 
 export function roleHome(role) {

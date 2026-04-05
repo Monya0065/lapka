@@ -27,6 +27,12 @@ export const CLINIC_SIDEBAR_GROUPS = [
     ],
   },
   {
+    title: 'Аптека',
+    links: [
+      { href: '/clinic/pharmacy', label: 'Склад и сроки', icon: 'pharmacy' },
+    ],
+  },
+  {
     title: 'Контроль',
     links: [
       { href: '/clinic/analytics', label: 'Аналитика', icon: 'records' },

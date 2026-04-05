@@ -374,6 +374,9 @@ export default function OwnerMapPage() {
                   <Link href={`/owner/clinic/${selectedPlace.clinic_id}`} className="btn-primary">
                     Открыть профиль клиники
                   </Link>
+                  <Link href={`/public-booking/${selectedPlace.clinic_id}`} className="btn-secondary">
+                    Онлайн-запись 24/7
+                  </Link>
                   <Link href="/owner/appointments" className="btn-secondary">
                     Перейти к записи
                   </Link>

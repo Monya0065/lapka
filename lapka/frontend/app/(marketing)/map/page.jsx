@@ -16,7 +16,7 @@ export default function MapPage() {
         t('marketing.map.bullets.linking'),
         t('marketing.map.bullets.booking')
       ]}
-      ctaHref="/owner/map"
+      ctaHref="/public-booking"
       ctaLabel={t('marketing.map.cta')}
       sideImage="/assets/img/map-hero-v2.svg"
       sideImageAlt={t('marketing.map.imageAlt')}

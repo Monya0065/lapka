@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from src.api.routes import (
     ai_assistant,
     ai_safe,
+    analytics,
     appointments,
     audit,
     auth,
@@ -23,8 +24,10 @@ from src.api.routes import (
     patient_search,
     pets,
     places,
+    pharmacy_inventory,
     platform_ai,
     protocols,
+    public_booking,
     public_links,
     reminders,
     reviews,
@@ -55,6 +58,7 @@ api_router.include_router(patient_search.router)
 api_router.include_router(platform_ai.router)
 api_router.include_router(audit.router)
 api_router.include_router(public_links.router)
+api_router.include_router(pharmacy_inventory.router)
 api_router.include_router(protocols.router)
 api_router.include_router(appointments.router)
 api_router.include_router(templates.router)
@@ -68,3 +72,5 @@ api_router.include_router(ai_safe.router)
 api_router.include_router(services.router)
 api_router.include_router(symptoms.router)
 api_router.include_router(system.router)
+api_router.include_router(public_booking.router)
+api_router.include_router(analytics.router)

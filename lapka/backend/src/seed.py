@@ -1233,7 +1233,13 @@ async def _seed_clinical_protocols(session) -> int:
     return len(created_ids)
 
 
-async def _seed_pharmacy_marketplace(session, *, rng: random.Random, owner_id: uuid.UUID) -> None:
+async def _seed_pharmacy_marketplace(
+    session,
+    *,
+    rng: random.Random,
+    owner_id: uuid.UUID,
+    clinic_ids: list[uuid.UUID],
+) -> None:
     demo_city = "Санкт-Петербург"
     catalog = get_catalog_drugs()[:100]
     if not catalog:
@@ -1447,6 +1453,8 @@ async def _seed_pharmacy_marketplace(session, *, rng: random.Random, owner_id: u
                 PharmacyLocation,
                 location_id,
                 {
+                    # Link demo pharmacies to clinic контуры, so `clinic_admin` can view scoped inventory.
+                    "clinic_id": clinic_ids[(pharmacy_idx + loc_idx) % max(1, len(clinic_ids))] if clinic_ids else None,
                     "pharmacy_id": pharmacy.id,
                     "city": demo_city,
                     "address": f"{demo_city}, ул. Аптечная, {10 + pharmacy_idx * 2 + loc_idx}",
@@ -1462,6 +1470,8 @@ async def _seed_pharmacy_marketplace(session, *, rng: random.Random, owner_id: u
                 inventory_id = _demo_uuid(f"market-inventory-{pharmacy_idx + 1}-{loc_idx + 1}-{inv_idx + 1}")
                 price_base = 320 + ((pharmacy_idx * 17 + loc_idx * 11 + inv_idx * 13) % 1900)
                 updated_at = datetime.now(timezone.utc) - timedelta(hours=(pharmacy_idx + inv_idx + loc_idx) % 48)
+                # Demo expiration window: some items expiring within ~7..120 days.
+                expires_at = datetime.now(timezone.utc) + timedelta(days=7 + ((pharmacy_idx + inv_idx * 2 + loc_idx) % 114))
                 inventory = await _upsert_by_id(
                     session,
                     PharmacyInventory,
@@ -1471,6 +1481,7 @@ async def _seed_pharmacy_marketplace(session, *, rng: random.Random, owner_id: u
                         "drug_id": drug.id,
                         "variant_id": variant.id if variant else None,
                         "in_stock": (pharmacy_idx + loc_idx + inv_idx) % 6 != 0,
+                        "expires_at": expires_at,
                         "price_text": _price_text(price_base, 0),
                         "updated_at": updated_at,
                     },
@@ -3871,7 +3882,12 @@ async def seed() -> None:
         )
 
         await session.flush()
-        await _seed_pharmacy_marketplace(session, rng=rng, owner_id=owner_main.id)
+        await _seed_pharmacy_marketplace(
+            session,
+            rng=rng,
+            owner_id=owner_main.id,
+            clinic_ids=[row.id for row in all_clinics] if all_clinics else [],
+        )
         await session.flush()
 
         await recalculate_ratings_summary(

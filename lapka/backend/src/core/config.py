@@ -24,6 +24,20 @@ class Settings(BaseSettings):
     payments_provider: str = "demo"
     labs_provider: str = "demo"
     redis_url: str | None = None
+
+    # Notifications delivery (optional MVP integration)
+    # If not configured, delivery falls back to a safe audit-only behavior.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_use_tls: bool = True
+
+    sms_gateway_url: str | None = None
+    sms_gateway_api_key: str | None = None
+    sms_from: str | None = None
+
     cors_origins: str = ""
     sentry_dsn: str | None = None
     sentry_environment: str = "development"

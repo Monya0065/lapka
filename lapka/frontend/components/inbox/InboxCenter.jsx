@@ -67,7 +67,13 @@ function formatDateTime(value) {
   });
 }
 
-function notificationKindLabel(type) {
+function notificationKindLabel(type, metadata) {
+  if (metadata?.kind === 'pharmacy_expiration_alert') {
+    const within = metadata?.within_days;
+    if (within) return `Склад: срок до ${within} дн.`;
+    return 'Склад: срок годности';
+  }
+
   switch (String(type || '')) {
     case 'appointment_confirmed':
       return 'Подтверждённая запись';
@@ -82,8 +88,12 @@ function notificationKindLabel(type) {
   }
 }
 
-function notificationTone(type, isRead) {
+function notificationTone(type, isRead, metadata) {
   if (isRead) return 'border-lapka-200 bg-white';
+  if (metadata?.kind === 'pharmacy_expiration_alert') {
+    const within = metadata?.within_days;
+    return within === 7 ? 'border-red-200 bg-red-50/60' : 'border-amber-200 bg-amber-50/55';
+  }
   if (type === 'visit_ready') return 'border-emerald-200 bg-emerald-50/60';
   if (type === 'inpatient_update') return 'border-cyan-200 bg-cyan-50/60';
   return 'border-amber-200 bg-amber-50/55';
@@ -96,6 +106,11 @@ function buildNotificationHref(role, row) {
   const appointmentId = row?.appointment_id || metadata.appointment_id;
   const stayId = metadata.stay_id || metadata.inpatient_stay_id;
   const type = String(row?.notification_type || '');
+
+  if (role === 'clinic' && metadata?.kind === 'pharmacy_expiration_alert') {
+    const within = metadata?.within_days || 7;
+    return `/clinic/pharmacy?expires_within_days=${within}`;
+  }
 
   if (role === 'owner') {
     if (type === 'visit_ready' && petId) return `/owner/pet/${petId}/records`;
@@ -219,14 +234,14 @@ export default function InboxCenter({ role = 'owner' }) {
               {grouped.unread.length ? (
                 <div className="space-y-3">
                   {grouped.unread.map((row) => (
-                    <article
+                          <article
                       key={row.id}
-                      className={`rounded-[24px] border px-4 py-4 ${notificationTone(row.notification_type, row.is_read)}`}
+                      className={`rounded-[24px] border px-4 py-4 ${notificationTone(row.notification_type, row.is_read, row.metadata)}`}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="pill !px-3 !py-1.5 text-xs font-semibold">{notificationKindLabel(row.notification_type)}</span>
+                            <span className="pill !px-3 !py-1.5 text-xs font-semibold">{notificationKindLabel(row.notification_type, row.metadata)}</span>
                             <span className="text-sm text-lapka-500">{formatDateTime(row.created_at)}</span>
                           </div>
                           <h3 className="mt-3 text-xl font-black text-lapka-950">{row.title}</h3>

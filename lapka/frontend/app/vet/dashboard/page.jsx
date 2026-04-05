@@ -7,7 +7,7 @@ import AppImage from '@/components/ui/AppImage';
 
 export default function VetDashboardPage() {
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <header className="page-header">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">Сегодня</p>
@@ -22,8 +22,8 @@ export default function VetDashboardPage() {
           <div className="grid gap-0 lg:grid-cols-[minmax(0,1.02fr)_340px]">
             <div className="bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,0.92),transparent_28%),linear-gradient(180deg,#ffffff_0%,#eef7ff_92%)] p-6 md:p-7">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">Поток смены</p>
-              <h2 className="mt-2 text-[2.6rem] font-black tracking-tight text-lapka-950 md:text-[3.2rem]">Пациенты, протоколы и критические сигналы в одном контуре</h2>
-              <p className="mt-3 max-w-3xl text-lg leading-8 text-lapka-700">
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-lapka-950 md:text-3xl">Пациенты, протоколы и критические сигналы в одном контуре</h2>
+              <p className="mt-3 max-w-3xl text-base leading-7 text-lapka-700">
                 Экран врача перестроен как рабочий слой: сначала то, что требует действий сейчас, потом очередь пациентов, лаборатория и подготовка к следующему визиту.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -36,40 +36,51 @@ export default function VetDashboardPage() {
             <div className="grid gap-0 border-l border-lapka-200 bg-white/86">
               <div className="border-b border-lapka-200 p-5 md:p-6">
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-lapka-500">Сейчас на смене</p>
-                <p className="mt-3 text-3xl font-black tracking-tight text-lapka-950">18 пациентов</p>
-                <p className="mt-2 text-base leading-relaxed text-lapka-600">6 ожидают, 3 уже на приёме, 9 завершены и переданы в архив медкарты.</p>
+                <p className="mt-3 text-2xl font-black tracking-tight text-lapka-950 md:text-3xl">18 пациентов</p>
+                <p className="mt-2 text-sm leading-relaxed text-lapka-600">6 ожидают, 3 уже на приёме, 9 завершены и переданы в архив медкарты.</p>
               </div>
               <div className="border-b border-lapka-200 p-5 md:p-6">
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-lapka-500">Сигналы внимания</p>
-                <p className="mt-3 text-3xl font-black tracking-tight text-lapka-950">1 срочный сигнал</p>
-                <p className="mt-2 text-base leading-relaxed text-lapka-600">Срочный пациент отмечен в потоке и должен попасть в приоритетный маршрут без ручного поиска.</p>
+                <p className="mt-3 text-2xl font-black tracking-tight text-lapka-950 md:text-3xl">1 срочный сигнал</p>
+                <p className="mt-2 text-sm leading-relaxed text-lapka-600">Срочный пациент отмечен в потоке и должен попасть в приоритетный маршрут без ручного поиска.</p>
               </div>
               <div className="p-5 md:p-6">
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-lapka-500">Документация</p>
                 <p className="mt-3 text-2xl font-black tracking-tight text-lapka-950">92% протоколов закрыто</p>
-                <p className="mt-2 text-base leading-relaxed text-lapka-600">AI-ассистент помогает закрывать пробелы в заметках, но не заменяет врача и не выдаёт клинические решения владельцу.</p>
+                <p className="mt-2 text-sm leading-relaxed text-lapka-600">AI-ассистент помогает закрывать пробелы в заметках, но не заменяет врача.</p>
               </div>
             </div>
           </div>
         </Card>
 
-        <Card className="overflow-hidden p-0">
-          <div className="relative h-full min-h-[420px]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(255,255,255,0.92),transparent_28%),linear-gradient(180deg,#f8fbff_0%,#eef7ff_100%)]" />
-            <div className="relative z-[1] p-5 md:p-6">
-              <div className="rounded-[26px] border border-white/90 bg-white/76 p-4 backdrop-blur">
-                <AppImage src="/assets/img/vet-doctor.svg" alt="Работа врача" width={960} height={960} sizes="420px" className="h-[240px] w-full object-contain drop-shadow-[0_24px_48px_rgba(18,63,111,0.18)]" />
+        <Card className="overflow-hidden">
+          <div className="p-5 md:p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">AI-ассистент</p>
+                <h3 className="mt-2 text-xl font-black tracking-tight text-lapka-950 md:text-2xl">Проверка полноты и структура протокола</h3>
+                <p className="mt-2 text-sm leading-relaxed text-lapka-700">
+                  Помогает врачу не упускать важные поля и быстрее закрывать визит.
+                </p>
               </div>
-              <div className="mt-4 grid gap-3">
-                <div className="showcase-panel p-4">
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">AI-ассистент</p>
-                  <p className="mt-2 text-lg font-bold text-lapka-900">Структурирует заметки, проверяет полноту протокола и помогает с лабораторной расшифровкой.</p>
-                </div>
-                <div className="showcase-panel p-4">
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">Следующее действие</p>
-                  <p className="mt-2 text-lg font-bold text-lapka-900">Откройте поток приёма и переведите следующего пациента в визит без лишних переходов.</p>
-                </div>
+              <div className="hidden w-[150px] shrink-0 md:block">
+                <AppImage src="/assets/img/vet-doctor.svg" alt="Работа врача" width={300} height={300} sizes="150px" className="h-[150px] w-full object-contain" />
               </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-lapka-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">Полнота протокола</p>
+                <p className="mt-2 text-sm font-semibold text-lapka-900">Чек-лист ключевых полей</p>
+              </div>
+              <div className="rounded-2xl border border-lapka-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">Лаборатория</p>
+                <p className="mt-2 text-sm font-semibold text-lapka-900">Короткая расшифровка</p>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <Link href="/vet/assistant" className="btn-primary w-full">Открыть AI-ассистент</Link>
             </div>
           </div>
         </Card>

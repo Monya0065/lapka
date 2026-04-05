@@ -28,6 +28,8 @@ export default function ClinicDashboardPage() {
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [auditRows, setAuditRows] = useState([]);
+  const [expirationAlerts, setExpirationAlerts] = useState(null);
+  const [expirationAlerts7, setExpirationAlerts7] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -41,17 +43,21 @@ export default function ClinicDashboardPage() {
       if (!resolvedClinicId) {
         throw new Error('Не удалось определить текущую клинику');
       }
-      const [membersPayload, patientsPayload, appointmentsPayload, auditPayload] = await Promise.all([
+      const [membersPayload, patientsPayload, appointmentsPayload, auditPayload, expPayload30, expPayload7] = await Promise.all([
         apiRequest(`/api/v1/clinics/me/members${query}`),
         apiRequest(`/api/v1/clinics/me/patients?limit=500${clinicId ? `&clinic_id=${encodeURIComponent(clinicId)}` : ''}`),
         apiRequest(`/api/v1/appointments?clinic_id=${encodeURIComponent(resolvedClinicId)}&mine=false`),
         apiRequest('/api/v1/audit?limit=20'),
+        apiRequest(`/api/v1/clinic/pharmacy/expiration-alerts?clinic_id=${encodeURIComponent(resolvedClinicId)}&within_days=30`).catch(() => ({ count: 0, items: [] })),
+        apiRequest(`/api/v1/clinic/pharmacy/expiration-alerts?clinic_id=${encodeURIComponent(resolvedClinicId)}&within_days=7`).catch(() => ({ count: 0, items: [] })),
       ]);
       setClinic(clinicPayload || null);
       setMembers(Array.isArray(membersPayload) ? membersPayload : []);
       setPatients(Array.isArray(patientsPayload) ? patientsPayload : []);
       setAppointments(Array.isArray(appointmentsPayload) ? appointmentsPayload : []);
       setAuditRows(Array.isArray(auditPayload) ? auditPayload : []);
+      setExpirationAlerts(expPayload30?.count != null ? expPayload30 : { count: 0, items: [] });
+      setExpirationAlerts7(expPayload7?.count != null ? expPayload7 : { count: 0, items: [] });
     } catch (e) {
       setError(e.message || 'Не удалось загрузить данные клиники');
       setClinic(null);
@@ -59,6 +65,8 @@ export default function ClinicDashboardPage() {
       setPatients([]);
       setAppointments([]);
       setAuditRows([]);
+      setExpirationAlerts(null);
+      setExpirationAlerts7(null);
     } finally {
       setLoading(false);
     }
@@ -181,6 +189,23 @@ export default function ClinicDashboardPage() {
             <StatsCard label="Будущие записи" value={String(ops.upcoming)} />
             <StatsCard label="На приёме" value={String(ops.inProgress)} />
             <StatsCard label="События аудита" value={String(ops.audit)} />
+            {expirationAlerts7 && expirationAlerts7.count > 0 ? (
+              <Link
+                href="/clinic/pharmacy?expires_within_days=7"
+                className="kpi-item rounded-[16px] border border-red-200 bg-red-50 px-4 py-3"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wider text-red-700">Срочно</p>
+                <p className="mt-1 text-lg font-bold text-red-900">{expirationAlerts7.count} позиций</p>
+                <p className="text-xs text-red-600">срок до 7 дней</p>
+              </Link>
+            ) : null}
+            {expirationAlerts && expirationAlerts.count > 0 ? (
+              <Link href="/clinic/pharmacy?expires_within_days=30" className="kpi-item rounded-[16px] border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">Склад</p>
+                <p className="mt-1 text-lg font-bold text-amber-900">{expirationAlerts.count} позиций</p>
+                <p className="text-xs text-amber-600">срок до 30 дней</p>
+              </Link>
+            ) : null}
           </section>
 
           <section className="grid items-start gap-5 2xl:grid-cols-[1.08fr_0.92fr]">
@@ -215,6 +240,7 @@ export default function ClinicDashboardPage() {
                   { title: 'Расписание', text: 'Врачи, смены, загрузка слотов и перенос записей в одном календаре.', href: '/clinic/schedule' },
                   { title: 'Поток дня', text: 'Этапы пациента от записи до выписки: ожидание, приём, диагностика, стационар и контроль.', href: '/clinic/flowboard' },
                   { title: 'Стационар', text: 'Койки, загрузка отделения, обновления для владельца и контроль камер.', href: '/clinic/inpatient' },
+                  { title: 'Склад и сроки', text: 'Остатки по локациям, сроки годности и сигналы по позициям, приближающимся к просрочке.', href: '/clinic/pharmacy' },
                 ].map((item) => (
                   <Link key={item.href} href={item.href} className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-soft">
                     <p className="text-lg font-bold text-lapka-900">{item.title}</p>

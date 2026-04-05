@@ -1,6 +1,8 @@
-const FALLBACK_CAT = '/assets/photos/pets/cat-generic-photo.jpg';
-const FALLBACK_DOG = '/assets/photos/pets/dog-labrador-photo.jpg';
-const FALLBACK_GENERIC = '/assets/photos/pets/cat-generic-photo.jpg';
+// Repo currently ships SVG assets under `/assets/img/*`.
+// Keep all visual fallbacks pointed to existing files to avoid broken images.
+const FALLBACK_CAT = '/assets/img/pet-cat.svg';
+const FALLBACK_DOG = '/assets/img/pet-barsik.svg';
+const FALLBACK_GENERIC = FALLBACK_CAT;
 
 const SPECIES_ALIASES = {
   cat: 'cat',
@@ -53,131 +55,114 @@ const BREED_ALIASES = {
 };
 
 const BREED_VISUALS = {
-  british_shorthair: '/assets/photos/pets/cat-british-photo.jpg',
-  siberian: '/assets/photos/pets/cat-siberian-photo.jpg',
-  scottish_fold: '/assets/photos/pets/cat-scottish-photo.jpg',
-  labrador: '/assets/photos/pets/dog-labrador-photo.jpg',
-  maine_coon: '/assets/photos/pets/cat-mainecoon-photo.jpg',
-  corgi: '/assets/photos/pets/dog-corgi-photo.jpg',
-  jack_russell_terrier: '/assets/photos/pets/dog-jackrussell-photo.jpg',
-  golden_retriever: '/assets/photos/pets/dog-golden-photo.jpg',
-  shiba_inu: '/assets/photos/pets/dog-shiba-photo.jpg',
-  european_shorthair: '/assets/photos/pets/cat-generic-photo.jpg',
-  mixed: '/assets/photos/pets/cat-generic-photo.jpg',
+  british_shorthair: FALLBACK_CAT,
+  siberian: FALLBACK_CAT,
+  scottish_fold: FALLBACK_CAT,
+  labrador: FALLBACK_DOG,
+  maine_coon: FALLBACK_CAT,
+  corgi: FALLBACK_DOG,
+  jack_russell_terrier: FALLBACK_DOG,
+  golden_retriever: FALLBACK_DOG,
+  shiba_inu: FALLBACK_DOG,
+  european_shorthair: FALLBACK_CAT,
+  mixed: FALLBACK_GENERIC,
 };
 
 const BREED_ILLUSTRATIONS = {
-  british_shorthair: '/assets/illustrations/pets/cat-british-3d.svg',
-  siberian: '/assets/illustrations/pets/cat-siberian-3d.svg',
-  scottish_fold: '/assets/illustrations/pets/cat-scottish-3d.svg',
-  labrador: '/assets/illustrations/pets/dog-labrador-3d.svg',
-  maine_coon: '/assets/illustrations/pets/cat-mainecoon-3d.svg',
-  corgi: '/assets/illustrations/pets/dog-corgi-3d.svg',
-  jack_russell_terrier: '/assets/illustrations/pets/dog-jackrussell-3d.svg',
-  golden_retriever: '/assets/illustrations/pets/dog-golden-3d.svg',
-  shiba_inu: '/assets/illustrations/pets/dog-shiba-3d.svg',
-  european_shorthair: '/assets/illustrations/pets/cat-generic-3d.svg',
-  mixed: '/assets/illustrations/pets/cat-generic-3d.svg',
+  // If 3D illustrations are not shipped, fall back to the same SVGs.
+  british_shorthair: FALLBACK_CAT,
+  siberian: FALLBACK_CAT,
+  scottish_fold: FALLBACK_CAT,
+  labrador: FALLBACK_DOG,
+  maine_coon: FALLBACK_CAT,
+  corgi: FALLBACK_DOG,
+  jack_russell_terrier: FALLBACK_DOG,
+  golden_retriever: FALLBACK_DOG,
+  shiba_inu: FALLBACK_DOG,
+  european_shorthair: FALLBACK_CAT,
+  mixed: FALLBACK_GENERIC,
 };
 
 const SPECIES_VISUALS = {
   cat: [
-    '/assets/photos/pets/cat-generic-photo.jpg',
-    '/assets/photos/pets/cat-british-photo.jpg',
-    '/assets/photos/pets/cat-siberian-photo.jpg',
-    '/assets/photos/pets/cat-scottish-photo.jpg',
-    '/assets/photos/pets/cat-mainecoon-photo.jpg',
+    FALLBACK_CAT,
   ],
   dog: [
-    '/assets/photos/pets/dog-labrador-photo.jpg',
-    '/assets/photos/pets/dog-corgi-photo.jpg',
-    '/assets/photos/pets/dog-jackrussell-photo.jpg',
-    '/assets/photos/pets/dog-golden-photo.jpg',
-    '/assets/photos/pets/dog-shiba-photo.jpg',
-    '/assets/photos/pets/dog-labrador-photo.jpg',
+    FALLBACK_DOG,
   ],
-  rabbit: '/assets/photos/pets/rabbit-photo.jpg',
-  guinea_pig: '/assets/photos/pets/guinea-pig-photo.jpg',
-  ferret: '/assets/photos/pets/ferret-photo.jpg',
-  parrot: '/assets/photos/pets/bird-photo.jpg',
-  bird: '/assets/photos/pets/bird-photo.jpg',
+  rabbit: FALLBACK_DOG,
+  guinea_pig: FALLBACK_GENERIC,
+  ferret: FALLBACK_GENERIC,
+  parrot: FALLBACK_GENERIC,
+  bird: FALLBACK_GENERIC,
 };
 
 const SPECIES_ILLUSTRATIONS = {
   cat: [
-    '/assets/illustrations/pets/cat-generic-3d.svg',
-    '/assets/illustrations/pets/cat-british-3d.svg',
-    '/assets/illustrations/pets/cat-siberian-3d.svg',
-    '/assets/illustrations/pets/cat-scottish-3d.svg',
-    '/assets/illustrations/pets/cat-mainecoon-3d.svg',
+    FALLBACK_CAT,
   ],
   dog: [
-    '/assets/illustrations/pets/dog-generic-3d.svg',
-    '/assets/illustrations/pets/dog-corgi-3d.svg',
-    '/assets/illustrations/pets/dog-jackrussell-3d.svg',
-    '/assets/illustrations/pets/dog-golden-3d.svg',
-    '/assets/illustrations/pets/dog-labrador-3d.svg',
-    '/assets/illustrations/pets/dog-shiba-3d.svg',
+    FALLBACK_DOG,
   ],
-  rabbit: '/assets/illustrations/pets/rabbit-3d.svg',
-  guinea_pig: '/assets/illustrations/pets/guinea-pig-3d.svg',
-  ferret: '/assets/illustrations/pets/ferret-3d.svg',
-  parrot: '/assets/illustrations/pets/bird-3d.svg',
-  bird: '/assets/illustrations/pets/bird-3d.svg',
+  rabbit: FALLBACK_DOG,
+  guinea_pig: FALLBACK_GENERIC,
+  ferret: FALLBACK_GENERIC,
+  parrot: FALLBACK_GENERIC,
+  bird: FALLBACK_GENERIC,
 };
 
 const CLINIC_NAME_VISUALS = {
-  'ветсеть': '/assets/photos/clinics/spb-core-cover-photo.jpg',
-  'мвц двасердца': '/assets/photos/clinics/duocor-cover-photo.jpg',
-  'ветеринарная клиника ветус': '/assets/photos/clinics/vetus-cover-photo.jpg',
-  'ветеринарный центр пульс': '/assets/photos/clinics/pulse-cover-photo.jpg',
-  'ветеринарная клиника вега': '/assets/photos/clinics/vega-cover-photo.jpg',
-  'ветеринарный госпиталь прайд': '/assets/photos/clinics/pride-cover-photo.jpg',
+  'ветсеть': '/assets/img/clinics/demo-cover.svg',
+  'мвц двасердца': '/assets/img/clinics/moscow-specialty-cover.svg',
+  'ветеринарная клиника ветус': '/assets/img/clinics/riga-family-cover.svg',
+  'ветеринарный центр пульс': '/assets/img/clinics/helsinki-emergency-cover.svg',
+  'ветеринарная клиника вега': '/assets/img/clinics/demo-cover.svg',
+  'ветеринарный госпиталь прайд': '/assets/img/clinics/demo-cover.svg',
 };
 
 const CLINIC_GALLERY_VISUALS = {
   'ветсеть': [
-    '/assets/photos/clinics/spb-core-cover-photo.jpg',
-    '/assets/photos/clinics/clinic-interior-photo.jpg',
-    '/assets/photos/clinics/clinic-reception-photo.jpg',
+    '/assets/img/clinics/demo-cover.svg',
+    '/assets/img/clinic-ops.svg',
+    '/assets/img/card-history.svg',
   ],
   'мвц двасердца': [
-    '/assets/photos/clinics/duocor-cover-photo.jpg',
-    '/assets/photos/clinics/clinic-interior-photo.jpg',
-    '/assets/photos/clinics/clinic-reception-photo.jpg',
+    '/assets/img/clinics/moscow-specialty-cover.svg',
+    '/assets/img/clinic-ops.svg',
+    '/assets/img/card-history.svg',
   ],
   'ветеринарная клиника ветус': [
-    '/assets/photos/clinics/vetus-cover-photo.jpg',
-    '/assets/photos/clinics/clinic-interior-photo.jpg',
-    '/assets/photos/clinics/clinic-reception-photo.jpg',
+    '/assets/img/clinics/riga-family-cover.svg',
+    '/assets/img/clinic-ops.svg',
+    '/assets/img/card-history.svg',
   ],
   'ветеринарный центр пульс': [
-    '/assets/photos/clinics/pulse-cover-photo.jpg',
-    '/assets/photos/clinics/clinic-interior-photo.jpg',
-    '/assets/photos/clinics/clinic-reception-photo.jpg',
+    '/assets/img/clinics/helsinki-emergency-cover.svg',
+    '/assets/img/clinic-ops.svg',
+    '/assets/img/card-history.svg',
   ],
   'ветеринарная клиника вега': [
-    '/assets/photos/clinics/vega-cover-photo.jpg',
-    '/assets/photos/clinics/clinic-interior-photo.jpg',
-    '/assets/photos/clinics/clinic-reception-photo.jpg',
+    '/assets/img/clinics/demo-cover.svg',
+    '/assets/img/clinic-ops.svg',
+    '/assets/img/card-history.svg',
   ],
   'ветеринарный госпиталь прайд': [
-    '/assets/photos/clinics/pride-cover-photo.jpg',
-    '/assets/photos/clinics/clinic-interior-photo.jpg',
-    '/assets/photos/clinics/clinic-reception-photo.jpg',
+    '/assets/img/clinics/demo-cover.svg',
+    '/assets/img/clinic-ops.svg',
+    '/assets/img/card-history.svg',
   ],
 };
 
 const VET_SPECIALTY_VISUALS = {
-  'кардиология': '/assets/photos/vets/vet-cardiology-photo.jpg',
-  'визуальная диагностика': '/assets/photos/vets/vet-diagnostics-photo.jpg',
-  'узи': '/assets/photos/vets/vet-ultrasound-photo.jpg',
-  'терапия': '/assets/photos/vets/vet-therapy-photo.jpg',
-  'неврология': '/assets/photos/vets/vet-neurology-photo.jpg',
-  'дерматология': '/assets/photos/vets/vet-dermatology-photo.jpg',
-  'стационар': '/assets/photos/vets/vet-inpatient-photo.jpg',
-  'интенсивная терапия': '/assets/photos/vets/vet-intensive-photo.jpg',
-  'хирургия': '/assets/photos/vets/vet-surgery-photo.jpg',
+  'кардиология': '/assets/img/vets/vet-cardiology.svg',
+  'визуальная диагностика': '/assets/img/vets/vet-diagnostics.svg',
+  'узи': '/assets/img/vets/vet-diagnostics.svg',
+  'терапия': '/assets/img/vets/vet-therapy.svg',
+  'неврология': '/assets/img/vets/vet-diagnostics.svg',
+  'дерматология': '/assets/img/vets/vet-dermatology.svg',
+  'стационар': '/assets/img/vets/vet-intensive.svg',
+  'интенсивная терапия': '/assets/img/vets/vet-intensive.svg',
+  'хирургия': '/assets/img/vets/vet-surgery.svg',
 };
 
 function resolveLanguage(language = 'ru') {
