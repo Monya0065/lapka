@@ -11,7 +11,8 @@ import { loadOwnerBaseData, loadPetHealthBundle } from '@/lib/owner-data';
 import { buildMedicationCenter, formatDateTimeLabel } from '@/lib/owner-workspace';
 
 function reminderBadge(reminder) {
-  const overdue = new Date(reminder.dueAt).getTime() < Date.now();
+  const dueAt = reminder.due_at || reminder.dueAt;
+  const overdue = dueAt && new Date(dueAt).getTime() < Date.now();
   return <span className={overdue ? 'badge-red' : 'badge-yellow'}>{overdue ? 'Просрочено' : 'Скоро'}</span>;
 }
 
@@ -142,7 +143,7 @@ export default function OwnerMedicationCenterPage() {
                     <div key={item.id} className="flex items-start justify-between gap-4 rounded-[24px] border border-lapka-200 bg-white px-4 py-4">
                       <div>
                         <p className="text-lg font-bold text-lapka-900">{item.title}</p>
-                        <p className="mt-1 text-sm text-lapka-600">{formatDateTimeLabel(item.dueAt)}</p>
+                        <p className="mt-1 text-sm text-lapka-600">{formatDateTimeLabel(item.dueAt || item.due_at)}</p>
                         {item.notes ? <p className="mt-2 text-sm text-lapka-600">{item.notes}</p> : null}
                       </div>
                       {reminderBadge(item)}

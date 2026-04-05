@@ -177,6 +177,12 @@ export function buildMedicationCenter({ pet, reminders, prescriptions, visits })
   return {
     medications: meds,
     nextMedication: upcoming[0] || null,
+    dailyBoard: upcoming.map((m) => ({
+      id: m.id,
+      title: m.title,
+      dueAt: m.due_at,
+      notes: '',
+    })),
   };
 }
 
