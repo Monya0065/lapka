@@ -13,9 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.session import get_db_session
 from src.integrations.labs_providers import get_labs_provider
 from src.integrations.payments_providers import get_payments_provider
+from src.integrations.pharmacy_providers import get_pharmacy_provider
 from src.models import (
     Appointment,
     AppointmentStatus,
+    AuditEvent,
     ClinicService,
     ClinicServiceCategory,
     ConsentScope,
@@ -32,6 +34,7 @@ from src.models import (
     LabOrderStatus,
     LabProvider,
     LabResult,
+    MasterPet,
     Membership,
     MembershipStatus,
     Payment,
@@ -43,7 +46,7 @@ from src.models import (
     User,
     Visit,
 )
-from src.security.deps import enforce_pet_scope, get_current_user, require_owner_of_pet
+from src.security.deps import enforce_pet_scope, get_current_user, require_current_legal_ack, require_owner_of_pet
 from src.services.audit import log_audit
 
 router = APIRouter(tags=["clinic-saas"])
@@ -88,6 +91,7 @@ class InvoiceStatusRequest(BaseModel):
 
 class OwnerPayInvoiceRequest(BaseModel):
     simulate_result: str | None = Field(default=None, pattern="^(succeeded|failed)$")
+    amount_cents: int | None = Field(default=None, ge=1)
 
 
 class InsurancePolicyCreateRequest(BaseModel):
@@ -200,8 +204,8 @@ def _serialize_payment(row: Payment) -> dict:
     }
 
 
-def _serialize_invoice(row: Invoice) -> dict:
-    return {
+def _serialize_invoice(row: Invoice, *, include_public_token: bool = True) -> dict:
+    payload = {
         "id": str(row.id),
         "clinic_id": str(row.clinic_id),
         "owner_id": str(row.owner_id),
@@ -214,10 +218,12 @@ def _serialize_invoice(row: Invoice) -> dict:
         "currency": row.currency,
         "issued_at": row.issued_at,
         "paid_at": row.paid_at,
-        "public_token": row.public_token,
         "created_at": row.created_at,
         "updated_at": row.updated_at,
     }
+    if include_public_token:
+        payload["public_token"] = row.public_token
+    return payload
 
 
 def _serialize_policy(row: InsurancePolicy) -> dict:
@@ -471,6 +477,7 @@ async def clinic_patch_service(
 async def clinic_create_invoice(
     payload: InvoiceCreateRequest,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -528,6 +535,7 @@ async def clinic_list_invoices(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[dict]:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -543,10 +551,55 @@ async def clinic_list_invoices(
     return [_serialize_invoice(row) for row in rows]
 
 
+@router.get("/clinics/me/patients")
+async def clinic_list_patients_for_billing(
+    limit: int = Query(default=500, ge=1, le=1000),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[dict]:
+    _ensure_staff_role(current_user, RoleEnum.vet, RoleEnum.clinic_admin, RoleEnum.network_admin)
+    membership = await _resolve_staff_membership(db, user_id=current_user.id)
+
+    clinic_pet_ids = set(
+        (await db.scalars(select(Appointment.pet_id).where(Appointment.clinic_id == membership.clinic_id))).all()
+    )
+    clinic_pet_ids.update(
+        (await db.scalars(select(Visit.pet_id).where(Visit.clinic_id == membership.clinic_id))).all()
+    )
+    clinic_pet_ids.update(
+        (await db.scalars(select(Invoice.pet_id).where(Invoice.clinic_id == membership.clinic_id))).all()
+    )
+    if not clinic_pet_ids:
+        return []
+
+    rows = (
+        await db.execute(
+            select(MasterPet, User)
+            .join(PetOwnerLink, PetOwnerLink.pet_id == MasterPet.id)
+            .join(User, User.id == PetOwnerLink.owner_user_id)
+            .where(MasterPet.id.in_(list(clinic_pet_ids)))
+            .order_by(MasterPet.name.asc())
+            .limit(limit)
+        )
+    ).all()
+
+    return [
+        {
+            "pet_id": str(pet.id),
+            "pet_name": pet.name,
+            "owner_user_id": str(owner.id),
+            "owner_name": owner.full_name,
+            "owner_email": owner.email,
+        }
+        for pet, owner in rows
+    ]
+
+
 @router.get("/clinic/invoices/{invoice_id}")
 async def clinic_get_invoice(
     invoice_id: str,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -577,6 +630,7 @@ async def clinic_add_invoice_item(
     invoice_id: str,
     payload: InvoiceItemCreateRequest,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -640,6 +694,7 @@ async def clinic_delete_invoice_item(
     invoice_id: str,
     item_id: str,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -678,6 +733,7 @@ async def clinic_issue_invoice(
     invoice_id: str,
     payload: InvoiceStatusRequest | None = None,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -710,6 +766,7 @@ async def clinic_void_invoice(
     invoice_id: str,
     payload: InvoiceStatusRequest | None = None,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -738,6 +795,7 @@ async def clinic_mark_invoice_paid(
     invoice_id: str,
     payload: InvoiceStatusRequest | None = None,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -775,6 +833,7 @@ async def clinic_mark_invoice_paid(
 async def clinic_export_invoice_pdf(
     invoice_id: str,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> Response:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -819,17 +878,19 @@ async def clinic_export_invoice_pdf(
 @router.get("/owner/invoices")
 async def owner_list_invoices(
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[dict]:
     _ensure_staff_role(current_user, RoleEnum.owner)
     rows = (await db.scalars(select(Invoice).where(Invoice.owner_id == current_user.id).order_by(Invoice.created_at.desc()))).all()
-    return [_serialize_invoice(row) for row in rows]
+    return [_serialize_invoice(row, include_public_token=False) for row in rows]
 
 
 @router.get("/owner/invoices/{invoice_id}")
 async def owner_get_invoice(
     invoice_id: str,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.owner)
@@ -853,7 +914,7 @@ async def owner_get_invoice(
     )
     await db.commit()
     return {
-        **_serialize_invoice(row),
+        **_serialize_invoice(row, include_public_token=False),
         "items": [_serialize_invoice_item(item) for item in items],
         "payments": [_serialize_payment(payment) for payment in payments],
     }
@@ -864,6 +925,7 @@ async def owner_pay_invoice(
     invoice_id: str,
     payload: OwnerPayInvoiceRequest | None = None,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.owner)
@@ -881,6 +943,30 @@ async def owner_pay_invoice(
         invoice.status = InvoiceStatus.issued
         invoice.issued_at = _utcnow()
 
+    paid_total = await db.scalar(
+        select(func.coalesce(func.sum(Payment.amount_cents), 0)).where(
+            Payment.invoice_id == invoice.id,
+            Payment.status == PaymentStatus.succeeded,
+        )
+    )
+    paid_total_int = int(paid_total or 0)
+    remaining_before = max(0, int(invoice.total_cents or 0) - paid_total_int)
+    if remaining_before <= 0:
+        invoice.status = InvoiceStatus.paid
+        invoice.paid_at = invoice.paid_at or _utcnow()
+        await db.commit()
+        await db.refresh(invoice)
+        raise HTTPException(status_code=409, detail={"code": "ALREADY_PAID", "message": "Invoice is already fully paid"})
+
+    requested_amount = int(payload.amount_cents) if payload and payload.amount_cents else remaining_before
+    if requested_amount <= 0:
+        raise HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": "Invalid payment amount"})
+    if requested_amount > remaining_before:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "PAYMENT_EXCEEDS_REMAINING", "message": "Requested amount exceeds remaining balance"},
+        )
+
     provider = get_payments_provider()
     provider_result = await provider.charge_invoice(
         db,
@@ -893,14 +979,19 @@ async def owner_pay_invoice(
         invoice_id=invoice.id,
         provider=provider_result.get("provider", provider.name),
         status=payment_status,
-        amount_cents=int(provider_result.get("amount_cents", invoice.total_cents)),
+        amount_cents=int(provider_result.get("amount_cents", requested_amount)),
         currency=provider_result.get("currency", invoice.currency),
         receipt_text=provider_result.get("receipt_text"),
     )
     db.add(payment)
     if payment_status == PaymentStatus.succeeded:
-        invoice.status = InvoiceStatus.paid
-        invoice.paid_at = _utcnow()
+        remaining_after = max(0, remaining_before - int(payment.amount_cents or 0))
+        if remaining_after == 0:
+            invoice.status = InvoiceStatus.paid
+            invoice.paid_at = _utcnow()
+        else:
+            invoice.status = InvoiceStatus.issued
+            invoice.paid_at = None
 
     await log_audit(
         db,
@@ -909,12 +1000,12 @@ async def owner_pay_invoice(
         action="invoice.owner_pay",
         target_type="invoice",
         target_id=str(invoice.id),
-        metadata={"provider": payment.provider, "result": payment.status.value},
+        metadata={"provider": payment.provider, "result": payment.status.value, "amount_cents": int(payment.amount_cents or 0)},
     )
     await db.commit()
     await db.refresh(invoice)
     await db.refresh(payment)
-    return {"invoice": _serialize_invoice(invoice), "payment": _serialize_payment(payment)}
+    return {"invoice": _serialize_invoice(invoice, include_public_token=False), "payment": _serialize_payment(payment)}
 
 
 @router.get("/public/pay/{invoice_token}")
@@ -926,7 +1017,6 @@ async def public_invoice_payment_view(
     if not row or row.status == InvoiceStatus.void:
         raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Invoice link not found"})
     return {
-        "invoice_id": str(row.id),
         "status": row.status.value,
         "total_cents": row.total_cents,
         "total_text": _money(row.total_cents),
@@ -939,6 +1029,7 @@ async def public_invoice_payment_view(
 async def owner_create_policy(
     payload: InsurancePolicyCreateRequest,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.owner)
@@ -966,6 +1057,7 @@ async def owner_create_policy(
 @router.get("/owner/insurance/policies")
 async def owner_list_policies(
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[dict]:
     _ensure_staff_role(current_user, RoleEnum.owner)
@@ -979,6 +1071,7 @@ async def owner_list_policies(
 async def owner_create_claim(
     payload: InsuranceClaimCreateRequest,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.owner)
@@ -1016,6 +1109,7 @@ async def owner_create_claim(
 @router.get("/owner/insurance/claims")
 async def owner_list_claims(
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[dict]:
     _ensure_staff_role(current_user, RoleEnum.owner)
@@ -1029,6 +1123,7 @@ async def owner_list_claims(
 async def clinic_list_claims(
     status_filter: InsuranceClaimStatus | None = Query(default=None, alias="status"),
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[dict]:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -1045,6 +1140,7 @@ async def clinic_patch_claim(
     claim_id: str,
     payload: InsuranceClaimPatchRequest,
     current_user=Depends(get_current_user),
+    legal_ack=Depends(require_current_legal_ack),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
@@ -1282,7 +1378,6 @@ async def owner_pet_labs(
         for result in results_by_order.get(order.id, []):
             safe_results.append(
                 {
-                    "id": str(result.id),
                     "summary": result.result_text,
                     "attachments": list(result.attachments_json or []),
                     "questions_for_vet": [
@@ -1295,7 +1390,6 @@ async def owner_pet_labs(
             )
         payload.append(
             {
-                "order_id": str(order.id),
                 "status": order.status.value if hasattr(order.status, "value") else str(order.status),
                 "ordered_at": order.ordered_at,
                 "received_at": order.received_at,
@@ -1485,3 +1579,93 @@ async def clinic_analytics_staff_utilization(
         for row in rows
     ]
     return {"range": range, "items": items}
+
+
+@router.get("/clinic/integrations/status")
+async def clinic_integrations_status(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    _ensure_staff_role(current_user, RoleEnum.clinic_admin, RoleEnum.network_admin)
+    membership = await _resolve_staff_membership(db, user_id=current_user.id)
+    since_7d = _utcnow() - timedelta(days=7)
+
+    labs_provider = get_labs_provider()
+    payments_provider = get_payments_provider()
+    pharmacy_provider = get_pharmacy_provider()
+
+    failed_payments_7d = int(
+        await db.scalar(
+            select(func.count(Payment.id))
+            .join(Invoice, Invoice.id == Payment.invoice_id)
+            .where(
+                Invoice.clinic_id == membership.clinic_id,
+                Payment.status == PaymentStatus.failed,
+                Payment.created_at >= since_7d,
+            )
+        )
+        or 0
+    )
+    pending_labs = int(
+        await db.scalar(
+            select(func.count(LabOrder.id)).where(
+                LabOrder.clinic_id == membership.clinic_id,
+                LabOrder.status.in_([LabOrderStatus.created, LabOrderStatus.sent]),
+            )
+        )
+        or 0
+    )
+    recent_errors = (
+        await db.scalars(
+            select(AuditEvent)
+            .where(
+                AuditEvent.clinic_id == membership.clinic_id,
+                AuditEvent.created_at >= since_7d,
+                AuditEvent.action.in_(
+                    [
+                        "clinic.invoice.owner_pay",
+                        "lab_order.send",
+                        "lab_order.import_result",
+                        "pharmacy.inventory.update",
+                    ]
+                ),
+            )
+            .order_by(AuditEvent.created_at.desc())
+            .limit(80)
+        )
+    ).all()
+
+    retries_recommended = 0
+    for row in recent_errors:
+        meta = row.metadata_json or {}
+        result = str(meta.get("result") or "").lower()
+        if "failed" in result or "error" in result:
+            retries_recommended += 1
+
+    providers = [
+        {"name": "labs", "provider": labs_provider.name, "status": "up"},
+        {"name": "payments", "provider": payments_provider.name, "status": "up"},
+        {"name": "pharmacy", "provider": pharmacy_provider.name, "status": "up"},
+    ]
+    await log_audit(
+        db,
+        actor_user_id=str(current_user.id),
+        clinic_id=str(membership.clinic_id),
+        action="clinic.integrations.status.view",
+        target_type="clinic",
+        target_id=str(membership.clinic_id),
+        metadata={
+            "failed_payments_7d": failed_payments_7d,
+            "pending_labs": pending_labs,
+            "retries_recommended": retries_recommended,
+        },
+    )
+    await db.commit()
+    return {
+        "clinic_id": str(membership.clinic_id),
+        "providers": providers,
+        "failed_payments_7d": failed_payments_7d,
+        "pending_labs": pending_labs,
+        "retries_recommended": retries_recommended,
+        "window_days": 7,
+    }

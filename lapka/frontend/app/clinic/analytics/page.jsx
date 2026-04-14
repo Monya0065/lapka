@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import StatsCard from '@/components/ui/StatsCard';
 import Charts from '@/components/ui/Charts';
@@ -16,7 +17,7 @@ function money(cents) {
 }
 
 export default function ClinicAnalyticsPage() {
-  const { clinics, selectedClinic } = useClinicScope();
+  const { clinics, selectedClinic, clinicId } = useClinicScope();
   const [range, setRange] = useState('30d');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -24,32 +25,44 @@ export default function ClinicAnalyticsPage() {
   const [revenueSeries, setRevenueSeries] = useState([]);
   const [topServices, setTopServices] = useState([]);
   const [staffUtilization, setStaffUtilization] = useState([]);
+  const [noShowRisk, setNoShowRisk] = useState([]);
+  const [feedbackSummary, setFeedbackSummary] = useState(null);
 
   const loadAnalytics = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [summaryPayload, revenuePayload, topPayload, staffPayload] = await Promise.all([
+      const [summaryPayload, revenuePayload, topPayload, staffPayload, feedbackPayload] = await Promise.all([
         apiRequest(`/api/v1/clinic/analytics/summary?range=${range}`),
         apiRequest(`/api/v1/clinic/analytics/revenue-series?range=${range}`),
         apiRequest(`/api/v1/clinic/analytics/services-top?range=${range}`),
         apiRequest(`/api/v1/clinic/analytics/staff-utilization?range=${range}`),
+        clinicId ? apiRequest(`/api/v1/clinic/growth/feedback-summary?clinic_id=${encodeURIComponent(clinicId)}&days=${range === '7d' ? 30 : range === '90d' ? 180 : 90}`).catch(() => null) : Promise.resolve(null),
       ]);
 
       setSummary(summaryPayload || null);
       setRevenueSeries(Array.isArray(revenuePayload?.series) ? revenuePayload.series : []);
       setTopServices(Array.isArray(topPayload?.items) ? topPayload.items : []);
       setStaffUtilization(Array.isArray(staffPayload?.items) ? staffPayload.items : []);
+      setFeedbackSummary(feedbackPayload || null);
+      if (clinicId) {
+        const riskPayload = await apiRequest(`/api/v1/analytics/clinic/${clinicId}/no-show-risk?days=${range === '7d' ? 30 : range === '90d' ? 180 : 120}`);
+        setNoShowRisk(Array.isArray(riskPayload) ? riskPayload : []);
+      } else {
+        setNoShowRisk([]);
+      }
     } catch (requestError) {
       setError(requestError.message || 'Не удалось загрузить аналитику');
       setSummary(null);
       setRevenueSeries([]);
       setTopServices([]);
       setStaffUtilization([]);
+      setNoShowRisk([]);
+      setFeedbackSummary(null);
     } finally {
       setLoading(false);
     }
-  }, [range]);
+  }, [range, clinicId]);
 
   useEffect(() => {
     loadAnalytics();
@@ -96,6 +109,9 @@ export default function ClinicAnalyticsPage() {
           <p className="page-subtitle">Выручка, неявки, топ-услуги, загрузка команды и динамика стационара.</p>
         </div>
         <div className="flex gap-2">
+          <Link href="/clinic/no-show-operations" className="btn-secondary !px-3 !py-1.5">
+            No-show операции
+          </Link>
           {['7d', '30d', '90d'].map((value) => (
             <button
               key={value}
@@ -196,6 +212,69 @@ export default function ClinicAnalyticsPage() {
               )}
             </Card>
           </section>
+
+          <Card
+            title="No-show Risk владельцев"
+            subtitle="Риск неявок по владельцам за период. Используйте для proactive коммуникации и депозита/напоминаний."
+          >
+            {noShowRisk.length ? (
+              <div className="space-y-2">
+                {noShowRisk.slice(0, 20).map((row) => (
+                  <article key={row.owner_user_id} className="rounded-xl border border-lapka-200 bg-white p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-lapka-900">{row.owner_user_id}</p>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                          row.risk_level === 'high'
+                            ? 'bg-rose-100 text-rose-700'
+                            : row.risk_level === 'medium'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-emerald-100 text-emerald-700'
+                        }`}
+                      >
+                        {row.risk_level}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-lapka-700">
+                      Записей: {row.appointments_total} · No-show: {row.no_show_count} · Доля: {(Number(row.no_show_rate || 0) * 100).toFixed(1)}%
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="No-show risk пока не рассчитан" text="Недостаточно данных по записям за выбранный период." />
+            )}
+          </Card>
+
+          {feedbackSummary ? (
+            <Card title="NPS / CSAT после визита" subtitle="Сигнал качества сервиса и follow-up кампаний по отзывам владельцев.">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-[24px] border border-lapka-200 bg-white px-4 py-4">
+                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-lapka-500">NPS</p>
+                  <p className="mt-2 text-3xl font-black tracking-tight text-lapka-950">{feedbackSummary.nps}</p>
+                  <p className="mt-1 text-sm text-lapka-600">
+                    Отзывов: {feedbackSummary.reviews_total} · Окно: {feedbackSummary.window_days} дней
+                  </p>
+                </div>
+                <div className="rounded-[24px] border border-lapka-200 bg-white px-4 py-4">
+                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-lapka-500">CSAT</p>
+                  <p className="mt-2 text-3xl font-black tracking-tight text-lapka-950">{feedbackSummary.csat}%</p>
+                  <p className="mt-1 text-sm text-lapka-600">
+                    Promoters: {feedbackSummary.promoters} · Detractors: {feedbackSummary.detractors}
+                  </p>
+                </div>
+              </div>
+              {(feedbackSummary.recommendations || []).length ? (
+                <div className="mt-4 space-y-2 text-sm text-lapka-700">
+                  {(feedbackSummary.recommendations || []).map((item) => (
+                    <div key={item} className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </Card>
+          ) : null}
 
           <section className="grid-soft-2">
             <Card title="Исходы и операционные сигналы" subtitle="Слой сравнительной оценки, который связывает расписание, выписки, профилактику и повторный контроль.">

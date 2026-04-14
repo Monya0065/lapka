@@ -30,6 +30,9 @@ export default function ClinicDashboardPage() {
   const [auditRows, setAuditRows] = useState([]);
   const [expirationAlerts, setExpirationAlerts] = useState(null);
   const [expirationAlerts7, setExpirationAlerts7] = useState(null);
+  const [flowboardSummary, setFlowboardSummary] = useState(null);
+  const [noShowReport, setNoShowReport] = useState(null);
+  const [integrationsStatus, setIntegrationsStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -43,13 +46,16 @@ export default function ClinicDashboardPage() {
       if (!resolvedClinicId) {
         throw new Error('Не удалось определить текущую клинику');
       }
-      const [membersPayload, patientsPayload, appointmentsPayload, auditPayload, expPayload30, expPayload7] = await Promise.all([
+      const [membersPayload, patientsPayload, appointmentsPayload, auditPayload, expPayload30, expPayload7, flowPayload, noShowPayload, integrationsPayload] = await Promise.all([
         apiRequest(`/api/v1/clinics/me/members${query}`),
         apiRequest(`/api/v1/clinics/me/patients?limit=500${clinicId ? `&clinic_id=${encodeURIComponent(clinicId)}` : ''}`),
         apiRequest(`/api/v1/appointments?clinic_id=${encodeURIComponent(resolvedClinicId)}&mine=false`),
         apiRequest('/api/v1/audit?limit=20'),
         apiRequest(`/api/v1/clinic/pharmacy/expiration-alerts?clinic_id=${encodeURIComponent(resolvedClinicId)}&within_days=30`).catch(() => ({ count: 0, items: [] })),
         apiRequest(`/api/v1/clinic/pharmacy/expiration-alerts?clinic_id=${encodeURIComponent(resolvedClinicId)}&within_days=7`).catch(() => ({ count: 0, items: [] })),
+        apiRequest(`/api/v1/appointments/flowboard/summary?clinic_id=${encodeURIComponent(resolvedClinicId)}&date=${new Date().toISOString().slice(0, 10)}`).catch(() => null),
+        apiRequest(`/api/v1/analytics/clinic/${resolvedClinicId}/no-show-risk/report?days=90`).catch(() => null),
+        apiRequest('/api/v1/clinic/integrations/status').catch(() => null),
       ]);
       setClinic(clinicPayload || null);
       setMembers(Array.isArray(membersPayload) ? membersPayload : []);
@@ -58,6 +64,9 @@ export default function ClinicDashboardPage() {
       setAuditRows(Array.isArray(auditPayload) ? auditPayload : []);
       setExpirationAlerts(expPayload30?.count != null ? expPayload30 : { count: 0, items: [] });
       setExpirationAlerts7(expPayload7?.count != null ? expPayload7 : { count: 0, items: [] });
+      setFlowboardSummary(flowPayload || null);
+      setNoShowReport(noShowPayload || null);
+      setIntegrationsStatus(integrationsPayload || null);
     } catch (e) {
       setError(e.message || 'Не удалось загрузить данные клиники');
       setClinic(null);
@@ -67,6 +76,9 @@ export default function ClinicDashboardPage() {
       setAuditRows([]);
       setExpirationAlerts(null);
       setExpirationAlerts7(null);
+      setFlowboardSummary(null);
+      setNoShowReport(null);
+      setIntegrationsStatus(null);
     } finally {
       setLoading(false);
     }
@@ -114,12 +126,52 @@ export default function ClinicDashboardPage() {
     () => summarizeClinicOperations({ members, patients, appointments, auditRows }),
     [appointments, auditRows, members, patients]
   );
+  const criticalAlerts = useMemo(() => {
+    const alerts = [];
+    const flowMetrics = flowboardSummary?.metrics || {};
+    const bottlenecks = flowboardSummary?.bottlenecks || {};
+    if (Number(expirationAlerts7?.count || 0) > 0) {
+      alerts.push({
+        key: 'pharmacy-expiration',
+        label: 'Критичные сроки на складе',
+        value: `${expirationAlerts7.count} поз.`,
+        href: '/clinic/pharmacy?expires_within_days=7',
+      });
+    }
+    if (Number(bottlenecks.waitingOver30 || 0) >= 3) {
+      alerts.push({
+        key: 'waiting-over-30',
+        label: 'Очередь > 30 минут',
+        value: `${bottlenecks.waitingOver30} пациентов`,
+        href: '/clinic/flowboard',
+      });
+    }
+    if (Number(flowMetrics.in_consult || 0) >= 8) {
+      alerts.push({
+        key: 'high-consult-load',
+        label: 'Высокая нагрузка приёма',
+        value: `${flowMetrics.in_consult} в приёме`,
+        href: '/clinic/flowboard',
+      });
+    }
+    if (Number(noShowReport?.high_risk || 0) >= 5) {
+      alerts.push({
+        key: 'no-show-high-risk',
+        label: 'No-show high-risk сегмент',
+        value: `${noShowReport.high_risk} owner`,
+        href: '/clinic/no-show-operations',
+      });
+    }
+    return alerts.slice(0, 4);
+  }, [expirationAlerts7?.count, flowboardSummary?.bottlenecks, flowboardSummary?.metrics, noShowReport?.high_risk]);
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1 className="page-title">CRM и контроль клиники</h1>
+          <h1 className="page-title" data-testid="clinic-dashboard-title">
+            CRM и контроль клиники
+          </h1>
           <p className="page-subtitle">Операционные KPI, команда клиники, пациенты по согласию владельца и контроль аудита в одной панели.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -208,6 +260,21 @@ export default function ClinicDashboardPage() {
             ) : null}
           </section>
 
+          <Card title="Критичные алерты дня" subtitle="Быстрый вход в операционные действия без поиска по разделам.">
+            {criticalAlerts.length ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {criticalAlerts.map((item) => (
+                  <Link key={item.key} href={item.href} className="rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 transition hover:-translate-y-0.5 hover:shadow-soft">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-700">{item.label}</p>
+                    <p className="mt-1 text-lg font-black text-red-900">{item.value}</p>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="Критичных алертов нет" text="Операционный контур стабилен на текущий момент." />
+            )}
+          </Card>
+
           <section className="grid items-start gap-5 2xl:grid-cols-[1.08fr_0.92fr]">
             <Card title="Информация о клинике">
               <Table
@@ -260,6 +327,20 @@ export default function ClinicDashboardPage() {
                   <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">Контроль качества</p>
                   <p className="mt-2 text-lg font-bold text-lapka-900">Шаблоны, аудит и аналитика работают как единый управленческий контур, а не как разрозненные страницы.</p>
                 </div>
+                {integrationsStatus ? (
+                  <div className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">Интеграции и ретраи</p>
+                    <p className="mt-2 text-lg font-bold text-lapka-900">
+                      Провайдеры: {(integrationsStatus.providers || []).map((row) => row.provider).join(', ') || '—'}
+                    </p>
+                    <p className="mt-2 text-sm text-lapka-600">
+                      Ошибки оплат (7д): {integrationsStatus.failed_payments_7d || 0} · Ожидают лабы: {integrationsStatus.pending_labs || 0}
+                    </p>
+                    <p className="mt-1 text-sm text-lapka-600">
+                      Рекомендуемых retry-циклов: {integrationsStatus.retries_recommended || 0}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </Card>
           </section>
