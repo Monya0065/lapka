@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import get_settings
 from src.db.session import get_db_session
 from src.models import (
     Camera,
@@ -31,6 +32,7 @@ from src.models import (
     MasterPet,
     Membership,
     MembershipStatus,
+    Notification,
     NotificationType,
     PetOwnerLink,
     RoleEnum,
@@ -296,6 +298,178 @@ async def _create_owner_notification(
     )
 
 
+async def _build_owner_digest_payload(
+    db: AsyncSession,
+    *,
+    owner_user_id: uuid.UUID,
+    window_hours: int,
+) -> dict:
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(hours=window_hours)
+
+    pet_ids = (
+        await db.scalars(select(PetOwnerLink.pet_id).where(PetOwnerLink.owner_user_id == owner_user_id))
+    ).all()
+    if not pet_ids:
+        return {"window_hours": window_hours, "total_updates": 0, "recent_items": [], "by_stay": []}
+
+    stays = (
+        await db.scalars(
+            select(InpatientStay).where(InpatientStay.pet_id.in_(pet_ids)).order_by(InpatientStay.admitted_at.desc()).limit(80)
+        )
+    ).all()
+    stay_ids = [row.id for row in stays]
+    if not stay_ids:
+        return {"window_hours": window_hours, "total_updates": 0, "recent_items": [], "by_stay": []}
+
+    pet_map = {
+        row.id: row
+        for row in (
+            await db.scalars(select(MasterPet).where(MasterPet.id.in_({stay.pet_id for stay in stays})))
+        ).all()
+    }
+
+    event_rows = (
+        await db.scalars(
+            select(InpatientEvent)
+            .where(
+                InpatientEvent.stay_id.in_(stay_ids),
+                InpatientEvent.owner_visible.is_(True),
+                InpatientEvent.created_at >= since,
+            )
+            .order_by(InpatientEvent.created_at.desc())
+            .limit(300)
+        )
+    ).all()
+    photo_rows = (
+        await db.scalars(
+            select(InpatientPhotoReport)
+            .where(
+                InpatientPhotoReport.stay_id.in_(stay_ids),
+                InpatientPhotoReport.taken_at >= since,
+            )
+            .order_by(InpatientPhotoReport.taken_at.desc())
+            .limit(180)
+        )
+    ).all()
+
+    by_stay: dict[uuid.UUID, dict] = {}
+    for stay in stays:
+        pet = pet_map.get(stay.pet_id)
+        by_stay[stay.id] = {
+            "stay_id": str(stay.id),
+            "pet_id": str(stay.pet_id),
+            "pet_name": pet.name if pet else "Питомец",
+            "event_count": 0,
+            "photo_count": 0,
+            "last_update_at": stay.admitted_at,
+        }
+
+    recent_items: list[dict] = []
+    for row in event_rows:
+        current = by_stay.get(row.stay_id)
+        if not current:
+            continue
+        current["event_count"] += 1
+        last_update_at = current["last_update_at"]
+        if not last_update_at or (row.created_at and row.created_at > last_update_at):
+            current["last_update_at"] = row.created_at
+        recent_items.append(
+            {
+                "id": str(row.id),
+                "stay_id": str(row.stay_id),
+                "kind": row.event_type.value if hasattr(row.event_type, "value") else str(row.event_type),
+                "title": row.title,
+                "body": row.description_safe,
+                "created_at": row.created_at,
+            }
+        )
+
+    for row in photo_rows:
+        current = by_stay.get(row.stay_id)
+        if not current:
+            continue
+        current["photo_count"] += 1
+        last_update_at = current["last_update_at"]
+        if not last_update_at or (row.taken_at and row.taken_at > last_update_at):
+            current["last_update_at"] = row.taken_at
+        recent_items.append(
+            {
+                "id": str(row.id),
+                "stay_id": str(row.stay_id),
+                "kind": "photo",
+                "title": "Фото-отчёт",
+                "body": row.caption,
+                "created_at": row.taken_at,
+            }
+        )
+
+    recent_items_sorted = sorted(recent_items, key=lambda x: x.get("created_at") or now, reverse=True)[:40]
+    by_stay_rows = sorted(
+        [row for row in by_stay.values() if (row["event_count"] + row["photo_count"]) > 0],
+        key=lambda x: x.get("last_update_at") or now,
+        reverse=True,
+    )
+    return {
+        "window_hours": window_hours,
+        "total_updates": len(recent_items_sorted),
+        "recent_items": recent_items_sorted,
+        "by_stay": by_stay_rows,
+    }
+
+
+async def _maybe_create_owner_digest_notification(
+    db: AsyncSession,
+    *,
+    owner_user_id: uuid.UUID,
+    digest_payload: dict,
+    min_interval_hours: int = 12,
+) -> bool:
+    total_updates = int(digest_payload.get("total_updates") or 0)
+    if total_updates <= 0:
+        return False
+
+    now = datetime.now(timezone.utc)
+    recent_notifications = (
+        await db.scalars(
+            select(Notification).where(
+                Notification.user_id == owner_user_id,
+                Notification.notification_type == NotificationType.inpatient_update,
+                Notification.created_at >= now - timedelta(hours=min_interval_hours),
+            )
+        )
+    ).all()
+    for row in recent_notifications:
+        meta = row.metadata_json or {}
+        if meta.get("kind") == "inpatient_digest":
+            return False
+
+    by_stay = list(digest_payload.get("by_stay") or [])
+    top_stay = by_stay[0] if by_stay else {}
+    top_pet_name = str(top_stay.get("pet_name") or "питомца")
+    stays_count = len(by_stay)
+    title = "Стационар: ежедневный digest"
+    body = (
+        f"За последние {digest_payload.get('window_hours', 24)} ч: {total_updates} обновлений по {stays_count} кейсам. "
+        f"Самый активный кейс: {top_pet_name}."
+    )
+    await create_notification(
+        db,
+        user_id=owner_user_id,
+        notification_type=NotificationType.inpatient_update,
+        title=title,
+        body=body,
+        metadata={
+            "kind": "inpatient_digest",
+            "window_hours": int(digest_payload.get("window_hours") or 24),
+            "total_updates": total_updates,
+            "stays_count": stays_count,
+            "top_stay_id": str(top_stay.get("stay_id") or ""),
+        },
+    )
+    return True
+
+
 async def _issue_camera_token_for_stay(
     *,
     stay: InpatientStay,
@@ -442,10 +616,12 @@ async def _resolve_camera_stream(
     )
     await db.commit()
 
+    stream_backend = get_settings().camera_stream_backend
     return {
         "camera_name": camera.camera_name,
         "stream_stub": camera.stream_ref_stub,
-        "demo": True,
+        "stream_backend": stream_backend,
+        "demo": stream_backend == "stub",
         "expires_at": token_row.expires_at,
         "one_time": token_row.one_time_flag,
     }
@@ -1176,6 +1352,18 @@ async def owner_list_inpatient(
             }
         )
 
+    digest_payload = await _build_owner_digest_payload(
+        db,
+        owner_user_id=current_user.id,
+        window_hours=24,
+    )
+    digest_sent = await _maybe_create_owner_digest_notification(
+        db,
+        owner_user_id=current_user.id,
+        digest_payload=digest_payload,
+        min_interval_hours=12,
+    )
+
     await log_audit(
         db,
         actor_user_id=str(current_user.id),
@@ -1183,10 +1371,39 @@ async def owner_list_inpatient(
         action="inpatient.owner.list",
         target_type="inpatient_collection",
         target_id=None,
-        metadata={"count": len(out)},
+        metadata={"count": len(out), "digest_sent": digest_sent},
     )
     await db.commit()
     return out
+
+
+@router.get("/owner/inpatient/digest")
+async def owner_inpatient_digest(
+    window_hours: int = Query(default=24, ge=6, le=168),
+    current_user=Depends(require_roles(RoleEnum.owner)),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    payload = await _build_owner_digest_payload(
+        db,
+        owner_user_id=current_user.id,
+        window_hours=window_hours,
+    )
+
+    await log_audit(
+        db,
+        actor_user_id=str(current_user.id),
+        clinic_id=None,
+        action="inpatient.owner.digest",
+        target_type="inpatient_digest",
+        target_id=None,
+        metadata={
+            "window_hours": window_hours,
+            "total_updates": payload["total_updates"],
+            "stays": len(payload["by_stay"]),
+        },
+    )
+    await db.commit()
+    return payload
 
 
 @router.get("/owner/inpatient/camera-stream")

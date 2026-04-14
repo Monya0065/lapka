@@ -1,13 +1,9 @@
-import os
-
 import pytest
 import requests
 
+from tests.constants import API, BARSIK_PET_ID, CLINIC_ID
 
-API = os.getenv("LAPKA_API_BASE", "http://localhost:8000")
 BARSIK_STAY_ID = "77777777-7777-7777-7777-777777777777"
-CLINIC_ID = "11111111-1111-1111-1111-111111111111"
-BARSIK_PET_ID = "55555555-5555-5555-5555-555555555555"
 
 
 def _login(email: str, password: str = "demo12345") -> str:
@@ -140,3 +136,91 @@ def test_vet_event_creates_owner_notification(tokens):
     assert any(row.get("title", "").startswith("Стационар:") for row in rows)
     # new channel column should appear and we expect at least one email when vet triggers owner-visible event
     assert any(row.get("channel") == "email" for row in rows)
+
+
+@pytest.mark.integration
+def test_owner_inpatient_digest_endpoint_shape(tokens):
+    response = requests.get(
+        f"{API}/api/v1/inpatient/owner/inpatient/digest?window_hours=24",
+        headers=_owner_headers(tokens),
+        timeout=20,
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert set(payload.keys()) == {"window_hours", "total_updates", "recent_items", "by_stay"}
+    assert isinstance(payload["window_hours"], int)
+    assert isinstance(payload["total_updates"], int)
+    assert isinstance(payload["recent_items"], list)
+    assert isinstance(payload["by_stay"], list)
+    if payload["recent_items"]:
+        sample = payload["recent_items"][0]
+        assert {"id", "stay_id", "kind", "title", "body", "created_at"}.issubset(sample.keys())
+
+
+@pytest.mark.integration
+def test_owner_digest_notification_is_deduplicated(tokens):
+    grant = requests.post(
+        f"{API}/api/v1/consents",
+        headers={**_owner_headers(tokens), "Content-Type": "application/json"},
+        json={
+            "pet_id": BARSIK_PET_ID,
+            "clinic_id": CLINIC_ID,
+            "scope_level": "INPATIENT_VIEW",
+        },
+        timeout=20,
+    )
+    assert grant.status_code in {200, 201}
+
+    create_event = requests.post(
+        f"{API}/api/v1/inpatient/stays/{BARSIK_STAY_ID}/events",
+        headers={**_vet_headers(tokens), "Content-Type": "application/json"},
+        json={
+            "event_type": "status_update",
+            "owner_visible": True,
+            "title": "Digest dedup check",
+            "description_safe": "Проверка дедупликации digest-уведомлений.",
+        },
+        timeout=20,
+    )
+    assert create_event.status_code == 201
+
+    before = requests.get(
+        f"{API}/api/v1/notifications?limit=100",
+        headers=_owner_headers(tokens),
+        timeout=20,
+    )
+    assert before.status_code == 200
+    before_count = sum(1 for row in before.json() if (row.get("metadata") or {}).get("kind") == "inpatient_digest")
+
+    first = requests.get(
+        f"{API}/api/v1/inpatient/owner/inpatient",
+        headers=_owner_headers(tokens),
+        timeout=20,
+    )
+    assert first.status_code == 200
+
+    mid = requests.get(
+        f"{API}/api/v1/notifications?limit=100",
+        headers=_owner_headers(tokens),
+        timeout=20,
+    )
+    assert mid.status_code == 200
+    mid_count = sum(1 for row in mid.json() if (row.get("metadata") or {}).get("kind") == "inpatient_digest")
+
+    second = requests.get(
+        f"{API}/api/v1/inpatient/owner/inpatient",
+        headers=_owner_headers(tokens),
+        timeout=20,
+    )
+    assert second.status_code == 200
+
+    after = requests.get(
+        f"{API}/api/v1/notifications?limit=100",
+        headers=_owner_headers(tokens),
+        timeout=20,
+    )
+    assert after.status_code == 200
+    after_count = sum(1 for row in after.json() if (row.get("metadata") or {}).get("kind") == "inpatient_digest")
+
+    assert mid_count in {before_count, before_count + 1}
+    assert after_count == mid_count
