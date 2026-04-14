@@ -149,6 +149,11 @@ def run_triage(
             "key_reasons": ["Selected symptoms include emergency red flags."],
             "questions_to_ask": ["When did this start?", "Is the state getting worse now?"],
             "next_steps": ["Emergency clinic visit required immediately."],
+            "what_to_prepare_for_visit": [
+                "Кратко зафиксируйте время начала симптомов и динамику.",
+                "Подготовьте список текущих лекарств и последние документы.",
+                "Организуйте безопасную переноску и выезд в клинику без задержки.",
+            ],
             "disclaimer": "AI does not diagnose and does not prescribe treatment.",
             "matched_symptoms": [
                 {"id": sid, "name": by_id[sid].get("name"), "red_flag": bool(by_id[sid].get("red_flag", False))}

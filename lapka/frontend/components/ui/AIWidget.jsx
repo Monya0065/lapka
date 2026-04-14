@@ -34,6 +34,9 @@ function formatTriageOutput(payload, t) {
   if (Array.isArray(payload.next_steps) && payload.next_steps.length) {
     lines.push(`${t('aiWidget.nextSteps')}: ${payload.next_steps.join(' ')}`);
   }
+  if (Array.isArray(payload.what_to_prepare_for_visit) && payload.what_to_prepare_for_visit.length) {
+    lines.push(`Что подготовить к визиту: ${payload.what_to_prepare_for_visit.join(' ')}`);
+  }
   if (payload.disclaimer) {
     lines.push(String(payload.disclaimer));
   }

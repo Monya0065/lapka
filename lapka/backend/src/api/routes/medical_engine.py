@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.session import get_db_session
-from src.models import ConsentScope, Document, MasterPet, PetOwnerLink, Prescription, RoleEnum, User, Visit
+from src.models import ConsentScope, Document, MasterPet, PetOwnerLink, Prescription, RoleEnum, Symptom, User, Visit
 from src.security.deps import enforce_pet_scope, get_current_user, require_roles
 from src.services.ai_safe import has_policy_violation
 from src.services.audit import log_audit
@@ -146,7 +146,11 @@ async def get_red_flags(current_user=Depends(get_current_user)) -> dict[str, Any
 
 
 @router.post("/triage")
-async def run_medical_triage(payload: MedicalTriageRequest, current_user=Depends(get_current_user)) -> dict[str, Any]:
+async def run_medical_triage(
+    payload: MedicalTriageRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
     combined_text = " ".join([payload.symptom_text, *payload.severity_indicators, *payload.symptom_names]).strip()
     if current_user.role == RoleEnum.owner and has_policy_violation(combined_text):
         raise HTTPException(
@@ -156,6 +160,28 @@ async def run_medical_triage(payload: MedicalTriageRequest, current_user=Depends
                 "message": "I can't prescribe treatment. Contact a veterinarian.",
             },
         )
+
+    ids_clean = [str(x) for x in (payload.symptom_ids or []) if x]
+    if ids_clean:
+        rows = (await db.scalars(select(Symptom).where(Symptom.id.in_(ids_clean)))).all()
+        emergency_names = [r.name for r in rows if r.emergency_flag]
+        if emergency_names:
+            return {
+                "level": "RED",
+                "red_flags_detected": emergency_names,
+                "key_reasons": ["Среди выбранных симптомов есть признаки, требующие срочной ветеринарной помощи."],
+                "questions_to_ask": ["Когда это началось?", "Есть ли ухудшение в последний час?"],
+                "next_steps": ["Свяжитесь с клиникой немедленно или приезжайте на экстренный приём."],
+                "what_to_prepare_for_visit": [
+                    "Кратко зафиксируйте время начала симптомов и динамику.",
+                    "Возьмите документы питомца и список текущих лекарств.",
+                    "Подготовьте безопасную переноску и выезжайте в клинику без задержки.",
+                ],
+                "disclaimer": "Оценка не заменяет осмотр ветеринара и не является диагнозом.",
+                "matched_symptoms": [
+                    {"id": r.id, "name": r.name, "red_flag": bool(r.emergency_flag)} for r in rows
+                ],
+            }
 
     result = run_triage(
         symptom_text=payload.symptom_text,
