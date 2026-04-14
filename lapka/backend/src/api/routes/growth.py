@@ -4,7 +4,7 @@ import secrets
 import time
 import uuid
 from collections import defaultdict, deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
@@ -20,15 +20,19 @@ from src.models import (
     LostPetSighting,
     LostPetStatus,
     MasterPet,
+    Membership,
+    MembershipStatus,
     Notification,
     NotificationType,
     PetPassport,
     Referral,
     ReferralStatus,
+    Review,
+    ReviewTargetType,
     RoleEnum,
     User,
 )
-from src.security.deps import get_current_user, require_owner_of_pet, require_roles
+from src.security.deps import get_current_user, require_clinic_membership, require_owner_of_pet, require_roles
 from src.services.audit import log_audit
 from src.utils.demo_media import resolve_demo_pet_photo
 
@@ -98,6 +102,19 @@ def _mask_phone(phone: str | None) -> str | None:
     if len(digits) < 4:
         return "***"
     return f"***-***-{''.join(digits[-2:])}"
+
+
+def _mask_contact(contact: str | None) -> str | None:
+    if not contact:
+        return None
+    value = contact.strip()
+    if "@" in value:
+        local, _, domain = value.partition("@")
+        if not domain:
+            return "***"
+        safe_local = (local[:2] + "***") if len(local) > 2 else "***"
+        return f"{safe_local}@{domain}"
+    return _mask_phone(value)
 
 
 def _generate_public_token() -> str:
@@ -195,6 +212,70 @@ async def get_pet_passport(
     )
     await db.commit()
     return {"pet_id": str(pet.id), "passport": _serialize_passport(passport, pet)}
+
+
+@router.get("/owner/pets/{pet_id}/passport/export")
+async def export_pet_passport_snapshot(
+    pet_id: str,
+    current_user=Depends(require_roles(RoleEnum.owner)),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """JSON snapshot for owner backup / sharing outside Lapka (no medical record; QR payload only)."""
+    pet_uuid = _as_uuid(pet_id, "pet_id")
+    await require_owner_of_pet(db, owner_user_id=current_user.id, pet_id=pet_uuid)
+
+    pet = await db.scalar(select(MasterPet).where(MasterPet.id == pet_uuid))
+    if not pet:
+        raise HTTPException(status_code=404, detail={"code": "PET_NOT_FOUND", "message": "Pet not found"})
+
+    passport = await db.scalar(select(PetPassport).where(PetPassport.pet_id == pet.id))
+    if not passport:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "PASSPORT_MISSING", "message": "Generate a public passport first"},
+        )
+
+    await log_audit(
+        db,
+        actor_user_id=str(current_user.id),
+        clinic_id=None,
+        action="pet_passport.export",
+        target_type="pet_passport",
+        target_id=str(passport.id),
+        metadata={"pet_id": str(pet.id)},
+    )
+    await db.commit()
+
+    share_active = passport.revoked_at is None
+    return {
+        "lapka_export_version": 1,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "disclaimer": "Снимок для владельца: не содержит полной медкарты. Публичная ссылка действует, пока не отозвана.",
+        "pet": {
+            "id": str(pet.id),
+            "name": pet.name,
+            "species": pet.species,
+            "breed": pet.breed,
+            "color": pet.color,
+            "sex": pet.sex,
+            "birth_date": pet.birth_date.isoformat() if pet.birth_date else None,
+            "chip_id": pet.chip_id,
+            "passport_id": pet.passport_id,
+        },
+        "passport": {
+            "id": str(passport.id),
+            "allergies_summary": passport.allergies_summary,
+            "emergency_contact_phone": passport.emergency_contact_phone,
+            "allow_unmasked_phone": passport.allow_unmasked_phone,
+            "include_microchip": passport.include_microchip,
+            "revoked_at": passport.revoked_at.isoformat() if passport.revoked_at else None,
+        },
+        "public_share": {
+            "active": share_active,
+            "token": passport.public_token if share_active else None,
+            "api_path": f"/api/v1/public/pet/{passport.public_token}" if share_active else None,
+        },
+    }
 
 
 @router.post("/owner/pets/{pet_id}/passport/generate")
@@ -418,12 +499,13 @@ async def get_lost_pet_report(
 
     return {
         **_serialize_lost_pet(report, pet),
+        "sightings_public_count": len(sightings),
         "sightings": [
             {
                 "id": str(item.id),
-                "reporter_name": item.reporter_name,
+                "reporter_name": None,
                 "location_note": item.location_note,
-                "message": item.message,
+                "message": None,
                 "created_at": item.created_at,
             }
             for item in sightings
@@ -512,6 +594,75 @@ async def mark_lost_pet_found(
     )
     await db.commit()
     return {"status": "found", "id": str(report.id)}
+
+
+@router.get("/owner/lost-pets/my")
+async def owner_list_lost_pet_reports(
+    include_found: bool = Query(default=True),
+    current_user=Depends(require_roles(RoleEnum.owner)),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[dict]:
+    query = select(LostPetReport).where(LostPetReport.owner_id == current_user.id).order_by(LostPetReport.created_at.desc()).limit(200)
+    if not include_found:
+        query = query.where(LostPetReport.status == LostPetStatus.active)
+    reports = (await db.scalars(query)).all()
+    if not reports:
+        return []
+    pets = (await db.scalars(select(MasterPet).where(MasterPet.id.in_([row.pet_id for row in reports])))).all()
+    pet_map = {pet.id: pet for pet in pets}
+    return [_serialize_lost_pet(report, pet_map[report.pet_id], include_private=True) for report in reports if report.pet_id in pet_map]
+
+
+@router.get("/owner/lost-pets/{report_id}")
+async def owner_get_lost_pet_report(
+    report_id: str,
+    current_user=Depends(require_roles(RoleEnum.owner)),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    report_uuid = _as_uuid(report_id, "report_id")
+    report = await db.scalar(select(LostPetReport).where(LostPetReport.id == report_uuid))
+    if not report:
+        raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Lost pet report not found"})
+    if report.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail={"code": "FORBIDDEN", "message": "Access denied"})
+
+    pet = await db.scalar(select(MasterPet).where(MasterPet.id == report.pet_id))
+    if not pet:
+        raise HTTPException(status_code=404, detail={"code": "PET_NOT_FOUND", "message": "Pet not found"})
+
+    sightings = (
+        await db.scalars(
+            select(LostPetSighting)
+            .where(LostPetSighting.report_id == report.id)
+            .order_by(LostPetSighting.created_at.desc())
+            .limit(50)
+        )
+    ).all()
+    await log_audit(
+        db,
+        actor_user_id=str(current_user.id),
+        clinic_id=None,
+        action="lost_pet.owner.view",
+        target_type="lost_pet_report",
+        target_id=str(report.id),
+        metadata={"sightings_count": len(sightings)},
+    )
+    await db.commit()
+    return {
+        **_serialize_lost_pet(report, pet, include_private=True),
+        "contact_bridge": "privacy_safe",
+        "sightings": [
+            {
+                "id": str(item.id),
+                "reporter_name": item.reporter_name,
+                "reporter_contact_masked": _mask_contact(item.reporter_contact),
+                "location_note": item.location_note,
+                "message": item.message,
+                "created_at": item.created_at,
+            }
+            for item in sightings
+        ],
+    }
 
 
 @router.post("/referrals/invite", status_code=status.HTTP_201_CREATED)
@@ -693,4 +844,77 @@ async def moderate_clinic_invite(
         "status": invite.status.value,
         "review_note": invite.review_note,
         "reviewed_at": invite.reviewed_at,
+    }
+
+
+@router.get("/clinic/growth/feedback-summary")
+async def clinic_feedback_summary(
+    clinic_id: str = Query(...),
+    days: int = Query(default=90, ge=7, le=365),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    clinic_uuid = _as_uuid(clinic_id, "clinic_id")
+    if current_user.role not in {RoleEnum.clinic_admin, RoleEnum.network_admin}:
+        raise HTTPException(status_code=403, detail={"code": "FORBIDDEN", "message": "Role is not allowed"})
+    if current_user.role != RoleEnum.network_admin:
+        await require_clinic_membership(db, user_id=current_user.id, clinic_id=clinic_uuid)
+    else:
+        membership = await db.scalar(
+            select(Membership).where(
+                Membership.clinic_id == clinic_uuid,
+                Membership.status == MembershipStatus.active,
+            )
+        )
+        if not membership:
+            raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Clinic not found"})
+
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    reviews = (
+        await db.scalars(
+            select(Review).where(
+                Review.target_type == ReviewTargetType.clinic,
+                Review.target_id == clinic_uuid,
+                Review.created_at >= since,
+            )
+        )
+    ).all()
+
+    total = len(reviews)
+    promoters = sum(1 for row in reviews if int(row.rating or 0) >= 5)
+    passives = sum(1 for row in reviews if int(row.rating or 0) == 4)
+    detractors = sum(1 for row in reviews if int(row.rating or 0) <= 3)
+    nps = round(((promoters - detractors) / total) * 100, 1) if total else 0.0
+    csat = round((sum(1 for row in reviews if int(row.rating or 0) >= 4) / total) * 100, 1) if total else 0.0
+
+    recommendations: list[str] = []
+    if total < 10:
+        recommendations.append("Низкая выборка отзывов: включите post-visit запрос оценки в течение 12 часов после визита.")
+    if nps < 20:
+        recommendations.append("NPS ниже целевого: добавьте follow-up звонок для владельцев с оценкой 3 и ниже.")
+    if csat < 75:
+        recommendations.append("CSAT проседает: проверьте SLA ответа в inbox и прозрачность плана после визита.")
+    if not recommendations:
+        recommendations.append("Метрики стабильны: масштабируйте кампанию повторных профилактических визитов.")
+
+    await log_audit(
+        db,
+        actor_user_id=str(current_user.id),
+        clinic_id=str(clinic_uuid),
+        action="growth.feedback_summary.view",
+        target_type="clinic",
+        target_id=str(clinic_uuid),
+        metadata={"days": days, "reviews": total, "nps": nps, "csat": csat},
+    )
+    await db.commit()
+    return {
+        "clinic_id": str(clinic_uuid),
+        "window_days": days,
+        "reviews_total": total,
+        "promoters": promoters,
+        "passives": passives,
+        "detractors": detractors,
+        "nps": nps,
+        "csat": csat,
+        "recommendations": recommendations,
     }

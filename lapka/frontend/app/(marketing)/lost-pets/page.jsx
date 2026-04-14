@@ -84,7 +84,9 @@ export default function LostPetsPage() {
     setLoadingDetail(true);
     setError('');
     try {
-      const payload = await apiRequest(`/api/v1/lost-pets/${id}`, { auth: false });
+      const payload = ownerMode
+        ? await apiRequest(`/api/v1/owner/lost-pets/${id}`)
+        : await apiRequest(`/api/v1/lost-pets/${id}`, { auth: false });
       setSelectedReport(payload || null);
     } catch (requestError) {
       setError(requestError.message || 'Не удалось открыть карточку');
@@ -411,7 +413,16 @@ export default function LostPetsPage() {
                       {selectedReport.sightings.slice(0, 4).map((item) => (
                         <div key={item.id} className="rounded-xl border border-lapka-200 bg-white px-3 py-2 text-xs text-lapka-700">
                           <p className="font-semibold">{item.reporter_name || 'Аноним'}</p>
-                          <p>{item.message}</p>
+                          {ownerMode ? (
+                            <>
+                              <p>{item.message || 'Сообщение скрыто'}</p>
+                              {item.reporter_contact_masked ? (
+                                <p className="mt-1 text-[11px] text-lapka-500">Контакт (privacy-safe): {item.reporter_contact_masked}</p>
+                              ) : null}
+                            </>
+                          ) : (
+                            <p className="text-lapka-600">Публичный сигнал получен. Полный текст виден только владельцу.</p>
+                          )}
                         </div>
                       ))}
                     </div>

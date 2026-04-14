@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorBanner from '@/components/ui/ErrorBanner';
 import Skeleton from '@/components/ui/Skeleton';
+import { apiRequest } from '@/lib/api';
 import { loadOwnerBaseData, loadOwnerServicesData } from '@/lib/owner-data';
 import { buildServiceOverview, SERVICE_ACTIONS, formatDateTimeLabel } from '@/lib/owner-workspace';
 import { localizeServiceType, localizeVisitType, resolveClinicGallery, resolveClinicPhoto } from '@/lib/pets';
@@ -23,6 +24,8 @@ export default function OwnerServicesHubPage() {
   const [clinics, setClinics] = useState([]);
   const [insuranceClaims, setInsuranceClaims] = useState([]);
   const [referrals, setReferrals] = useState([]);
+  const [referralEmail, setReferralEmail] = useState('');
+  const [sendingReferral, setSendingReferral] = useState(false);
 
   const loadHub = useCallback(async () => {
     setLoading(true);
@@ -52,9 +55,30 @@ export default function OwnerServicesHubPage() {
 
   const overview = useMemo(() => buildServiceOverview({ clinics, appointments, invoices }), [appointments, clinics, invoices]);
 
+  async function sendReferralInvite(event) {
+    event.preventDefault();
+    if (!referralEmail.trim()) return;
+    setSendingReferral(true);
+    setError('');
+    try {
+      await apiRequest('/api/v1/referrals/invite', {
+        method: 'POST',
+        body: {
+          invited_email: referralEmail.trim(),
+        },
+      });
+      setReferralEmail('');
+      await loadHub();
+    } catch (requestError) {
+      setError(requestError.message || 'Не удалось отправить приглашение');
+    } finally {
+      setSendingReferral(false);
+    }
+  }
+
   function actionLabel(itemId) {
     if (itemId === 'appointments') return 'Открыть записи';
-    if (itemId === 'map') return 'Открыть карту';
+    if (itemId === 'clinics' || itemId === 'map') return 'Открыть карту';
     if (itemId === 'shared-care') return 'Совместный уход';
     if (itemId === 'billing') return 'Открыть финансы';
     return 'Перейти';
@@ -243,15 +267,39 @@ export default function OwnerServicesHubPage() {
               </div>
             </Card>
 
-            <Card title="Как теперь устроен сервисный слой" subtitle="Записи, финансы, общие задачи и клиники собраны в понятный сервисный контур владельца.">
-              <div className="space-y-3 text-base leading-relaxed text-lapka-700">
-                <p>• запись, клиника и визит больше не разъезжаются по разным мелким разделам;</p>
-                <p>• финансы и расходы связаны с реальными визитами и сервисами;</p>
-                <p>• совместный уход не смешивается с медицинским доступом клиник;</p>
-                <p>• паспорт питомца и краткая сводка для врача доступны как сервисные сценарии, а не случайные инструменты.</p>
+            <Card title="Growth loop: совместный уход" subtitle="Приглашения помогают вернуть владельца в сервис и укрепляют координацию ухода.">
+              <form className="space-y-3" onSubmit={sendReferralInvite}>
+                <label className="block">
+                  <span className="label">Email для приглашения</span>
+                  <input
+                    className="input"
+                    type="email"
+                    value={referralEmail}
+                    onChange={(event) => setReferralEmail(event.target.value)}
+                    placeholder="friend@example.com"
+                    required
+                  />
+                </label>
+                <button type="submit" className="btn-primary" disabled={sendingReferral}>
+                  {sendingReferral ? 'Отправляем...' : 'Отправить приглашение'}
+                </button>
+              </form>
+              <div className="mt-4 space-y-2 text-sm text-lapka-700">
+                {referrals.length ? (
+                  referrals.slice(0, 5).map((row) => (
+                    <div key={row.id} className="rounded-xl border border-lapka-200 bg-white px-3 py-2">
+                      <p className="font-semibold text-lapka-900">{row.invited_email}</p>
+                      <p className="text-xs text-lapka-500">
+                        {row.status} · {formatDateTimeLabel(row.created_at)}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p>Пока нет приглашений. Добавьте первого участника совместного ухода.</p>
+                )}
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
-                <Link href="/owner/expenses" className="btn-secondary">Открыть расходы</Link>
+                <Link href="/owner/shared-care" className="btn-secondary">Открыть shared-care</Link>
                 <Link href="/owner/inbox" className="btn-secondary">Открыть входящие</Link>
               </div>
             </Card>
