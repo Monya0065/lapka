@@ -33,9 +33,15 @@ test-results/
 backend/storage/*.db
 backend/storage/*.png
 
+# Local workspace artifacts
+frontend/care-debug.png
+
 # Large files
 *.zip
 *.tar.gz
+
+# Local project copy
+../lapka 2/
 
 # Secrets
 .env
