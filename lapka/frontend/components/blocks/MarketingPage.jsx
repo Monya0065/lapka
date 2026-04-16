@@ -17,24 +17,46 @@ export default function MarketingPage({
   sideImageAlt,
   primaryCtaLabel
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === 'en' ? 'en' : 'ru';
+  const resolveText = (value) => {
+    if (value && typeof value === 'object') {
+      return value[lang] || value.ru || value.en || '';
+    }
+    return value || '';
+  };
+  const resolveList = (value) => (Array.isArray(value) ? value.map(resolveText) : []);
+  const resolveCards = (value) =>
+    (Array.isArray(value) ? value : []).map((card) => ({
+      ...card,
+      title: resolveText(card?.title),
+      subtitle: resolveText(card?.subtitle),
+    }));
+
+  const eyebrowText = resolveText(eyebrow);
+  const titleText = resolveText(title);
+  const subtitleText = resolveText(subtitle);
+  const ctaLabelText = resolveText(ctaLabel);
+  const primaryCtaLabelText = resolveText(primaryCtaLabel);
+  const bulletsList = resolveList(bullets);
+  const cardsList = resolveCards(cards);
 
   return (
     <main className="page-wrap space-y-8 py-6 pb-10 md:space-y-10 md:py-8">
       <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         <Card className="p-6 md:p-8">
-          <p className="pill">{eyebrow}</p>
-          <h1 className="mt-4 text-4xl font-black leading-tight tracking-tight text-lapka-900 md:text-6xl">{title}</h1>
-          <p className="mt-4 max-w-3xl text-lg text-lapka-700 md:text-xl">{subtitle}</p>
+          <p className="pill">{eyebrowText}</p>
+          <h1 className="mt-4 text-4xl font-black leading-tight tracking-tight text-lapka-900 md:text-6xl">{titleText}</h1>
+          <p className="mt-4 max-w-3xl text-lg text-lapka-700 md:text-xl">{subtitleText}</p>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link href="/login?role=owner" className="btn-primary">{primaryCtaLabel || t('marketing.createPetProfile')}</Link>
-            <Link href={ctaHref} className="btn-secondary">{ctaLabel}</Link>
+            <Link href="/login?role=owner" className="btn-primary">{primaryCtaLabelText || t('marketing.createPetProfile')}</Link>
+            <Link href={ctaHref} className="btn-secondary">{ctaLabelText}</Link>
           </div>
 
-          {bullets.length ? (
+          {bulletsList.length ? (
             <ul className="mt-6 grid gap-2 text-sm text-lapka-700 md:grid-cols-2">
-              {bullets.map((item) => (
+              {bulletsList.map((item) => (
                 <li key={item} className="rounded-xl border border-lapka-200 bg-white px-3 py-2">{item}</li>
               ))}
             </ul>
@@ -54,9 +76,9 @@ export default function MarketingPage({
         </Card>
       </section>
 
-      {cards.length ? (
+      {cardsList.length ? (
         <section className="grid-soft-3">
-          {cards.map((card) => (
+          {cardsList.map((card) => (
             <Card key={card.title} title={card.title} subtitle={card.subtitle}>
               {card.href ? <Link href={card.href} className="btn-secondary">{t('marketing.learnMore')}</Link> : null}
             </Card>
