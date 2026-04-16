@@ -8,6 +8,14 @@ function pathnameIs(urlString: string, path: string) {
   }
 }
 
+function currentPathname(urlString: string) {
+  try {
+    return new URL(urlString).pathname;
+  } catch {
+    return '';
+  }
+}
+
 const CREDENTIALS = {
   owner: { email: 'owner@lapka.local', password: 'demo12345', role: 'owner' },
   vet: { email: 'vet@lapka.local', password: 'demo12345', role: 'vet' },
@@ -64,6 +72,14 @@ async function loginViaApi(page, request, role: keyof typeof CREDENTIALS) {
   );
 }
 
+async function gotoRouteWithReauth(page, request, role: keyof typeof CREDENTIALS, route: string) {
+  await page.goto(route);
+  if (currentPathname(page.url()) === '/login') {
+    await loginViaApi(page, request, role);
+    await page.goto(route);
+  }
+}
+
 async function completeLegalGateIfShown(page) {
   const onLegalPage = () => {
     try {
@@ -107,7 +123,7 @@ test('owner nav baseline: core routes open without legal redirect loop', async (
   const routes = ['/owner/dashboard', '/owner/pets', '/owner/documents', '/owner/billing'];
 
   for (const route of routes) {
-    await page.goto(route);
+    await gotoRouteWithReauth(page, request, 'owner', route);
     await expect.poll(() => pathnameIs(page.url(), route), { timeout: 15_000 }).toBeTruthy();
     await expect.poll(() => !page.url().includes('/owner/legal')).toBeTruthy();
   }
@@ -118,7 +134,7 @@ test('vet nav baseline: core routes open without legal redirect loop', async ({ 
   const routes = ['/vet/dashboard', '/vet/patients', '/vet/documents', '/vet/labs'];
 
   for (const route of routes) {
-    await page.goto(route);
+    await gotoRouteWithReauth(page, request, 'vet', route);
     await expect.poll(() => pathnameIs(page.url(), route), { timeout: 20_000 }).toBeTruthy();
     await expect.poll(() => !page.url().includes('/vet/legal')).toBeTruthy();
   }
@@ -129,7 +145,7 @@ test('clinic admin nav baseline: core routes open without legal redirect loop', 
   const routes = ['/clinic/dashboard', '/clinic/schedule', '/clinic/patients', '/clinic/billing'];
 
   for (const route of routes) {
-    await page.goto(route);
+    await gotoRouteWithReauth(page, request, 'clinic_admin', route);
     await expect.poll(() => pathnameIs(page.url(), route), { timeout: 20_000 }).toBeTruthy();
     await expect.poll(() => !page.url().includes('/clinic/legal')).toBeTruthy();
   }
@@ -140,7 +156,7 @@ test('platform nav baseline: core routes open without legal redirect loop', asyn
   const routes = ['/platform/dashboard', '/platform/clinics', '/platform/users', '/platform/security'];
 
   for (const route of routes) {
-    await page.goto(route);
+    await gotoRouteWithReauth(page, request, 'network_admin', route);
     await expect.poll(() => pathnameIs(page.url(), route), { timeout: 20_000 }).toBeTruthy();
     await expect.poll(() => !page.url().includes('/platform/legal')).toBeTruthy();
   }

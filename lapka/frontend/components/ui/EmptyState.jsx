@@ -1,6 +1,6 @@
 export default function EmptyState({
-  title = 'Пока пусто',
-  text = 'Добавьте первую запись, чтобы увидеть данные.',
+  title = 'Nothing here yet',
+  text = 'Add your first item to see data.',
   action = null,
 }) {
   return (

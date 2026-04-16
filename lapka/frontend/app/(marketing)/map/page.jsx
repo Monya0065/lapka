@@ -22,7 +22,7 @@ export default function MapPage() {
       sideImageAlt={t('marketing.map.imageAlt')}
       cards={[
         { title: 'VetCity', subtitle: t('marketing.map.cards.clinic') },
-        { title: 'Питомец+', subtitle: t('marketing.map.cards.pharmacy') },
+        { title: t('marketing.map.cards.petStoreName', { defaultValue: 'PetCare+' }), subtitle: t('marketing.map.cards.pharmacy') },
         { title: 'DogGarden', subtitle: t('marketing.map.cards.park') }
       ]}
     />

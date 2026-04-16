@@ -17,7 +17,7 @@ export default function DemoModeBanner({ compact = false }) {
   if (compact) {
     return (
       <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-800">
-        {t('demo.compactHint')} · пароль <span className="font-semibold">demo12345</span>
+        {t('demo.compactHint')} · {t('auth.password').toLowerCase()} <span className="font-semibold">demo12345</span>
       </div>
     );
   }

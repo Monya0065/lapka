@@ -11,8 +11,8 @@ export const ROLE_ROUTES = {
 };
 
 export const ROLE_PRESETS = {
-  owner: { email: 'owner@lapka.local', password: 'demo12345', label: 'Владелец' },
-  vet: { email: 'vet@lapka.local', password: 'demo12345', label: 'Врач' },
-  clinic_admin: { email: 'admin@lapka.local', password: 'demo12345', label: 'Администратор клиники' },
-  network_admin: { email: 'platform@lapka.local', password: 'demo12345', label: 'Суперпользователь' },
+  owner: { email: 'owner@lapka.local', password: 'demo12345' },
+  vet: { email: 'vet@lapka.local', password: 'demo12345' },
+  clinic_admin: { email: 'admin@lapka.local', password: 'demo12345' },
+  network_admin: { email: 'platform@lapka.local', password: 'demo12345' },
 };

@@ -6,22 +6,20 @@ const STORE_LINKS = [
   {
     id: 'ios',
     label: 'App Store',
-    subtitleRu: 'iPhone и iPad',
-    subtitleEn: 'iPhone / iPad',
+    subtitle: { ru: 'iPhone и iPad', en: 'iPhone / iPad' },
     href: 'https://www.apple.com/app-store/',
   },
   {
     id: 'android',
     label: 'Google Play',
-    subtitleRu: 'Android',
-    subtitleEn: 'Android',
+    subtitle: { ru: 'Android', en: 'Android' },
     href: 'https://play.google.com/store/apps',
   },
 ];
 
 export default function StoreButtons({ compact = false, className = '' }) {
   const { i18n } = useTranslation();
-  const isRu = i18n.language.startsWith('ru');
+  const lang = i18n.language.startsWith('ru') ? 'ru' : 'en';
 
   return (
     <div className={`flex flex-wrap gap-2 ${className}`}>
@@ -46,7 +44,7 @@ export default function StoreButtons({ compact = false, className = '' }) {
             </span>
             <div>
               <p className={`font-black leading-none ${compact ? 'text-base' : 'text-lg'}`}>{item.label}</p>
-              <p className={`mt-1 text-lapka-600 ${compact ? 'text-xs' : 'text-sm'}`}>{isRu ? item.subtitleRu : item.subtitleEn}</p>
+              <p className={`mt-1 text-lapka-600 ${compact ? 'text-xs' : 'text-sm'}`}>{item.subtitle[lang]}</p>
             </div>
           </div>
         </a>

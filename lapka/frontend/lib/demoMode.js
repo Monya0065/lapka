@@ -47,7 +47,6 @@ export function resolveDemoRoleFromPath(pathname = '') {
 export function demoCredentialsRows() {
   return DEMO_ROLE_ORDER.map((role) => ({
     role,
-    label: ROLE_PRESETS[role].label,
     email: ROLE_PRESETS[role].email,
     password: ROLE_PRESETS[role].password,
   }));

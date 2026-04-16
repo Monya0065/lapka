@@ -20,7 +20,8 @@ function stars(avg) {
 
 export default function PublicBookingChooseClinicPage() {
   const { i18n } = useTranslation();
-  const lang = i18n.language === 'en' ? 'en' : 'ru';
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const lang = langCode.startsWith('en') ? 'en' : 'ru';
   const tr = (ru, en) => (lang === 'en' ? en : ru);
   const [query, setQuery] = useState('');
   const [city, setCity] = useState(lang === 'en' ? 'Saint Petersburg' : 'Санкт-Петербург');
@@ -245,21 +246,23 @@ export default function PublicBookingChooseClinicPage() {
                     <div className="min-w-0">
                       <p className="text-lg font-extrabold text-theme line-clamp-2">{clinic.name}</p>
                       <p className="mt-1 text-sm text-theme-muted">
-                        {clinic.city} · {clinic.address || 'Адрес уточняется'}
+                        {clinic.city} · {clinic.address || tr('Адрес уточняется', 'Address pending')}
                       </p>
-                      <p className="mt-1 text-xs text-theme-muted">{clinic.hours || 'График уточняется'}</p>
+                      <p className="mt-1 text-xs text-theme-muted">{clinic.hours || tr('График уточняется', 'Hours pending')}</p>
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-sm font-semibold text-warning">
                         {stars(clinic.rating_summary?.avg_rating)} {clinic.rating_summary?.avg_rating?.toFixed?.(1) || '0.0'}
                       </p>
-                      <p className="text-xs text-theme-muted">{clinic.rating_summary?.count || 0} отзывов</p>
+                      <p className="text-xs text-theme-muted">
+                        {clinic.rating_summary?.count || 0} {tr('отзывов', 'reviews')}
+                      </p>
                     </div>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link href={`/public-booking/${clinic.id}`} className="btn-primary !px-3 !py-2">
-                      Записаться 24/7
+                      {tr('Записаться 24/7', 'Book 24/7')}
                     </Link>
                   </div>
                 </div>
@@ -267,7 +270,10 @@ export default function PublicBookingChooseClinicPage() {
             ))}
           </div>
         ) : (
-          <EmptyState title="Клиники не найдены" text="Измените фильтры поиска или город." />
+          <EmptyState
+            title={tr('Клиники не найдены', 'No clinics found')}
+            text={tr('Измените фильтры поиска или город.', 'Change search filters or city.')}
+          />
         )}
       </section>
     </main>

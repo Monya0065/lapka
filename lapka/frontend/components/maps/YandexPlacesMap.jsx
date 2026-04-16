@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DEFAULT_MAP_CENTER, getYandexMapsApiKey, loadYandexMaps } from '@/lib/yandexMaps';
 
 /**
@@ -20,6 +21,8 @@ export default function YandexPlacesMap({
   className = '',
   enableCluster = false,
 }) {
+  const { i18n } = useTranslation();
+  const isEn = i18n.resolvedLanguage === 'en';
   const containerRef = useRef(null);
   const clickRef = useRef(onMarkerClick);
   const [loadError, setLoadError] = useState('');
@@ -109,7 +112,7 @@ export default function YandexPlacesMap({
         }
       } catch (e) {
         if (!cancelled) {
-          setLoadError(e?.message || 'Карта недоступна');
+          setLoadError(e?.message || (isEn ? 'Map is unavailable' : 'Карта недоступна'));
         }
       }
     })();
@@ -125,7 +128,7 @@ export default function YandexPlacesMap({
         mapInstance = null;
       }
     };
-  }, [enableCluster, heatCircles, markers]);
+  }, [enableCluster, heatCircles, isEn, markers]);
 
   const keyHint = !getYandexMapsApiKey();
 
@@ -135,11 +138,13 @@ export default function YandexPlacesMap({
         className={`callout-warning flex flex-col items-center justify-center !rounded-2xl !px-4 text-center ${className}`}
         style={{ minHeight: height }}
       >
-        <p className="font-semibold text-theme">Не удалось показать Яндекс.Карты</p>
+        <p className="font-semibold text-theme">{isEn ? 'Failed to load Yandex Maps' : 'Не удалось показать Яндекс.Карты'}</p>
         <p className="mt-2 max-w-lg text-theme-muted">{loadError}</p>
         {keyHint ? (
           <p className="mt-3 text-xs text-theme-muted">
-            Для продакшена задайте переменную <code className="rounded bg-surface-muted/90 px-1">NEXT_PUBLIC_YANDEX_MAPS_API_KEY</code> при сборке фронтенда.
+            {isEn ? 'For production, set the variable ' : 'Для продакшена задайте переменную '}
+            <code className="rounded bg-surface-muted/90 px-1">NEXT_PUBLIC_YANDEX_MAPS_API_KEY</code>
+            {isEn ? ' when building the frontend.' : ' при сборке фронтенда.'}
           </p>
         ) : null}
       </div>
@@ -151,7 +156,9 @@ export default function YandexPlacesMap({
       <div ref={containerRef} style={{ width: '100%', height }} className="min-h-[320px]" />
       {keyHint ? (
         <p className="border-t border-border bg-surface/90 px-3 py-2 text-[11px] text-theme-muted">
-          Рекомендуется API-ключ Яндекса для стабильной работы карт в продакшене.
+          {isEn
+            ? 'Yandex API key is recommended for stable map behavior in production.'
+            : 'Рекомендуется API-ключ Яндекса для стабильной работы карт в продакшене.'}
         </p>
       ) : null}
     </div>

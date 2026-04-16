@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 export default function ThreeDHeroScene() {
   const { i18n } = useTranslation();
-  const lang = i18n.language === 'en' ? 'en' : 'ru';
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const lang = langCode.startsWith('en') ? 'en' : 'ru';
   const tr = (ru, en) => (lang === 'en' ? en : ru);
   return (
     <div className="hero-canvas p-4 md:p-5">

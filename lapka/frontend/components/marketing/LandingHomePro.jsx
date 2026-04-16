@@ -73,7 +73,8 @@ const pillars = [
 
 export default function LandingHomePro({ showAccessDenied }) {
   const { i18n } = useTranslation();
-  const lang = i18n.language === 'en' ? 'en' : 'ru';
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const lang = langCode.startsWith('en') ? 'en' : 'ru';
   const tr = (ru, en) => (lang === 'en' ? en : ru);
 
   return (
@@ -242,7 +243,7 @@ export default function LandingHomePro({ showAccessDenied }) {
               { label: tr('Клиника в сиде', 'Seed clinic'), value: '1', tone: 'text-violet-700 dark:text-violet-300' },
               { label: tr('Публичные контуры', 'Public flows'), value: tr('Запись · RX · Паспорт', 'Booking · RX · Passport'), tone: 'text-amber-700 dark:text-amber-300' },
               { label: 'RBAC', value: 'On', tone: 'text-emerald-700 dark:text-emerald-300' },
-              { label: 'Аудит', value: 'Live', tone: 'text-rose-700 dark:text-rose-300' },
+              { label: tr('Аудит', 'Audit'), value: 'Live', tone: 'text-rose-700 dark:text-rose-300' },
             ].map((cell) => (
               <div key={cell.label} className="rounded-2xl border border-border bg-surface/90 px-3 py-4 shadow-sm">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-theme-muted">{cell.label}</p>
@@ -255,7 +256,7 @@ export default function LandingHomePro({ showAccessDenied }) {
 
       <section className="page-wrap space-y-6 py-14 md:py-16">
         <div className="max-w-3xl">
-          <h2 className="text-3xl font-black tracking-tight text-theme md:text-4xl">На чём держится Lapka</h2>
+          <h2 className="text-3xl font-black tracking-tight text-theme md:text-4xl">{tr('На чём держится Lapka', 'What Lapka is built on')}</h2>
           <p className="mt-3 text-lg text-theme-muted">
             {tr('Не маркетинговые «обещания в цифрах», а архитектура: безопасность, роли и реальные сценарии пилота.', 'Not marketing promises in numbers, but architecture: security, roles, and real pilot flows.')}
           </p>
@@ -263,7 +264,7 @@ export default function LandingHomePro({ showAccessDenied }) {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {pillars.map((p) => (
             <article
-              key={p.title}
+              key={p.title.en}
               className={`rounded-3xl border border-border ${p.tone} p-5 shadow-sm dark:bg-slate-900/70`}
             >
               <h3 className="text-lg font-black text-theme">{p.title[lang]}</h3>
@@ -280,7 +281,7 @@ export default function LandingHomePro({ showAccessDenied }) {
             {steps.map((s) => (
               <article key={s.n} className="rounded-3xl border border-border bg-surface p-5 shadow-sm dark:bg-slate-900/80">
                 <div className="relative mb-4 h-40 overflow-hidden rounded-2xl border border-border bg-surface-muted dark:bg-slate-800/70">
-                  <Image src={s.img} alt={s.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+                  <Image src={s.img} alt={s.title[lang]} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
                 </div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-theme-muted">{tr('Шаг', 'Step')} {s.n}</p>
                 <h3 className="mt-2 text-xl font-black text-theme">{s.title[lang]}</h3>
@@ -355,7 +356,7 @@ export default function LandingHomePro({ showAccessDenied }) {
       <footer className="border-t border-border bg-surface py-10 dark:bg-slate-950/80">
         <div className="page-wrap flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-lg font-black text-theme">Лапка</p>
+            <p className="text-lg font-black text-theme">{tr('Лапка', 'Lapka')}</p>
             <p className="text-sm text-theme-muted">{tr('Ветеринарная цифровая экосистема', 'Veterinary digital ecosystem')}</p>
           </div>
           <div className="flex flex-wrap gap-2">

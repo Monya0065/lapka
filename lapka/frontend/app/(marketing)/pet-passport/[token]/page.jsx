@@ -12,7 +12,8 @@ import { apiRequest } from '@/lib/api';
 
 export default function PublicPetPassportPage() {
   const { i18n } = useTranslation();
-  const lang = i18n.language === 'en' ? 'en' : 'ru';
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const lang = langCode.startsWith('en') ? 'en' : 'ru';
   const tr = (ru, en) => (lang === 'en' ? en : ru);
   const params = useParams();
   const token = useMemo(() => params?.token || '', [params]);

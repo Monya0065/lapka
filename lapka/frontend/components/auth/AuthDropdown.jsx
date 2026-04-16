@@ -16,7 +16,8 @@ function profileRoute(role) {
 export default function AuthDropdown({ mode = 'menu', initialRole }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.resolvedLanguage === 'en';
   const [isOpen, setIsOpen] = useState(mode === 'card');
   const [selectedRole, setSelectedRole] = useState(initialRole || 'owner');
   const [email, setEmail] = useState(ROLE_PRESETS[initialRole || 'owner']?.email || ROLE_PRESETS.owner.email);
@@ -38,9 +39,16 @@ export default function AuthDropdown({ mode = 'menu', initialRole }) {
     if (!session.role) return null;
     if (session.role === 'vet') return t('roles.vet');
     if (session.role === 'clinic_admin') return t('roles.clinicAdmin');
-    if (session.role === 'network_admin') return 'Суперпользователь';
+    if (session.role === 'network_admin') return isEn ? 'Network admin' : 'Суперпользователь';
     return t('roles.owner');
-  }, [session.role, t]);
+  }, [isEn, session.role, t]);
+
+  const roleOptionLabel = (roleKey) => {
+    if (roleKey === 'owner') return t('roles.owner');
+    if (roleKey === 'vet') return t('roles.vet');
+    if (roleKey === 'clinic_admin') return t('roles.clinicAdmin');
+    return isEn ? 'Network admin' : 'Суперпользователь';
+  };
 
   function onRoleChange(nextRole) {
     setSelectedRole(nextRole);
@@ -121,7 +129,7 @@ export default function AuthDropdown({ mode = 'menu', initialRole }) {
             <span className="label">{t('auth.role')}</span>
             <select className="input" value={selectedRole} onChange={(e) => onRoleChange(e.target.value)}>
               {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
-                <option key={key} value={key}>{preset.label}</option>
+                <option key={key} value={key}>{roleOptionLabel(key)}</option>
               ))}
             </select>
           </label>
@@ -196,7 +204,7 @@ export default function AuthDropdown({ mode = 'menu', initialRole }) {
                   {t('auth.adminPage')}
                 </button>
                 <button type="button" className="btn-secondary" onClick={() => goToLogin('network_admin')}>
-                  Центр платформы
+                  {isEn ? 'Platform center' : 'Центр платформы'}
                 </button>
               </>
             )}

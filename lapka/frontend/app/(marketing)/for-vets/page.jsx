@@ -3,22 +3,25 @@ import MarketingPage from '@/components/blocks/MarketingPage';
 export default function ForVetsPage() {
   return (
     <MarketingPage
-      eyebrow="Для врачей"
-      title="Клинический интерфейс, который ускоряет приём"
-      subtitle="Пациенты, визиты, протоколы, документы, стационар и клинические инструменты в одном рабочем пространстве врача."
+      eyebrow={{ ru: 'Для врачей', en: 'For veterinarians' }}
+      title={{ ru: 'Клинический интерфейс, который ускоряет приём', en: 'Clinical workspace that speeds up every visit' }}
+      subtitle={{
+        ru: 'Пациенты, визиты, протоколы, документы, стационар и клинические инструменты в одном рабочем пространстве врача.',
+        en: 'Patients, visits, protocols, documents, inpatient care, and clinical tools in one veterinarian workspace.',
+      }}
       bullets={[
-        'Карточка приёма: жалобы, анамнез, осмотр, план, назначения',
-        'Чек-лист красных флагов и urgent-маркировка',
-        'Генерация протокола и печать PDF',
-        'AI для структуры заметок и проверки полноты'
+        { ru: 'Карточка приёма: жалобы, анамнез, осмотр, план, назначения', en: 'Visit card: complaints, history, exam, plan, and prescriptions' },
+        { ru: 'Чек-лист красных флагов и urgent-маркировка', en: 'Red-flag checklist with urgent markers' },
+        { ru: 'Генерация протокола и печать PDF', en: 'Protocol generation and PDF print' },
+        { ru: 'AI для структуры заметок и проверки полноты', en: 'AI for structured notes and completeness checks' },
       ]}
       ctaHref="/login?role=vet"
-      ctaLabel="Открыть кабинет врача"
+      ctaLabel={{ ru: 'Открыть кабинет врача', en: 'Open vet workspace' }}
       sideImage="/assets/img/vet-side.svg"
       cards={[
-        { title: 'Пациенты', subtitle: 'Поиск по владельцу/телефону/симптомам.' },
-        { title: 'Документы', subtitle: 'Лабораторные результаты и изображения.' },
-        { title: 'Клинические инструменты', subtitle: 'RER, DER, fluid, shock, transfusion и др.' }
+        { title: { ru: 'Пациенты', en: 'Patients' }, subtitle: { ru: 'Поиск по владельцу/телефону/симптомам.', en: 'Search by owner, phone, or symptoms.' } },
+        { title: { ru: 'Документы', en: 'Documents' }, subtitle: { ru: 'Лабораторные результаты и изображения.', en: 'Lab results and imaging records.' } },
+        { title: { ru: 'Клинические инструменты', en: 'Clinical calculators' }, subtitle: { ru: 'RER, DER, fluid, shock, transfusion и др.', en: 'RER, DER, fluid, shock, transfusion, and more.' } },
       ]}
     />
   );

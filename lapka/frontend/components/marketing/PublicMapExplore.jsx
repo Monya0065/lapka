@@ -26,7 +26,8 @@ async function fetchJson(path) {
 
 export default function PublicMapExplore() {
   const { i18n } = useTranslation();
-  const lang = i18n.language === 'en' ? 'en' : 'ru';
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const lang = langCode.startsWith('en') ? 'en' : 'ru';
   const tr = (ru, en) => (lang === 'en' ? en : ru);
   const [tab, setTab] = useState('clinic');
   const [rows, setRows] = useState([]);

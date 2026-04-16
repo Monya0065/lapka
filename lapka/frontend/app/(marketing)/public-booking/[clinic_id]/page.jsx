@@ -11,10 +11,10 @@ import ErrorBanner from '@/components/ui/ErrorBanner';
 import EmptyState from '@/components/ui/EmptyState';
 import { apiRequest } from '@/lib/api';
 
-function formatSlotLabel(slot) {
+function formatSlotLabel(slot, locale = 'ru-RU') {
   try {
     const d = new Date(slot.start_at);
-    return d.toLocaleString('ru-RU', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString(locale, { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   } catch {
     return String(slot.start_at || '—');
   }
@@ -28,7 +28,8 @@ function isoDate(d) {
 
 export default function PublicBookingPage() {
   const { i18n } = useTranslation();
-  const lang = i18n.language === 'en' ? 'en' : 'ru';
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const lang = langCode.startsWith('en') ? 'en' : 'ru';
   const tr = (ru, en) => (lang === 'en' ? en : ru);
   const params = useParams();
   const clinicId = useMemo(() => params?.clinic_id || '', [params]);
@@ -336,7 +337,7 @@ export default function PublicBookingPage() {
                             }`}
                             onClick={() => setSelectedSlot(slot)}
                           >
-                            <div className="truncate">{formatSlotLabel(slot)}</div>
+                            <div className="truncate">{formatSlotLabel(slot, lang === 'en' ? 'en-US' : 'ru-RU')}</div>
                             <div className="mt-1 text-xs font-semibold text-theme-muted">{slot.vet_name}</div>
                           </button>
                         ))}
@@ -362,7 +363,12 @@ export default function PublicBookingPage() {
                   </label>
                   <label className="block">
                     <span className="label">{tr('Телефон', 'Phone')}</span>
-                    <input className="input" value={owner.phone} onChange={(e) => setOwner((cur) => ({ ...cur, phone: e.target.value }))} placeholder="+7 9xx xxx-xx-xx" />
+                    <input
+                      className="input"
+                      value={owner.phone}
+                      onChange={(e) => setOwner((cur) => ({ ...cur, phone: e.target.value }))}
+                      placeholder={tr('+7 9xx xxx-xx-xx', '+1 555 123 4567')}
+                    />
                   </label>
 
                   <div className="grid gap-4 md:grid-cols-2">
@@ -394,7 +400,7 @@ export default function PublicBookingPage() {
               {selectedSlot ? (
                 <div className="rounded-2xl border border-border bg-surface-muted/70 p-4">
                   <p className="text-sm font-semibold text-theme">{tr('Вы выбрали слот', 'You selected slot')}</p>
-                  <p className="mt-1 text-sm text-theme-muted">{formatSlotLabel(selectedSlot)}</p>
+                  <p className="mt-1 text-sm text-theme-muted">{formatSlotLabel(selectedSlot, lang === 'en' ? 'en-US' : 'ru-RU')}</p>
                   <p className="mt-1 text-xs font-semibold text-theme-muted">{selectedSlot.vet_name}</p>
                 </div>
               ) : null}
