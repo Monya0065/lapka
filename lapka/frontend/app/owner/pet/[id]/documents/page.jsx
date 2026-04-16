@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import AppImage from '@/components/ui/AppImage';
+import DocumentRecentThumb, { formatDocumentFileCaption } from '@/components/documents/DocumentRecentThumb';
 import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import Skeleton from '@/components/ui/Skeleton';
@@ -77,7 +79,7 @@ export default function OwnerPetDocumentsPage() {
       return;
     }
     if (!clinicId) {
-      setError('Сначала выберите клинику, в которую загружается документ.');
+      setError(t('documents.clinicRequired'));
       return;
     }
 
@@ -143,9 +145,46 @@ export default function OwnerPetDocumentsPage() {
 
   const docTypeLabel = (key) => t(`documents.types.${key}`, key);
 
+  const docTypeVariety = useMemo(
+    () => new Set((documents || []).map((d) => d.doc_type).filter(Boolean)).size,
+    [documents]
+  );
+  const explainReadyCount = useMemo(
+    () => documents.filter((d) => ['blood_test', 'biochemistry', 'ultrasound', 'xray', 'mri'].includes(d.doc_type)).length,
+    [documents]
+  );
+  const recent48hCount = useMemo(
+    () =>
+      documents.filter((d) => {
+        const ts = d?.created_at ? new Date(d.created_at).getTime() : 0;
+        return ts > 0 && Date.now() - ts <= 48 * 60 * 60 * 1000;
+      }).length,
+    [documents]
+  );
+  const archivePressure = useMemo(() => {
+    if (!documents.length) return 'LOW';
+    const noClinicContext = !clinicId;
+    if (recent48hCount >= 5 || noClinicContext) return 'HIGH';
+    if (recent48hCount > 0 || documents.length >= 3) return 'MED';
+    return 'OK';
+  }, [clinicId, documents.length, recent48hCount]);
+  const aiReadiness = useMemo(() => {
+    if (!documents.length) return 0;
+    return Math.round((explainReadyCount / documents.length) * 100);
+  }, [documents.length, explainReadyCount]);
+  const archiveCoverage = useMemo(() => {
+    const signals = [
+      documents.length > 0,
+      docTypeVariety >= 3,
+      recent48hCount > 0,
+      Boolean(aiSummary),
+    ];
+    return Math.round((signals.filter(Boolean).length / signals.length) * 100);
+  }, [aiSummary, docTypeVariety, documents.length, recent48hCount]);
+
   const tableRows = documents.map((doc) => [
     docTypeLabel(doc.doc_type) || doc.doc_type || '—',
-    doc.file_ref || '—',
+    formatDocumentFileCaption(doc.file_ref) || '—',
     new Date(doc.created_at).toLocaleString(),
     <div key={doc.id} className="flex flex-wrap gap-2">
       <button className="btn-secondary !px-3 !py-1" type="button" onClick={() => viewDocument(doc.id)}>
@@ -162,12 +201,53 @@ export default function OwnerPetDocumentsPage() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">{t('documents.title')}</h1>
-          <p className="page-subtitle">{t('documents.subtitle')} {selectedClinic?.name ? `Клиника: ${selectedClinic.name}.` : ''}</p>
+      {error ? <ErrorBanner message={error} onRetry={loadDocuments} /> : null}
+      {success ? (
+        <div className="callout-success">{success}</div>
+      ) : null}
+
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-amber-400/12 via-surface-muted to-cyan-400/14 p-5 shadow-card md:p-8 dark:from-amber-500/10 dark:to-cyan-500/10">
+        <div className="relative grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:items-start">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">
+              {loading ? t('documents.title') : 'Архив'}
+            </p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-theme md:text-4xl">{t('documents.title')}</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-theme-muted md:text-base">
+              {t('documents.subtitle')}
+              {selectedClinic?.name ? ` Клиника: ${selectedClinic.name}.` : ''}
+            </p>
+            {!loading ? (
+              <p className="mt-2 text-xs text-theme-muted">
+                Загрузки привязаны к выбранной клинике; AI — только безопасное объяснение без дозировок.
+              </p>
+            ) : null}
+          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {[
+                { label: t('documents.title'), value: documents.length, tone: '' },
+                { label: 'Типов', value: docTypeVariety, tone: 'text-violet-700 dark:text-violet-300' },
+                { label: 'AI-ready', value: explainReadyCount, tone: 'text-sky-700 dark:text-sky-300' },
+                { label: 'За 48ч', value: recent48hCount, tone: 'text-emerald-700 dark:text-emerald-300' },
+                { label: 'AI', value: aiSummary ? '✓' : '—', tone: aiSummary ? 'text-emerald-700 dark:text-emerald-300' : 'text-theme-muted' },
+                { label: 'Клиника', value: clinicId ? '✓' : '—', tone: clinicId ? 'text-cyan-700 dark:text-cyan-300' : 'text-theme-muted' },
+              ].map((cell) => (
+                <div key={cell.label} className="rounded-2xl border border-border bg-surface/90 px-3 py-4 shadow-sm">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-theme-muted">{cell.label}</p>
+                  <p className={`mt-1 text-2xl font-black tabular-nums sm:text-3xl ${cell.tone || 'text-theme'}`}>{cell.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </header>
+      </section>
 
       <ShowcasePanel
         eyebrow={t('documents.title')}
@@ -175,29 +255,64 @@ export default function OwnerPetDocumentsPage() {
         description="Загружайте результаты, открывайте их в архиве и получайте безопасное AI-объяснение без назначения лечения владельцу."
         imageSrc="/assets/img/card-labs.svg"
         imageAlt="Документы и анализы питомца"
+        compact
       />
 
-      {error ? <ErrorBanner message={error} onRetry={loadDocuments} /> : null}
-      {success ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</div>
+      {!loading ? (
+        <section className="rounded-3xl border border-border bg-surface-muted/65 p-4 md:p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">Операционный срез</p>
+              <h2 className="mt-1 text-xl font-black tracking-tight text-theme md:text-2xl">Сигналы документного архива</h2>
+            </div>
+            <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-theme-muted">
+              owner doc ops
+            </span>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              {
+                title: 'Давление архива',
+                value: archivePressure,
+                text: 'Сигнал по интенсивности новых загрузок и готовности клинического контекста для документов.',
+                href: `/owner/pet/${petId}/records`,
+                tone: archivePressure === 'HIGH'
+                  ? 'text-rose-700 dark:text-rose-300'
+                  : archivePressure === 'MED'
+                    ? 'text-amber-700 dark:text-amber-300'
+                    : archivePressure === 'OK'
+                      ? 'text-emerald-700 dark:text-emerald-300'
+                      : 'text-sky-700 dark:text-sky-300',
+              },
+              {
+                title: 'AI-готовность',
+                value: `${aiReadiness}%`,
+                text: 'Доля документов, пригодных для безопасного AI-объяснения без лечебных инструкций.',
+                href: '/owner/messages',
+                tone: 'text-violet-700 dark:text-violet-300',
+              },
+              {
+                title: 'Покрытие архива',
+                value: `${archiveCoverage}%`,
+                text: 'Насыщенность архива по типам, свежим событиям и наличию AI-контекста владельца.',
+                href: `/owner/pet/${petId}/calendar`,
+                tone: 'text-sky-700 dark:text-sky-300',
+              },
+            ].map((item) => (
+              <Link
+                key={item.title}
+                href={item.href}
+                className="rounded-2xl border border-border bg-surface/85 px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-soft"
+              >
+                <p className={`text-base font-black ${item.tone}`}>{item.title}</p>
+                <p className="mt-2 text-3xl font-black tabular-nums text-theme">{item.value}</p>
+                <p className="mt-2 text-sm leading-relaxed text-theme">{item.text}</p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-theme-muted">Открыть контур</p>
+              </Link>
+            ))}
+          </div>
+        </section>
       ) : null}
-
-      <section className="kpi-grid">
-        <Card title="Документы" subtitle="Всего в архиве питомца">
-          <p className="text-4xl font-black tracking-tight text-lapka-900">{documents.length}</p>
-        </Card>
-        <Card title="Последняя загрузка" subtitle="Самый свежий файл в архиве питомца">
-          <p className="text-sm font-semibold text-lapka-900">
-            {documents[0]?.created_at ? new Date(documents[0].created_at).toLocaleString() : '—'}
-          </p>
-        </Card>
-        <Card title="AI-объяснение" subtitle="Безопасное summary без лечения">
-          <p className="text-sm font-semibold text-lapka-900">{aiSummary ? 'Готово' : 'Ожидает запуска'}</p>
-        </Card>
-        <Card title="Режим владельца" subtitle="Только понятные и безопасные данные">
-          <p className="text-sm font-semibold text-lapka-900">Без лишних клинических деталей</p>
-        </Card>
-      </section>
 
       <section className="grid-soft-2">
         <Card title={t('documents.uploadCard')} subtitle={t('documents.uploadCardSub')}>
@@ -228,53 +343,53 @@ export default function OwnerPetDocumentsPage() {
               {uploading ? t('documents.uploading') : t('documents.upload')}
             </button>
 
-            <p className="text-xs text-lapka-600">{t('documents.aiDisclaimer')}</p>
+            <p className="text-xs text-theme-muted">{t('documents.aiDisclaimer')}</p>
           </form>
         </Card>
 
         <Card title={t('documents.currentSelection')} subtitle="Просмотр, скачивание и AI-объяснение">
           <div className="space-y-3">
-            <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2 text-sm text-lapka-700">
+            <div className="rounded-xl border border-border bg-surface-muted/65 px-3 py-2 text-sm text-theme">
               <span className="font-semibold">ID питомца:</span> {petId}
             </div>
-            <div className="rounded-xl border border-lapka-200 bg-white p-3 text-sm text-lapka-700">
+            <div className="rounded-xl border border-border bg-surface-muted/70 p-3 text-sm text-theme">
               {selectedDoc ? (
                 <>
                   <p className="font-semibold">{t('documents.openDoc')}</p>
-                  <p className="mt-1 text-xs text-lapka-600">Тип: {selectedDoc.doc_type || '—'}</p>
-                  <p className="mt-1 text-xs text-lapka-600">Файл: {selectedDoc.file_ref || '—'}</p>
-                  <p className="mt-1 text-xs text-lapka-600">{new Date(selectedDoc.created_at).toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-theme-muted">Тип: {selectedDoc.doc_type || '—'}</p>
+                  <p className="mt-1 text-xs text-theme-muted">Файл: {selectedDoc.file_ref || '—'}</p>
+                  <p className="mt-1 text-xs text-theme-muted">{new Date(selectedDoc.created_at).toLocaleString()}</p>
                 </>
               ) : (
-                <p className="text-xs text-lapka-600">{t('documents.emptyDesc')}</p>
+                <p className="text-xs text-theme-muted">{t('documents.emptyDesc')}</p>
               )}
             </div>
-            <div className="rounded-xl border border-lapka-200 bg-white p-3 text-sm text-lapka-700">
+            <div className="rounded-xl border border-border bg-surface-muted/70 p-3 text-sm text-theme">
               {downloadStub ? (
                 <>
                   <p className="font-semibold">{t('documents.download')}</p>
-                  <p className="mt-1 text-xs text-lapka-600">Ссылка: {downloadStub.download_url || ''}</p>
+                  <p className="mt-1 text-xs text-theme-muted">Ссылка: {downloadStub.download_url || ''}</p>
                 </>
               ) : (
-                <p className="text-xs text-lapka-600">{t('documents.emptyDesc')}</p>
+                <p className="text-xs text-theme-muted">{t('documents.emptyDesc')}</p>
               )}
             </div>
-            <div className="rounded-xl border border-lapka-200 bg-white p-3 text-sm text-lapka-700">
+            <div className="rounded-xl border border-border bg-surface-muted/70 p-3 text-sm text-theme">
               {aiSummary ? (
                 <>
                   <p className="font-semibold">{t('documents.aiExplain')}</p>
-                  <p className="mt-1 text-xs text-lapka-600">{aiSummary.summary || aiSummary.high_level_summary || '—'}</p>
-                  <p className="mt-2 text-xs text-lapka-500">{t('documents.aiDisclaimer')}</p>
+                  <p className="mt-1 text-xs text-theme-muted">{aiSummary.summary || aiSummary.high_level_summary || '—'}</p>
+                  <p className="mt-2 text-xs text-theme-muted">{t('documents.aiDisclaimer')}</p>
                 </>
               ) : (
-                <p className="text-xs text-lapka-600">{t('documents.emptyDesc')}</p>
+                <p className="text-xs text-theme-muted">{t('documents.emptyDesc')}</p>
               )}
             </div>
           </div>
         </Card>
       </section>
 
-      <Card title="Последние документы" subtitle="Быстрый визуальный обзор по самым свежим загрузкам">
+      <Card title={t('documents.recentTitle')} subtitle={t('documents.recentSub')}>
         {documents.length ? (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {documents.slice(0, 6).map((doc) => (
@@ -282,21 +397,22 @@ export default function OwnerPetDocumentsPage() {
                 key={doc.id}
                 type="button"
                 onClick={() => viewDocument(doc.id)}
-                className="rounded-2xl border border-lapka-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-card"
+                aria-label={`${t('documents.openDoc')}: ${docTypeLabel(doc.doc_type) || doc.doc_type || ''}`}
+                className="rounded-2xl border border-border bg-surface-muted/70 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-card"
               >
-                <div className="rounded-2xl border border-lapka-200 bg-[radial-gradient(circle_at_20%_20%,rgba(93,188,255,0.14),transparent_45%),linear-gradient(180deg,#f9fcff_0%,#eef8ff_100%)] p-4">
-                  <AppImage
-                    src="/assets/img/card-labs.svg"
-                    alt="Документ"
-                    width={640}
-                    height={400}
-                    sizes="280px"
-                    className="mx-auto h-28 w-full object-contain"
+                <div className="bg-mesh-document-thumb rounded-2xl border border-border p-2">
+                  <DocumentRecentThumb
+                    documentId={doc.id}
+                    fileRef={doc.file_ref}
+                    alt={docTypeLabel(doc.doc_type) || doc.doc_type || t('documents.file')}
+                    className="mx-auto h-32 w-full"
                   />
                 </div>
-                <p className="mt-3 text-base font-extrabold text-lapka-900">{docTypeLabel(doc.doc_type) || doc.doc_type || '—'}</p>
-                <p className="mt-1 text-xs text-lapka-500">{new Date(doc.created_at).toLocaleString()}</p>
-                <p className="mt-2 text-xs text-lapka-600 line-clamp-2">{doc.file_ref || '—'}</p>
+                <p className="mt-3 text-base font-extrabold text-theme">{docTypeLabel(doc.doc_type) || doc.doc_type || '—'}</p>
+                <p className="mt-1 text-xs text-theme-muted">{new Date(doc.created_at).toLocaleString()}</p>
+                <p className="mt-2 text-xs text-theme-muted line-clamp-2">
+                  {formatDocumentFileCaption(doc.file_ref) || '—'}
+                </p>
               </button>
             ))}
           </div>
