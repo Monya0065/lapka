@@ -10,6 +10,8 @@ const links = [
   { href: '/map', labelKey: 'nav.map' },
   { href: '/lost-pets', labelKey: 'nav.lostPets' },
   { href: '/security', labelKey: 'nav.security' },
+  { href: '/privacy', labelKey: 'nav.privacy' },
+  { href: '/terms', labelKey: 'nav.terms' },
   { href: '/pricing', labelKey: 'nav.pricing' },
   { href: '/faq', labelKey: 'nav.faq' }
 ];
