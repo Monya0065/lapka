@@ -1,0 +1,58 @@
+name: Lost Pets Release Gate Docs
+
+on:
+  pull_request:
+    paths:
+      - "docs/lost_pets_release_gate.md"
+      - ".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml"
+      - ".github/workflows/lost-pets-release-gate-docs.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/lost_pets_release_gate.md"
+      - ".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml"
+      - ".github/workflows/lost-pets-release-gate-docs.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-release-gate-doc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required sections in Lost Pets release gate doc
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import sys
+
+          doc = Path("docs/lost_pets_release_gate.md")
+          text = doc.read_text(encoding="utf-8")
+
+          required = [
+              "## Release Candidate Metadata",
+              "## 1) Runtime and Migration Gate",
+              "## 2) Lost Pets Smoke Gate",
+              "## 3) Payments and Monetization Controls",
+              "## 4) Privacy and Consent Controls",
+              "## 5) Moderation and Safety Controls",
+              "## 6) Notifications and Hotspots",
+              "## 7) Legal and Compliance (RU 2026)",
+              "## 8) Frontend Product Readiness",
+              "## 9) Go/No-Go Decision",
+              "## 10) Post-Release Verification (T+0 / T+1)",
+          ]
+
+          missing = [h for h in required if h not in text]
+          if missing:
+              print("Missing required sections in docs/lost_pets_release_gate.md:")
+              for item in missing:
+                  print(f"- {item}")
+              sys.exit(1)
+
+          print("Lost Pets release gate doc contains all required sections.")
+          PY

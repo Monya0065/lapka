@@ -1,0 +1,169 @@
+name: Lost Pets Release Gate Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag/version (e.g. RC2 or v1.3.0)"
+        required: true
+        type: string
+      release_owner:
+        description: "Release owner reference (e.g. @username or team)"
+        required: false
+        default: ""
+        type: string
+      issue_number:
+        description: "Optional existing release-gate issue number"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  run-release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Lost Pets smoke suite with artifacts
+        run: |
+          mkdir -p artifacts
+          REPORT_PATH=artifacts/lost-pets-smoke-report.json SUMMARY_PATH=artifacts/lost-pets-smoke-summary.md bash scripts/verify-lost-pets-stack.sh
+
+      - name: Upload release gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lost-pets-release-gate-artifacts
+          path: |
+            artifacts/lost-pets-smoke-report.json
+            artifacts/lost-pets-smoke-summary.md
+          if-no-files-found: ignore
+
+      - name: Create or update release-gate issue with run summary
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_OWNER: ${{ inputs.release_owner }}
+          ISSUE_NUMBER_INPUT: ${{ inputs.issue_number }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- lost-pets-release-run -->';
+            const gateMarker = '<!-- lost-pets-release-gate -->';
+            const summaryPath = 'artifacts/lost-pets-smoke-summary.md';
+            const summary = fs.existsSync(summaryPath)
+              ? fs.readFileSync(summaryPath, 'utf8')
+              : '# Lost Pets Smoke Summary\n\nSummary file was not generated. Check workflow logs.\n';
+
+            const releaseTag = process.env.RELEASE_TAG?.trim();
+            const releaseOwner = process.env.RELEASE_OWNER?.trim() || '_not specified_';
+            const issueNumberInput = process.env.ISSUE_NUMBER_INPUT?.trim();
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const runSection = [
+              marker,
+              `## Automated Release Gate Run`,
+              ``,
+              `- Release tag: \`${releaseTag}\``,
+              `- Release owner: ${releaseOwner}`,
+              `- Workflow run: ${runUrl}`,
+              ``,
+              summary,
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            let issueNumber = Number(issueNumberInput);
+
+            if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+              const title = `[Lost Pets Release] ${releaseTag}`;
+              const listed = await github.paginate(github.rest.issues.listForRepo, {
+                owner,
+                repo,
+                state: 'open',
+                labels: 'lost-pets,release-gate',
+                per_page: 100,
+              });
+              const existing = listed.find((i) => i.title === title);
+              if (existing) {
+                issueNumber = existing.number;
+              } else {
+                const body = [
+                  gateMarker,
+                  `# Lost Pets Release Gate`,
+                  ``,
+                  `- Release tag/version: ${releaseTag}`,
+                  `- Planned rollout date (UTC):`,
+                  `- Release owner: ${releaseOwner}`,
+                  `- Security reviewer:`,
+                  `- Legal reviewer:`,
+                  `- Incident rollback owner:`,
+                  ``,
+                  `Track all release checks from \`docs/lost_pets_release_gate.md\`.`,
+                  ``,
+                  `## Runtime and migration gate`,
+                  `- [ ] docker compose up --build -d succeeds`,
+                  `- [ ] GET /health and /docs return 200`,
+                  `- [ ] alembic upgrade head succeeds`,
+                  ``,
+                  `## Lost Pets smoke gate`,
+                  `- [ ] Lost Pets smoke workflow passed`,
+                  `- [ ] Artifacts reviewed`,
+                  ``,
+                  `## Go/No-Go`,
+                  `- [ ] Known risks documented`,
+                  `- [ ] Rollback plan confirmed`,
+                  `- [ ] Final release approval recorded`,
+                ].join('\n');
+                const created = await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title,
+                  body,
+                  labels: ['lost-pets', 'release-gate'],
+                });
+                issueNumber = created.data.number;
+              }
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+            const existingComment = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(marker));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body: runSection,
+              });
+              core.info(`Updated release run comment in issue #${issueNumber}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: runSection,
+              });
+              core.info(`Created release run comment in issue #${issueNumber}`);
+            }
+
+      - name: Docker logs on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs api
+          docker compose logs db
+
+      - name: Shutdown stack
+        if: always()
+        run: docker compose down -v

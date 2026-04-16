@@ -1,0 +1,79 @@
+name: Lost Pets PR Governance
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect Lost Pets scope changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            lost_pets:
+              - 'backend/src/api/routes/growth.py'
+              - 'backend/src/models/**'
+              - 'backend/alembic/versions/**'
+              - 'backend/tests/test_growth_loops.py'
+              - 'frontend/app/(marketing)/lost-pets/**'
+              - 'frontend/app/platform/lost-pets-ads/**'
+              - 'frontend/app/platform/lost-pets-moderation/**'
+              - 'frontend/app/platform/lost-pets-hotspot-ops/**'
+              - 'frontend/components/maps/**'
+              - 'docs/russia_2026_lost_pets_payments_legal.md'
+              - 'docs/lost_pets_quality_gate.md'
+              - 'scripts/verify-lost-pets-stack.sh'
+              - '.github/workflows/lost-pets-smoke.yml'
+
+      - name: Validate Lost Pets checklist in PR body
+        if: steps.changes.outputs.lost_pets == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+            const required = [
+              'Lost Pets Smoke CI passed',
+              'Reviewed `artifacts/lost-pets-smoke-summary.md`',
+              'Payment/anti-fraud changes reviewed',
+              'Personal data/privacy checks done',
+              'Legal/compliance review done for RU 2026 scope'
+            ];
+
+            const missing = [];
+            for (const item of required) {
+              const escaped = item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const checkedPattern = new RegExp(`-\\s*\\[x\\]\\s*${escaped}`, 'i');
+              if (!checkedPattern.test(body)) {
+                missing.push(item);
+              }
+            }
+
+            if (missing.length > 0) {
+              core.setFailed(
+                [
+                  'Lost Pets scope changes detected, but required checklist is incomplete in PR body.',
+                  'Mark all required items as [x] in the "Lost Pets Gate Checklist" section.',
+                  '',
+                  'Missing checked items:',
+                  ...missing.map((m) => `- ${m}`)
+                ].join('\n')
+              );
+            } else {
+              core.info('Lost Pets checklist is complete.');
+            }
+
+      - name: Governance pass for non-Lost-Pets changes
+        if: steps.changes.outputs.lost_pets != 'true'
+        run: echo "No Lost Pets scope changes detected."

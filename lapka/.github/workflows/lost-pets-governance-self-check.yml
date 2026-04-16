@@ -1,0 +1,480 @@
+name: Lost Pets Governance Self Check
+
+on:
+  pull_request:
+    paths:
+      - ".github/lost-pets-governance-contract.json"
+      - ".github/workflows/lost-pets-governance-summary.yml"
+      - ".github/workflows/lost-pets-governance-self-check.yml"
+      - ".github/workflows/lost-pets-release-gate-run.yml"
+      - ".github/workflows/lost-pets-release-gate-status.yml"
+      - ".github/workflows/lost-pets-release-gate-watchdog.yml"
+      - ".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml"
+      - "docs/lost_pets_quality_gate.md"
+      - "docs/lost_pets_release_gate.md"
+      - "docs/lost_pets_branch_protection.md"
+      - "README.md"
+  push:
+    branches: [main]
+    paths:
+      - ".github/lost-pets-governance-contract.json"
+      - ".github/workflows/lost-pets-governance-summary.yml"
+      - ".github/workflows/lost-pets-governance-self-check.yml"
+      - ".github/workflows/lost-pets-release-gate-run.yml"
+      - ".github/workflows/lost-pets-release-gate-status.yml"
+      - ".github/workflows/lost-pets-release-gate-watchdog.yml"
+      - ".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml"
+      - "docs/lost_pets_quality_gate.md"
+      - "docs/lost_pets_release_gate.md"
+      - "docs/lost_pets_branch_protection.md"
+      - "README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  validate-governance-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Lost Pets governance markers and docs
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import re
+          import sys
+
+          artifacts_dir = Path("artifacts")
+          artifacts_dir.mkdir(parents=True, exist_ok=True)
+          report_json_path = artifacts_dir / "lost-pets-governance-contract-report.json"
+          report_md_path = artifacts_dir / "lost-pets-governance-contract-report.md"
+
+          contract = json.loads(Path(".github/lost-pets-governance-contract.json").read_text(encoding="utf-8"))
+          summary = Path(".github/workflows/lost-pets-governance-summary.yml").read_text(encoding="utf-8")
+          run_workflow = Path(".github/workflows/lost-pets-release-gate-run.yml").read_text(encoding="utf-8")
+          status_workflow = Path(".github/workflows/lost-pets-release-gate-status.yml").read_text(encoding="utf-8")
+          watchdog_workflow = Path(".github/workflows/lost-pets-release-gate-watchdog.yml").read_text(encoding="utf-8")
+          issue_template = Path(".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml").read_text(encoding="utf-8")
+          quality = Path("docs/lost_pets_quality_gate.md").read_text(encoding="utf-8")
+          release = Path("docs/lost_pets_release_gate.md").read_text(encoding="utf-8")
+          branch_protection = Path("docs/lost_pets_branch_protection.md").read_text(encoding="utf-8")
+          readme = Path("README.md").read_text(encoding="utf-8")
+
+          failures = []
+          classification = contract.get("impact_classification", {})
+          severity_rank = classification.get("severity_rank", {})
+          default_impact = classification.get("default", {
+              "level": "medium",
+              "class": "general-governance-drift",
+              "routing": ["backend/platform", "release owner"],
+          })
+          category_impacts = classification.get("categories", {})
+
+          def add_failure(category, location, items):
+              if not items:
+                  return
+              impact = category_impacts.get(category, default_impact)
+              failures.append({
+                  "category": category,
+                  "location": location,
+                  "missing_items": items,
+                  "count": len(items),
+                  "impact_level": impact.get("level", default_impact.get("level", "medium")),
+                  "impact_class": impact.get("class", default_impact.get("class", "general-governance-drift")),
+                  "routing": impact.get("routing", default_impact.get("routing", ["backend/platform", "release owner"])),
+              })
+
+          missing_markers = [marker for marker in contract["summary_required_markers"] if marker not in summary]
+          add_failure(
+              "summary_required_markers",
+              ".github/workflows/lost-pets-governance-summary.yml",
+              missing_markers,
+          )
+
+          missing_issue_template = [line for line in contract["required_issue_template_lines"] if line not in issue_template]
+          add_failure(
+              "required_issue_template_lines",
+              ".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml",
+              missing_issue_template,
+          )
+
+          missing_release_sections = [line for line in contract["release_required_sections"] if line not in release]
+          add_failure(
+              "release_required_sections",
+              "docs/lost_pets_release_gate.md",
+              missing_release_sections,
+          )
+
+          missing_release_checklist = [line for line in contract["release_critical_checklist_lines"] if line not in release]
+          add_failure(
+              "release_critical_checklist_lines",
+              "docs/lost_pets_release_gate.md",
+              missing_release_checklist,
+          )
+
+          template_checkbox_sections = re.findall(r"label:\s+(.+)", issue_template)
+          missing_template_sections = [label for label in contract["required_template_section_labels"] if label not in template_checkbox_sections]
+          add_failure(
+              "required_template_section_labels",
+              ".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml",
+              missing_template_sections,
+          )
+
+          missing_template_options = [line for line in contract["template_critical_options"] if line not in issue_template]
+          add_failure(
+              "template_critical_options",
+              ".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml",
+              missing_template_options,
+          )
+
+          mapping_gaps = []
+          for release_line, template_line in contract["critical_mapping_pairs"]:
+              if release_line in release and template_line not in issue_template:
+                  mapping_gaps.append(f"{release_line} -> {template_line}")
+          add_failure(
+              "critical_mapping_pairs",
+              "docs/lost_pets_release_gate.md -> .github/ISSUE_TEMPLATE/lost-pets-release-gate.yml",
+              mapping_gaps,
+          )
+
+          template_option_count = issue_template.count('- label: "')
+          release_checkbox_count = len(re.findall(r"^- \[ \] ", release, flags=re.M))
+          if template_option_count < contract["minimum_template_option_count"]:
+              add_failure(
+                  "minimum_template_option_count",
+                  ".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml",
+                  [f"actual={template_option_count}, required>={contract['minimum_template_option_count']}"],
+              )
+          if release_checkbox_count < contract["minimum_release_checkbox_count"]:
+              add_failure(
+                  "minimum_release_checkbox_count",
+                  "docs/lost_pets_release_gate.md",
+                  [f"actual={release_checkbox_count}, required>={contract['minimum_release_checkbox_count']}"],
+              )
+
+          missing_run_lines = [line for line in contract["required_run_lines"] if line not in run_workflow]
+          add_failure(
+              "required_run_lines",
+              ".github/workflows/lost-pets-release-gate-run.yml",
+              missing_run_lines,
+          )
+
+          missing_status_lines = [line for line in contract["required_status_lines"] if line not in status_workflow]
+          add_failure(
+              "required_status_lines",
+              ".github/workflows/lost-pets-release-gate-status.yml",
+              missing_status_lines,
+          )
+
+          missing_watchdog_lines = [line for line in contract["required_watchdog_lines"] if line not in watchdog_workflow]
+          add_failure(
+              "required_watchdog_lines",
+              ".github/workflows/lost-pets-release-gate-watchdog.yml",
+              missing_watchdog_lines,
+          )
+
+          missing_quality = [line for line in contract["required_quality_lines"] if line not in quality]
+          add_failure(
+              "required_quality_lines",
+              "docs/lost_pets_quality_gate.md",
+              missing_quality,
+          )
+
+          missing_release = [line for line in contract["required_release_lines"] if line not in release]
+          add_failure(
+              "required_release_lines",
+              "docs/lost_pets_release_gate.md",
+              missing_release,
+          )
+
+          missing_readme = [line for line in contract["required_readme_lines"] if line not in readme]
+          add_failure(
+              "required_readme_lines",
+              "README.md",
+              missing_readme,
+          )
+
+          missing_branch_protection = [line for line in contract["required_branch_protection_lines"] if line not in branch_protection]
+          add_failure(
+              "required_branch_protection_lines",
+              "docs/lost_pets_branch_protection.md",
+              missing_branch_protection,
+          )
+
+          if not contract.get("summary_required_markers"):
+              add_failure(
+                  "contract_integrity",
+                  ".github/lost-pets-governance-contract.json",
+                  ["summary_required_markers must not be empty"],
+              )
+
+          def rank_for(level):
+              return severity_rank.get(level, severity_rank.get(default_impact.get("level", "medium"), 2))
+
+          overall_impact = default_impact.copy()
+          if failures:
+              overall_impact = max(
+                  (
+                      {
+                          "level": f["impact_level"],
+                          "class": f["impact_class"],
+                          "routing": f["routing"],
+                      }
+                      for f in failures
+                  ),
+                  key=lambda x: rank_for(x["level"]),
+              )
+          overall_routing = []
+          for failure in failures:
+              for owner in failure["routing"]:
+                  if owner not in overall_routing:
+                      overall_routing.append(owner)
+          if not overall_routing:
+              overall_routing = list(overall_impact.get("routing", []))
+          escalation_threshold = 2
+          should_escalate = len(failures) > 0
+          escalation_mode = "alert" if should_escalate else "monitoring"
+          escalation_summary = {
+              "mode": escalation_mode,
+              "impact_level": overall_impact.get("level", "none" if not failures else "medium"),
+              "impact_class": overall_impact.get("class", "none" if not failures else "general-governance-drift"),
+              "routing": overall_routing,
+              "threshold_runs": escalation_threshold,
+          }
+
+          report = {
+              "status": "failed" if failures else "passed",
+              "impact": {
+                  "level": overall_impact.get("level", "none" if not failures else "medium"),
+                  "class": overall_impact.get("class", "none" if not failures else "general-governance-drift"),
+                  "routing": overall_routing,
+              },
+              "escalation": escalation_summary,
+              "checked_files": [
+                  ".github/lost-pets-governance-contract.json",
+                  ".github/workflows/lost-pets-governance-summary.yml",
+                  ".github/workflows/lost-pets-governance-self-check.yml",
+                  ".github/workflows/lost-pets-release-gate-run.yml",
+                  ".github/workflows/lost-pets-release-gate-status.yml",
+                  ".github/workflows/lost-pets-release-gate-watchdog.yml",
+                  ".github/ISSUE_TEMPLATE/lost-pets-release-gate.yml",
+                  "docs/lost_pets_quality_gate.md",
+                  "docs/lost_pets_release_gate.md",
+                  "docs/lost_pets_branch_protection.md",
+                  "README.md",
+              ],
+              "failure_count": len(failures),
+              "failures": failures,
+          }
+          report_json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+          md_lines = [
+              "# Lost Pets Governance Contract Report",
+              "",
+              f"- Status: `{report['status']}`",
+              f"- Impact level: `{report['impact']['level']}`",
+              f"- Impact class: `{report['impact']['class']}`",
+              f"- Routing: `{', '.join(report['impact']['routing']) if report['impact']['routing'] else 'none'}`",
+              f"- Escalation mode: `{report['escalation']['mode']}`",
+              f"- Failure count: `{report['failure_count']}`",
+              "",
+          ]
+          if failures:
+              md_lines.extend([
+                  "## Escalation Routing",
+                  "",
+                  f"- Threshold model: `impact-aware`, active on any failed self-check run; governance digest escalates after `{escalation_threshold}+` failed runs",
+                  f"- Recommended owners: `{', '.join(report['escalation']['routing']) if report['escalation']['routing'] else 'none'}`",
+                  "",
+              ])
+              for failure in failures:
+                  md_lines.extend([
+                      f"## {failure['category']}",
+                      "",
+                      f"- Location: `{failure['location']}`",
+                      f"- Impact: `{failure['impact_level']}` / `{failure['impact_class']}`",
+                      f"- Routing: `{', '.join(failure['routing'])}`",
+                      f"- Missing count: `{failure['count']}`",
+                      "",
+                  ])
+                  md_lines.extend([f"- {item}" for item in failure["missing_items"]])
+                  md_lines.append("")
+          else:
+              md_lines.extend([
+                  "Governance contract is intact.",
+                  "",
+                  "All required markers, mappings, checklist coverage rules, and doc references are present.",
+                  "",
+              ])
+          report_md_path.write_text("\n".join(md_lines), encoding="utf-8")
+
+          print(f"Governance contract report written to {report_json_path}")
+          print(f"Governance contract report written to {report_md_path}")
+          if failures:
+              print("Lost Pets governance contract drift detected:")
+              for failure in failures:
+                  print(f"- {failure['category']} @ {failure['location']} ({failure['count']})")
+              sys.exit(1)
+
+          print("Lost Pets governance contract is intact.")
+          PY
+
+      - name: Upload governance contract report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lost-pets-governance-contract-report
+          path: |
+            artifacts/lost-pets-governance-contract-report.json
+            artifacts/lost-pets-governance-contract-report.md
+          if-no-files-found: error
+
+      - name: Publish PR governance self-check comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- lost-pets-governance-self-check -->';
+            const reportPath = 'artifacts/lost-pets-governance-contract-report.md';
+            const reportJsonPath = 'artifacts/lost-pets-governance-contract-report.json';
+            const fallback = [
+              '# Lost Pets Governance Contract Report',
+              '',
+              '- Status: `failed`',
+              '',
+              'Report file was not generated. Inspect workflow logs and artifact upload step.',
+              '',
+            ].join('\n');
+            const reportJson = fs.existsSync(reportJsonPath)
+              ? JSON.parse(fs.readFileSync(reportJsonPath, 'utf8'))
+              : null;
+            const impactBanner = reportJson
+              ? [
+                  '## Impact Summary',
+                  '',
+                  `- Impact level: \`${reportJson.impact?.level || 'n/a'}\``,
+                  `- Impact class: \`${reportJson.impact?.class || 'n/a'}\``,
+                  `- Routing: \`${(reportJson.impact?.routing || []).length ? reportJson.impact.routing.join(', ') : 'none'}\``,
+                  `- Escalation mode: \`${reportJson.escalation?.mode || 'n/a'}\``,
+                  '',
+                ].join('\n')
+              : '';
+            const body = `${marker}\n${impactBanner}` + (fs.existsSync(reportPath) ? fs.readFileSync(reportPath, 'utf8') : fallback);
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated existing Lost Pets governance self-check comment: ${existing.id}`);
+            } else {
+              const created = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+              core.info(`Created Lost Pets governance self-check comment: ${created.data.id}`);
+            }
+
+      - name: Sync self-check impact snapshot to governance digest
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- lost-pets-self-check-impact -->';
+            const reportJsonPath = 'artifacts/lost-pets-governance-contract-report.json';
+            const report = fs.existsSync(reportJsonPath)
+              ? JSON.parse(fs.readFileSync(reportJsonPath, 'utf8'))
+              : {
+                  status: 'failed',
+                  impact: { level: 'unknown', class: 'report-missing', routing: ['backend/platform'] },
+                  escalation: { mode: 'alert', threshold_runs: 2 },
+                  failure_count: 1,
+                };
+
+            const body = [
+              marker,
+              '## Governance Self-Check Impact Snapshot',
+              '',
+              `- Status: \`${report.status || 'unknown'}\``,
+              `- Impact level: \`${report.impact?.level || 'unknown'}\``,
+              `- Impact class: \`${report.impact?.class || 'unknown'}\``,
+              `- Routing: \`${(report.impact?.routing || []).length ? report.impact.routing.join(', ') : 'none'}\``,
+              `- Escalation mode: \`${report.escalation?.mode || 'unknown'}\``,
+              `- Failure count: \`${report.failure_count ?? 'n/a'}\``,
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const trackerTitle = '[Lost Pets Governance] Operational Digest';
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'lost-pets,governance-digest',
+              per_page: 100,
+            });
+            let tracker = openIssues.find((i) => i.title === trackerTitle);
+            if (!tracker) {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title: trackerTitle,
+                labels: ['lost-pets', 'governance-digest'],
+                body: [
+                  '<!-- lost-pets-governance-tracker -->',
+                  '# Lost Pets Governance Digest Tracker',
+                  '',
+                  'This issue keeps the latest aggregated governance summary for Lost Pets.',
+                  '',
+                  'Workflow source: `.github/workflows/lost-pets-governance-summary.yml`',
+                ].join('\n'),
+              });
+              tracker = created.data;
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: tracker.number,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated governance self-check impact snapshot in issue #${tracker.number}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body,
+              });
+              core.info(`Created governance self-check impact snapshot in issue #${tracker.number}`);
+            }

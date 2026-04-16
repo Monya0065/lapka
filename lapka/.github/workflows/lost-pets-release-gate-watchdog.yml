@@ -1,0 +1,205 @@
+name: Lost Pets Release Gate Watchdog
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Scan open release-gate issues and post watchdog status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const watchdogMarker = '<!-- lost-pets-release-gate-watchdog -->';
+            const stateMarker = '<!-- lost-pets-release-gate-status -->';
+            const runMarker = '<!-- lost-pets-release-run -->';
+            const escalation24Marker = '<!-- lost-pets-release-gate-escalation-24h -->';
+            const escalation48Marker = '<!-- lost-pets-release-gate-escalation-48h -->';
+
+            const { owner, repo } = context.repo;
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'lost-pets,release-gate',
+              per_page: 100,
+            });
+
+            if (openIssues.length === 0) {
+              core.info('No open release-gate issues found.');
+              return;
+            }
+
+            const now = Date.now();
+            const hoursBetween = (iso) => Math.floor((now - new Date(iso).getTime()) / 3600000);
+            const extractRole = (body, roleName) => {
+              const re = new RegExp(`-\\s*${roleName}:\\s*(.+)`, 'i');
+              const m = (body || '').match(re);
+              return m ? m[1].trim() : '';
+            };
+            const parseMentions = (value) => (value.match(/@[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)?/g) || []);
+
+            for (const issue of openIssues) {
+              const issueNumber = issue.number;
+              const issueBody = issue.body || '';
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: issueNumber,
+                per_page: 100,
+              });
+
+              const latestState = comments
+                .filter((c) => c.body?.includes(stateMarker))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+              const latestRun = comments
+                .filter((c) => c.body?.includes(runMarker))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+              const gateDecision = latestState && /Decision:\s*`READY`/i.test(latestState.body || '')
+                ? 'READY'
+                : 'BLOCKED';
+              const smokeStatus = latestRun && /Overall status:\s*`passed`/i.test(latestRun.body || '')
+                ? 'passed'
+                : 'not passed';
+
+              const issueAgeH = hoursBetween(issue.created_at);
+              const lastRunAgeH = latestRun ? hoursBetween(latestRun.created_at) : null;
+              const blocked24h =
+                gateDecision === 'BLOCKED' &&
+                (issueAgeH >= 24 || (lastRunAgeH !== null && lastRunAgeH >= 24));
+              const blocked48h =
+                gateDecision === 'BLOCKED' &&
+                (issueAgeH >= 48 || (lastRunAgeH !== null && lastRunAgeH >= 48));
+
+              const releaseOwner = extractRole(issueBody, 'Release owner');
+              const securityReviewer = extractRole(issueBody, 'Security reviewer');
+              const legalReviewer = extractRole(issueBody, 'Legal reviewer');
+              const ownerMentions = parseMentions(releaseOwner);
+              const securityMentions = parseMentions(securityReviewer);
+              const legalMentions = parseMentions(legalReviewer);
+
+              const statusEmoji = blocked24h ? '⚠️' : '✅';
+              const staleLine = blocked24h
+                ? '- Alert: gate has been BLOCKED for >= 24h, release owner action required.'
+                : '- Alert: no stale-blocking threshold reached.';
+              const escalationLine = blocked48h
+                ? '- Escalation: BLOCKED >= 48h, security/legal escalation active.'
+                : '- Escalation: normal.';
+
+              const body = [
+                watchdogMarker,
+                '## Release Gate Watchdog',
+                '',
+                `- Status: ${statusEmoji} \`${gateDecision}\``,
+                `- Latest smoke: \`${smokeStatus}\``,
+                `- Issue age: \`${issueAgeH}h\``,
+                `- Last smoke run age: \`${lastRunAgeH === null ? 'n/a' : `${lastRunAgeH}h`}\``,
+                staleLine,
+                escalationLine,
+                '',
+                'Action:',
+                '- if BLOCKED, rerun `Lost Pets Release Gate Run` and update checklist items.',
+              ].join('\n');
+
+              const existing = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(watchdogMarker));
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  body,
+                });
+              }
+
+              const labels = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+              const hasBlocked = labels.includes('release-gate-blocked');
+              const hasCritical = labels.includes('release-gate-critical');
+              if (blocked24h && !hasBlocked) {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  labels: ['release-gate-blocked'],
+                });
+              }
+              if (!blocked24h && hasBlocked) {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  name: 'release-gate-blocked',
+                });
+              }
+
+              if (blocked48h && !hasCritical) {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  labels: ['release-gate-critical'],
+                });
+              }
+              if (!blocked48h && hasCritical) {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  name: 'release-gate-critical',
+                });
+              }
+
+              const has24Comment = comments.some((c) => c.user?.type === 'Bot' && c.body?.includes(escalation24Marker));
+              if (blocked24h && !has24Comment) {
+                const ownerLine = ownerMentions.length > 0 ? ownerMentions.join(' ') : '_release owner not specified_';
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  body: [
+                    escalation24Marker,
+                    '## Escalation 24h',
+                    '',
+                    `Gate is BLOCKED for >= 24h. Action required from release owner: ${ownerLine}`,
+                    '',
+                    '- Run `Lost Pets Release Gate Run`',
+                    '- Update release checklist and unblock gate',
+                  ].join('\n'),
+                });
+              }
+
+              const has48Comment = comments.some((c) => c.user?.type === 'Bot' && c.body?.includes(escalation48Marker));
+              if (blocked48h && !has48Comment) {
+                const secLine = securityMentions.length > 0 ? securityMentions.join(' ') : '_security reviewer not specified_';
+                const legalLine = legalMentions.length > 0 ? legalMentions.join(' ') : '_legal reviewer not specified_';
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  body: [
+                    escalation48Marker,
+                    '## Escalation 48h',
+                    '',
+                    `Gate remains BLOCKED for >= 48h. Escalation to security/legal: ${secLine} ${legalLine}`,
+                    '',
+                    '- Review blocking reasons and compliance risks immediately',
+                    '- Decide go/no-go or rollback path',
+                  ].join('\n'),
+                });
+              }
+            }

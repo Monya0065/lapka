@@ -1,0 +1,298 @@
+{
+  "summary_required_markers": [
+    "<!-- lost-pets-governance-digest -->",
+    "<!-- lost-pets-weekly-remediation -->",
+    "<!-- lost-pets-weekly-grade-history -->",
+    "<!-- lost-pets-self-check-health -->",
+    "<!-- lost-pets-self-check-impact -->",
+    "<!-- lost-pets-self-check-impact-history -->",
+    "<!-- lost-pets-self-check-impact-alert -->",
+    "<!-- lost-pets-self-check-recovery -->",
+    "<!-- lost-pets-self-check-escalation -->",
+    "<!-- lost-pets-grade-decline-alert -->",
+    "<!-- lost-pets-grade-recovery -->",
+    "<!-- lost-pets-combined-anomaly -->",
+    "<!-- lost-pets-incident-exit -->",
+    "<!-- lost-pets-slo-status -->",
+    "<!-- lost-pets-slo-ack-escalation -->",
+    "<!-- lost-pets-governance-tracker -->"
+  ],
+  "required_issue_template_lines": [
+    "title: \"[Lost Pets Release] \"",
+    "  - lost-pets",
+    "  - release-gate",
+    "      label: Release owner",
+    "      label: Security reviewer",
+    "      label: Legal reviewer",
+    "      label: Runtime and migration gate",
+    "      label: Lost Pets smoke gate",
+    "      label: Final go/no-go"
+  ],
+  "release_required_sections": [
+    "## Release Candidate Metadata",
+    "## 1) Runtime and Migration Gate",
+    "## 2) Lost Pets Smoke Gate",
+    "## 3) Payments and Monetization Controls",
+    "## 4) Privacy and Consent Controls",
+    "## 5) Moderation and Safety Controls",
+    "## 7) Legal and Compliance (RU 2026)",
+    "## 9) Go/No-Go Decision"
+  ],
+  "release_critical_checklist_lines": [
+    "- [ ] `docker compose up --build -d` succeeds",
+    "- [ ] `GET /health` = 200",
+    "- [ ] `alembic upgrade head` succeeds on clean DB",
+    "- [ ] `make lost-pets-verify-report` passed locally or in CI",
+    "- [ ] PR sticky smoke comment shows latest `passed` status",
+    "- [ ] 152-FZ personal data handling requirements reviewed",
+    "- [ ] 54-FZ fiscal/payment obligations reviewed for scope changes",
+    "- [ ] Known risks documented and accepted",
+    "- [ ] Rollback plan documented and tested",
+    "- [ ] Final release approval recorded by release owner"
+  ],
+  "required_template_section_labels": [
+    "Runtime and migration gate",
+    "Lost Pets smoke gate",
+    "Payments, privacy, moderation, legal",
+    "Final go/no-go"
+  ],
+  "template_critical_options": [
+    "        - label: \"docker compose up --build -d succeeds\"",
+    "        - label: \"GET /health and /docs return 200\"",
+    "        - label: \"alembic upgrade head succeeds\"",
+    "        - label: \"Lost Pets smoke workflow passed\"",
+    "        - label: \"Sticky PR smoke comment confirms passed status\"",
+    "        - label: \"Payment idempotency and anti-fraud checks completed\"",
+    "        - label: \"RU 2026 legal checks (152-FZ/54-FZ) reviewed\"",
+    "        - label: \"Known risks documented\"",
+    "        - label: \"Rollback plan confirmed\"",
+    "        - label: \"Final release approval recorded\""
+  ],
+  "critical_mapping_pairs": [
+    [
+      "`docker compose up --build -d` succeeds",
+      "\"docker compose up --build -d succeeds\""
+    ],
+    [
+      "`alembic upgrade head` succeeds on clean DB",
+      "\"alembic upgrade head succeeds\""
+    ],
+    [
+      "PR sticky smoke comment shows latest `passed` status",
+      "\"Sticky PR smoke comment confirms passed status\""
+    ],
+    [
+      "54-FZ fiscal/payment obligations reviewed for scope changes",
+      "\"RU 2026 legal checks (152-FZ/54-FZ) reviewed\""
+    ],
+    [
+      "Known risks documented and accepted",
+      "\"Known risks documented\""
+    ],
+    [
+      "Rollback plan documented and tested",
+      "\"Rollback plan confirmed\""
+    ],
+    [
+      "Final release approval recorded by release owner",
+      "\"Final release approval recorded\""
+    ]
+  ],
+  "minimum_template_option_count": 10,
+  "minimum_release_checkbox_count": 20,
+  "required_run_lines": [
+    "const marker = '<!-- lost-pets-release-run -->';",
+    "const gateMarker = '<!-- lost-pets-release-gate -->';",
+    "labels: ['lost-pets', 'release-gate']",
+    "`- Release owner: ${releaseOwner}`",
+    "`- Security reviewer:`",
+    "`- Legal reviewer:`"
+  ],
+  "required_status_lines": [
+    "const marker = '<!-- lost-pets-release-gate-status -->';",
+    "const runMarker = '<!-- lost-pets-release-run -->';",
+    "labels.includes('release-gate') || (issue.title || '').startsWith('[Lost Pets Release]')"
+  ],
+  "required_watchdog_lines": [
+    "const watchdogMarker = '<!-- lost-pets-release-gate-watchdog -->';",
+    "const stateMarker = '<!-- lost-pets-release-gate-status -->';",
+    "const runMarker = '<!-- lost-pets-release-run -->';",
+    "const escalation24Marker = '<!-- lost-pets-release-gate-escalation-24h -->';",
+    "const escalation48Marker = '<!-- lost-pets-release-gate-escalation-48h -->';",
+    "labels: 'lost-pets,release-gate'",
+    "const releaseOwner = extractRole(issueBody, 'Release owner');",
+    "const securityReviewer = extractRole(issueBody, 'Security reviewer');",
+    "const legalReviewer = extractRole(issueBody, 'Legal reviewer');"
+  ],
+  "required_quality_lines": [
+    "Governance summary workflow: `.github/workflows/lost-pets-governance-summary.yml`",
+    "Governance self-check workflow: `.github/workflows/lost-pets-governance-self-check.yml`",
+    "Governance digest escalates if acknowledgements are missing for 2+ runs",
+    "Governance self-check fails CI if required sticky markers or doc references drift"
+  ],
+  "required_release_lines": [
+    "- `.github/workflows/lost-pets-governance-summary.yml` (daily aggregated governance dashboard artifact)",
+    "- `.github/workflows/lost-pets-governance-self-check.yml` (contract validator for markers and required governance doc references)",
+    "- acknowledgement escalation:",
+    "  - marker: `<!-- lost-pets-slo-ack-escalation -->`"
+  ],
+  "required_readme_lines": [
+    "- governance dashboard workflow: `.github/workflows/lost-pets-governance-summary.yml`",
+    "- governance self-check workflow: `.github/workflows/lost-pets-governance-self-check.yml`",
+    "- governance SLO ack escalation: raises alert if confirmations missing 2+ runs"
+  ],
+  "required_branch_protection_lines": [
+    "- `Lost Pets Smoke / lost-pets-smoke`",
+    "- `Lost Pets PR Governance / governance`",
+    "- `Lost Pets Governance Self Check / validate-governance-contract`"
+  ],
+  "impact_classification": {
+    "severity_rank": {
+      "low": 1,
+      "medium": 2,
+      "high": 3,
+      "critical": 4
+    },
+    "default": {
+      "level": "medium",
+      "class": "general-governance-drift",
+      "routing": [
+        "backend/platform",
+        "release owner"
+      ]
+    },
+    "categories": {
+      "summary_required_markers": {
+        "level": "critical",
+        "class": "critical-governance-markers",
+        "routing": [
+          "backend/platform",
+          "program owner",
+          "release owner"
+        ]
+      },
+      "required_run_lines": {
+        "level": "high",
+        "class": "workflow-contract-broken",
+        "routing": [
+          "backend/platform",
+          "release owner"
+        ]
+      },
+      "required_status_lines": {
+        "level": "high",
+        "class": "workflow-contract-broken",
+        "routing": [
+          "backend/platform",
+          "release owner"
+        ]
+      },
+      "required_watchdog_lines": {
+        "level": "high",
+        "class": "workflow-contract-broken",
+        "routing": [
+          "backend/platform",
+          "release owner"
+        ]
+      },
+      "required_issue_template_lines": {
+        "level": "high",
+        "class": "release-template-contract-broken",
+        "routing": [
+          "release owner",
+          "backend/platform"
+        ]
+      },
+      "required_template_section_labels": {
+        "level": "high",
+        "class": "release-template-contract-broken",
+        "routing": [
+          "release owner",
+          "backend/platform"
+        ]
+      },
+      "template_critical_options": {
+        "level": "high",
+        "class": "release-template-contract-broken",
+        "routing": [
+          "release owner",
+          "backend/platform"
+        ]
+      },
+      "critical_mapping_pairs": {
+        "level": "high",
+        "class": "release-template-contract-broken",
+        "routing": [
+          "release owner",
+          "backend/platform"
+        ]
+      },
+      "minimum_template_option_count": {
+        "level": "high",
+        "class": "release-template-contract-broken",
+        "routing": [
+          "release owner",
+          "backend/platform"
+        ]
+      },
+      "minimum_release_checkbox_count": {
+        "level": "medium",
+        "class": "release-doc-coverage-drift",
+        "routing": [
+          "release owner"
+        ]
+      },
+      "release_required_sections": {
+        "level": "medium",
+        "class": "release-doc-coverage-drift",
+        "routing": [
+          "release owner"
+        ]
+      },
+      "release_critical_checklist_lines": {
+        "level": "medium",
+        "class": "release-doc-coverage-drift",
+        "routing": [
+          "release owner"
+        ]
+      },
+      "required_quality_lines": {
+        "level": "low",
+        "class": "docs-only-drift",
+        "routing": [
+          "release owner"
+        ]
+      },
+      "required_release_lines": {
+        "level": "low",
+        "class": "docs-only-drift",
+        "routing": [
+          "release owner"
+        ]
+      },
+      "required_readme_lines": {
+        "level": "low",
+        "class": "docs-only-drift",
+        "routing": [
+          "release owner"
+        ]
+      },
+      "required_branch_protection_lines": {
+        "level": "medium",
+        "class": "branch-protection-drift",
+        "routing": [
+          "release owner",
+          "program owner"
+        ]
+      },
+      "contract_integrity": {
+        "level": "critical",
+        "class": "contract-source-broken",
+        "routing": [
+          "backend/platform",
+          "program owner"
+        ]
+      }
+    }
+  }
+}

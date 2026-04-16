@@ -1,0 +1,129 @@
+name: Lost Pets Release Gate Status
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Optional release-gate issue number to evaluate"
+        required: false
+        default: ""
+        type: string
+  issues:
+    types: [opened, edited, reopened, labeled, unlabeled]
+  issue_comment:
+    types: [created, edited]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  evaluate-release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Evaluate release gate issue status
+        uses: actions/github-script@v7
+        env:
+          ISSUE_NUMBER_INPUT: ${{ inputs.issue_number }}
+        with:
+          script: |
+            const marker = '<!-- lost-pets-release-gate-status -->';
+            const runMarker = '<!-- lost-pets-release-run -->';
+            const issueNumberInput = process.env.ISSUE_NUMBER_INPUT?.trim();
+
+            const { owner, repo } = context.repo;
+            let issueNumber = Number(issueNumberInput);
+
+            if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+              if (context.payload.issue?.number) {
+                issueNumber = context.payload.issue.number;
+              } else {
+                core.info('No issue number provided and no issue context found. Nothing to do.');
+                return;
+              }
+            }
+
+            const issueResp = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issueNumber,
+            });
+            const issue = issueResp.data;
+
+            const labels = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+            const isReleaseGate = labels.includes('release-gate') || (issue.title || '').startsWith('[Lost Pets Release]');
+            if (!isReleaseGate) {
+              core.info(`Issue #${issueNumber} is not a Lost Pets release gate issue. Skipping.`);
+              return;
+            }
+
+            const body = issue.body || '';
+            const checklistLines = body.match(/^- \[(?: |x|X)\] .+$/gm) || [];
+            const unchecked = checklistLines.filter((line) => /^- \[ \]/.test(line));
+            const checklistComplete = checklistLines.length > 0 && unchecked.length === 0;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+
+            const runComments = comments
+              .filter((c) => c.body?.includes(runMarker))
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const latestRun = runComments[0];
+            const smokePassed = Boolean(latestRun && /Overall status:\s*`passed`/i.test(latestRun.body || ''));
+
+            const ready = checklistComplete && smokePassed;
+            const statusSummary = [
+              marker,
+              '## Release Gate Status',
+              '',
+              `- Checklist complete: \`${checklistComplete ? 'yes' : 'no'}\``,
+              `- Latest smoke status: \`${smokePassed ? 'passed' : 'not passed'}\``,
+              `- Decision: \`${ready ? 'READY' : 'BLOCKED'}\``,
+            ].join('\n');
+
+            const existingStatus = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(marker));
+            if (existingStatus) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingStatus.id,
+                body: statusSummary,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: statusSummary,
+              });
+            }
+
+            if (ready && issue.state !== 'closed') {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+              core.info(`Issue #${issueNumber} closed: release gate is READY.`);
+              return;
+            }
+
+            if (!ready && issue.state === 'closed') {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                state: 'open',
+              });
+              core.info(`Issue #${issueNumber} reopened: release gate is BLOCKED.`);
+              return;
+            }
+
+            core.info(`Issue #${issueNumber} state unchanged (${issue.state}), decision=${ready ? 'READY' : 'BLOCKED'}.`);

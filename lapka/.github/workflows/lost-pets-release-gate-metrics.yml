@@ -1,0 +1,149 @@
+name: Lost Pets Release Gate Metrics
+
+on:
+  schedule:
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release-gate metrics artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const runMarker = '<!-- lost-pets-release-run -->';
+            const { owner, repo } = context.repo;
+            const now = Date.now();
+            const MS_HOUR = 3600000;
+
+            const allIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              labels: 'lost-pets,release-gate',
+              per_page: 100,
+            });
+
+            const gateIssues = allIssues.filter((i) => !i.pull_request);
+
+            const metrics = {
+              generated_at: new Date(now).toISOString(),
+              sample_size: gateIssues.length,
+              open_issues: 0,
+              closed_issues: 0,
+              blocked_24h_count: 0,
+              blocked_48h_count: 0,
+              blocked_24h_share: 0,
+              avg_time_to_ready_hours: null,
+              median_time_to_ready_hours: null,
+              smoke_pass_rate_percent: null,
+            };
+
+            const readyDurations = [];
+            let smokePassedCount = 0;
+
+            for (const issue of gateIssues) {
+              const labels = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+              const isOpen = issue.state === 'open';
+              if (isOpen) metrics.open_issues += 1; else metrics.closed_issues += 1;
+
+              const createdAt = new Date(issue.created_at).getTime();
+              const baselineHours = Math.floor((now - createdAt) / MS_HOUR);
+
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: issue.number,
+                per_page: 100,
+              });
+              const latestRun = comments
+                .filter((c) => c.body?.includes(runMarker))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+              const smokePassed = Boolean(latestRun && /Overall status:\s*`passed`/i.test(latestRun.body || ''));
+              if (smokePassed) smokePassedCount += 1;
+
+              const lastRunHours = latestRun
+                ? Math.floor((now - new Date(latestRun.created_at).getTime()) / MS_HOUR)
+                : null;
+              const blocked24 = isOpen && (labels.includes('release-gate-blocked') || baselineHours >= 24 || (lastRunHours !== null && lastRunHours >= 24));
+              const blocked48 = isOpen && (labels.includes('release-gate-critical') || baselineHours >= 48 || (lastRunHours !== null && lastRunHours >= 48));
+              if (blocked24) metrics.blocked_24h_count += 1;
+              if (blocked48) metrics.blocked_48h_count += 1;
+
+              if (!isOpen && smokePassed) {
+                const closedAt = issue.closed_at ? new Date(issue.closed_at).getTime() : now;
+                readyDurations.push(Math.max(0, Math.floor((closedAt - createdAt) / MS_HOUR)));
+              }
+            }
+
+            if (metrics.sample_size > 0) {
+              metrics.blocked_24h_share = Number((metrics.blocked_24h_count / metrics.sample_size).toFixed(4));
+              metrics.smoke_pass_rate_percent = Number(((smokePassedCount / metrics.sample_size) * 100).toFixed(2));
+            }
+
+            if (readyDurations.length > 0) {
+              const sorted = [...readyDurations].sort((a, b) => a - b);
+              const sum = sorted.reduce((a, b) => a + b, 0);
+              metrics.avg_time_to_ready_hours = Number((sum / sorted.length).toFixed(2));
+              const mid = Math.floor(sorted.length / 2);
+              metrics.median_time_to_ready_hours = sorted.length % 2 === 0
+                ? Number(((sorted[mid - 1] + sorted[mid]) / 2).toFixed(2))
+                : sorted[mid];
+            }
+
+            const artifactsDir = path.join(process.cwd(), 'artifacts');
+            fs.mkdirSync(artifactsDir, { recursive: true });
+
+            const jsonPath = path.join(artifactsDir, 'lost-pets-release-gate-metrics.json');
+            fs.writeFileSync(jsonPath, JSON.stringify(metrics, null, 2));
+
+            const md = [
+              '# Lost Pets Release Gate Metrics',
+              '',
+              `Generated at: \`${metrics.generated_at}\``,
+              '',
+              '| Metric | Value |',
+              '|---|---:|',
+              `| Sample size | ${metrics.sample_size} |`,
+              `| Open issues | ${metrics.open_issues} |`,
+              `| Closed issues | ${metrics.closed_issues} |`,
+              `| Blocked >=24h | ${metrics.blocked_24h_count} |`,
+              `| Blocked >=48h | ${metrics.blocked_48h_count} |`,
+              `| Blocked >=24h share | ${metrics.blocked_24h_share} |`,
+              `| Smoke pass rate (%) | ${metrics.smoke_pass_rate_percent ?? 'n/a'} |`,
+              `| Avg time-to-ready (h) | ${metrics.avg_time_to_ready_hours ?? 'n/a'} |`,
+              `| Median time-to-ready (h) | ${metrics.median_time_to_ready_hours ?? 'n/a'} |`,
+              '',
+            ].join('\n');
+            const mdPath = path.join(artifactsDir, 'lost-pets-release-gate-metrics.md');
+            fs.writeFileSync(mdPath, md);
+
+            core.setOutput('json_path', 'artifacts/lost-pets-release-gate-metrics.json');
+            core.setOutput('md_path', 'artifacts/lost-pets-release-gate-metrics.md');
+
+      - name: Upload release-gate metrics artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lost-pets-release-gate-metrics
+          path: |
+            artifacts/lost-pets-release-gate-metrics.json
+            artifacts/lost-pets-release-gate-metrics.md
+          if-no-files-found: error
+
+      - name: Print metrics markdown
+        run: |
+          cat artifacts/lost-pets-release-gate-metrics.md

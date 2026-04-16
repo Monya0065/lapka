@@ -1,0 +1,108 @@
+name: Lost Pets Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "docker-compose.yml"
+      - "scripts/verify-lost-pets-stack.sh"
+      - ".github/workflows/lost-pets-smoke.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "docker-compose.yml"
+      - "scripts/verify-lost-pets-stack.sh"
+      - ".github/workflows/lost-pets-smoke.yml"
+
+concurrency:
+  group: lost-pets-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  lost-pets-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run lost pets smoke suite
+        run: |
+          mkdir -p artifacts
+          REPORT_PATH=artifacts/lost-pets-smoke-report.json SUMMARY_PATH=artifacts/lost-pets-smoke-summary.md bash scripts/verify-lost-pets-stack.sh
+
+      - name: Print lost pets smoke report
+        if: always()
+        run: |
+          if [ -f artifacts/lost-pets-smoke-report.json ]; then
+            cat artifacts/lost-pets-smoke-report.json | jq '.'
+          fi
+
+      - name: Upload lost pets smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lost-pets-smoke-report
+          path: |
+            artifacts/lost-pets-smoke-report.json
+            artifacts/lost-pets-smoke-summary.md
+          if-no-files-found: ignore
+
+      - name: Publish PR summary comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- lost-pets-smoke-summary -->';
+            const summaryPath = 'artifacts/lost-pets-smoke-summary.md';
+            const fallback = '# Lost Pets Smoke Summary\n\nSummary file was not generated. Please inspect workflow logs.\n';
+            const body = `${marker}\n` + (fs.existsSync(summaryPath) ? fs.readFileSync(summaryPath, 'utf8') : fallback);
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated existing Lost Pets smoke comment: ${existing.id}`);
+            } else {
+              const created = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+              core.info(`Created Lost Pets smoke comment: ${created.data.id}`);
+            }
+
+      - name: Docker logs on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs api
+          docker compose logs db
+
+      - name: Shutdown stack
+        if: always()
+        run: docker compose down -v

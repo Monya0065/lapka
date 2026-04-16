@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Lapka Monitoring Dashboards
+    orgId: 1
+    folder: Lapka
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

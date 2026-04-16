@@ -1,0 +1,2147 @@
+name: Lost Pets Governance Summary
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Build governance summary artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const { owner, repo } = context.repo;
+            const nowIso = new Date().toISOString();
+            const governanceContract = JSON.parse(fs.readFileSync('.github/lost-pets-governance-contract.json', 'utf8'));
+            const runMarker = '<!-- lost-pets-release-run -->';
+            const statusMarker = '<!-- lost-pets-release-gate-status -->';
+            const escalation24Marker = '<!-- lost-pets-release-gate-escalation-24h -->';
+            const escalation48Marker = '<!-- lost-pets-release-gate-escalation-48h -->';
+            const selfCheckImpactMarker = '<!-- lost-pets-self-check-impact -->';
+
+            const workflowsToTrack = [
+              'Lost Pets Smoke',
+              'Lost Pets PR Governance',
+              'Lost Pets Release Gate Status',
+              'Lost Pets Release Gate Watchdog',
+              'Lost Pets Release Gate Metrics',
+              'Lost Pets Governance Self Check',
+            ];
+
+            const allWorkflowRuns = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const governanceDigestIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'lost-pets,governance-digest',
+              per_page: 100,
+            });
+            const governanceTracker = governanceDigestIssues.find((i) => i.title === '[Lost Pets Governance] Operational Digest');
+            let latestSelfCheckImpact = {
+              level: 'none',
+              class: 'none',
+              routing: [],
+              status: 'unknown',
+            };
+            let trackerAckSlaSnapshot = {
+              escalation_mode: 'unknown',
+              escalation_age_hours: 0,
+              sla_24h_exceeded: false,
+              sla_48h_exceeded: false,
+              breach_streak_24h: 0,
+              breach_streak_48h: 0,
+              active_labels: [],
+              status: 'monitoring',
+            };
+            let trackerAckSlaComments = [];
+            if (governanceTracker) {
+              const trackerLabels = (governanceTracker.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+              const parseBodyValue = (body, label) => {
+                const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const m = (body || '').match(new RegExp(`${esc}:\\s*\`([^\\`]+)\``, 'i'));
+                return m ? m[1] : null;
+              };
+              const trackerComments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: governanceTracker.number,
+                per_page: 100,
+              });
+              const impactComment = trackerComments
+                .filter((c) => c.user?.type === 'Bot' && (c.body || '').includes(selfCheckImpactMarker))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+              if (impactComment) {
+                const parseImpactValue = (body, label) => parseBodyValue(body, label);
+                latestSelfCheckImpact = {
+                  level: parseImpactValue(impactComment.body || '', 'Impact level') || 'unknown',
+                  class: parseImpactValue(impactComment.body || '', 'Impact class') || 'unknown',
+                  routing: (parseImpactValue(impactComment.body || '', 'Routing') || '')
+                    .split(/\s*,\s*/)
+                    .filter(Boolean),
+                  status: parseImpactValue(impactComment.body || '', 'Status') || 'unknown',
+                };
+              }
+              const ackSlaComment = trackerComments
+                .filter((c) => c.user?.type === 'Bot' && /<!--\s*lost-pets-slo-ack-sla\s*-->/.test(c.body || ''))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+              trackerAckSlaComments = trackerComments
+                .filter((c) => c.user?.type === 'Bot' && /<!--\s*lost-pets-slo-ack-sla\s*-->/.test(c.body || ''));
+              if (ackSlaComment) {
+                const toNumber = (value) => {
+                  const n = Number(value);
+                  return Number.isFinite(n) ? n : 0;
+                };
+                const asBool = (value) => (value || '').toLowerCase() === 'yes';
+                const mode = parseBodyValue(ackSlaComment.body || '', 'Escalation mode') || 'unknown';
+                const ageHours = toNumber(parseBodyValue(ackSlaComment.body || '', 'Escalation age (hours)'));
+                const breach24 = toNumber(parseBodyValue(ackSlaComment.body || '', '24h breach streak'));
+                const breach48 = toNumber(parseBodyValue(ackSlaComment.body || '', '48h breach streak'));
+                const activeAckLabels = [
+                  'slo-ack-escalated',
+                  'slo-ack-self-check-blocked',
+                  'slo-ack-sla-24h',
+                  'slo-ack-sla-48h',
+                  'slo-ack-sla-chronic',
+                ].filter((label) => trackerLabels.includes(label));
+                trackerAckSlaSnapshot = {
+                  escalation_mode: mode,
+                  escalation_age_hours: ageHours,
+                  sla_24h_exceeded: asBool(parseBodyValue(ackSlaComment.body || '', '24h SLA exceeded')),
+                  sla_48h_exceeded: asBool(parseBodyValue(ackSlaComment.body || '', '48h SLA exceeded')),
+                  breach_streak_24h: breach24,
+                  breach_streak_48h: breach48,
+                  active_labels: activeAckLabels,
+                  status: breach48 >= 2 ? 'critical_chronic' : (breach48 >= 1 ? 'critical' : (breach24 >= 2 ? 'warning_chronic' : (breach24 >= 1 ? 'warning' : 'monitoring'))),
+                };
+              }
+            }
+            const impactSeverityRank = governanceContract?.impact_classification?.severity_rank || {
+              low: 1,
+              medium: 2,
+              high: 3,
+              critical: 4,
+            };
+            const selfCheckImpactScore = impactSeverityRank[latestSelfCheckImpact.level] || 0;
+
+            const workflowHealth = workflowsToTrack.map((name) => {
+              const latest = allWorkflowRuns
+                .filter((r) => r.name === name)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+              return {
+                name,
+                latest_run_status: latest ? latest.status : 'missing',
+                latest_run_conclusion: latest ? (latest.conclusion || 'none') : 'missing',
+                latest_run_created_at: latest ? latest.created_at : null,
+                latest_run_url: latest ? latest.html_url : null,
+              };
+            });
+            const failingWorkflows = workflowHealth.filter((w) => (
+              w.latest_run_conclusion !== 'success' &&
+              w.latest_run_conclusion !== 'skipped' &&
+              w.latest_run_conclusion !== 'neutral' &&
+              w.latest_run_conclusion !== 'none' &&
+              w.latest_run_conclusion !== 'missing'
+            ));
+
+            const gateIssuesAll = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              labels: 'lost-pets,release-gate',
+              per_page: 100,
+            });
+            const gateIssues = gateIssuesAll.filter((i) => !i.pull_request);
+            const openIssues = gateIssues.filter((i) => i.state === 'open');
+            const closedIssues = gateIssues.filter((i) => i.state === 'closed');
+            const nowMs = Date.now();
+            const DAY_MS = 24 * 60 * 60 * 1000;
+            const isWithinDays = (iso, days) => {
+              if (!iso) return false;
+              return (nowMs - new Date(iso).getTime()) <= (days * DAY_MS);
+            };
+
+            let readyOpenIssues = 0;
+            let blockedOpenIssues = 0;
+            let smokePassedOpenIssues = 0;
+            let criticalOpenIssues = 0;
+            let missingRoleMetadataIssues = 0;
+            let openBlocked24hCount = 0;
+            let openBlocked48hCount = 0;
+            const openIssueRows = [];
+
+            for (const issue of openIssues) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: issue.number,
+                per_page: 100,
+              });
+              const latestState = comments
+                .filter((c) => c.body?.includes(statusMarker))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+              const latestRun = comments
+                .filter((c) => c.body?.includes(runMarker))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+              const decision = latestState && /Decision:\s*`READY`/i.test(latestState.body || '') ? 'READY' : 'BLOCKED';
+              const smoke = latestRun && /Overall status:\s*`passed`/i.test(latestRun.body || '') ? 'passed' : 'not passed';
+              const labels = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+              const critical = labels.includes('release-gate-critical');
+              const issueAgeHours = Math.floor((nowMs - new Date(issue.created_at).getTime()) / DAY_MS * 24);
+              const blocked24h = labels.includes('release-gate-blocked') || (decision === 'BLOCKED' && issueAgeHours >= 24);
+              const blocked48h = labels.includes('release-gate-critical') || (decision === 'BLOCKED' && issueAgeHours >= 48);
+              const escalation24hEvents = comments.filter((c) => (c.body || '').includes(escalation24Marker)).length;
+              const escalation48hEvents = comments.filter((c) => (c.body || '').includes(escalation48Marker)).length;
+              const chronicScore = (blocked24h ? 1 : 0) + (blocked48h ? 2 : 0) + escalation24hEvents + (escalation48hEvents * 2);
+              const issueBody = issue.body || '';
+              const hasReleaseOwner = /-\s*Release owner:\s*.+/i.test(issueBody);
+              const hasSecurityReviewer = /-\s*Security reviewer:\s*.+/i.test(issueBody);
+              const hasLegalReviewer = /-\s*Legal reviewer:\s*.+/i.test(issueBody);
+              const hasRoleMetadata = hasReleaseOwner && hasSecurityReviewer && hasLegalReviewer;
+              if (decision === 'READY') readyOpenIssues += 1; else blockedOpenIssues += 1;
+              if (smoke === 'passed') smokePassedOpenIssues += 1;
+              if (critical) criticalOpenIssues += 1;
+              if (!hasRoleMetadata) missingRoleMetadataIssues += 1;
+              if (blocked24h) openBlocked24hCount += 1;
+              if (blocked48h) openBlocked48hCount += 1;
+              openIssueRows.push({
+                number: issue.number,
+                title: issue.title,
+                decision,
+                smoke,
+                critical,
+                has_role_metadata: hasRoleMetadata,
+                blocked_24h: blocked24h,
+                blocked_48h: blocked48h,
+                escalation_24h_events: escalation24hEvents,
+                escalation_48h_events: escalation48hEvents,
+                chronic_score: chronicScore,
+                updated_at: issue.updated_at,
+                url: issue.html_url,
+              });
+            }
+
+            const blockedShare = openIssues.length > 0 ? Number((blockedOpenIssues / openIssues.length).toFixed(4)) : 0;
+            const riskReasons = [];
+            let riskLevel = 'GREEN';
+            const ackStatusRiskRank = {
+              monitoring: 0,
+              warning: 1,
+              warning_chronic: 2,
+              critical: 3,
+              critical_chronic: 4,
+            };
+            const ackStatus = trackerAckSlaSnapshot.status || 'monitoring';
+            const ackRiskScore = ackStatusRiskRank[ackStatus] || 0;
+            const parseAckSlaAgeFromBody = (body) => {
+              const m = (body || '').match(/Escalation age \(hours\):\s*`(\d+)`/i);
+              return m ? Number(m[1]) : 0;
+            };
+            const ackRecentAges = trackerAckSlaComments
+              .slice()
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              .slice(0, 3)
+              .map((c) => parseAckSlaAgeFromBody(c.body || ''));
+            const ackAgeTrendRisk = (() => {
+              const current = ackRecentAges[0] || 0;
+              const previous = ackRecentAges[1] || 0;
+              const beforePrevious = ackRecentAges[2] || 0;
+              const worsening = ackRecentAges.length >= 2 && current > previous;
+              const worseningStreak = ackRecentAges.length >= 3 && current > previous && previous > beforePrevious ? 2 : 0;
+              const severe = current >= 24;
+              return {
+                current,
+                worsening,
+                worsening_streak: worseningStreak,
+                severe,
+                risk: worsening && severe && worseningStreak >= 2 ? 'high' : (worsening && current >= 12 ? 'medium' : 'low'),
+              };
+            })();
+
+            if (criticalOpenIssues > 0) {
+              riskLevel = 'RED';
+              riskReasons.push(`critical_open_issues=${criticalOpenIssues}`);
+            }
+            if (failingWorkflows.length >= 2) {
+              riskLevel = 'RED';
+              riskReasons.push(`failing_workflows=${failingWorkflows.length}`);
+            }
+            if (blockedShare >= 0.5 && openIssues.length >= 2) {
+              riskLevel = 'RED';
+              riskReasons.push(`blocked_share=${blockedShare}`);
+            }
+            if (selfCheckImpactScore >= 4) {
+              riskLevel = 'RED';
+              riskReasons.push(`self_check_impact=${latestSelfCheckImpact.class}`);
+            }
+            if (riskLevel !== 'RED' && selfCheckImpactScore >= 2) {
+              riskLevel = 'YELLOW';
+              riskReasons.push(`self_check_impact=${latestSelfCheckImpact.class}`);
+            }
+            if (riskLevel !== 'RED' && (blockedOpenIssues > 0 || failingWorkflows.length > 0)) {
+              riskLevel = 'YELLOW';
+              if (blockedOpenIssues > 0) riskReasons.push(`open_blocked=${blockedOpenIssues}`);
+              if (failingWorkflows.length > 0) riskReasons.push(`failing_workflows=${failingWorkflows.length}`);
+            }
+            if (ackRiskScore >= 3) {
+              riskLevel = 'RED';
+              riskReasons.push(`ack_escalation=${ackStatus}`);
+            } else if (riskLevel !== 'RED' && ackRiskScore >= 2) {
+              riskLevel = 'YELLOW';
+              riskReasons.push(`ack_escalation=${ackStatus}`);
+            } else if (ackRiskScore >= 1) {
+              riskReasons.push(`ack_escalation=${ackStatus}`);
+            }
+            if (ackAgeTrendRisk.risk === 'high') {
+              riskLevel = 'RED';
+              riskReasons.push(`ack_age_trend=worsening_streak_${ackAgeTrendRisk.worsening_streak}`);
+            } else if (riskLevel !== 'RED' && ackAgeTrendRisk.risk === 'medium') {
+              riskLevel = 'YELLOW';
+              riskReasons.push('ack_age_trend=worsening');
+            }
+            if (riskReasons.length === 0) {
+              riskReasons.push('all_signals_healthy');
+            }
+            const routeHints = [];
+            if (criticalOpenIssues > 0) {
+              routeHints.push('security_legal: review critical blocked gates immediately and approve go/no-go path');
+            }
+            if (blockedOpenIssues > 0) {
+              routeHints.push('release_owner: rerun release gate and resolve checklist blockers in current cycle');
+            }
+            if (failingWorkflows.length > 0) {
+              routeHints.push('backend_platform: inspect failing governance workflows and restore green status');
+            }
+            if (missingRoleMetadataIssues > 0) {
+              routeHints.push('release_owner: fill missing role metadata (release/security/legal) in release-gate issues');
+            }
+            if (selfCheckImpactScore >= 3) {
+              routeHints.push(`self_check: ${latestSelfCheckImpact.routing.length ? latestSelfCheckImpact.routing.join(', ') : 'backend/platform, release owner'} must remediate high-severity governance drift`);
+            } else if (selfCheckImpactScore >= 1) {
+              routeHints.push(`self_check: ${latestSelfCheckImpact.routing.length ? latestSelfCheckImpact.routing.join(', ') : 'release owner'} should resolve governance drift before it escalates`);
+            }
+            if (ackRiskScore >= 3) {
+              routeHints.push('ack_sla: release owner + backend/platform + program owner must resolve critical acknowledgement delay immediately');
+            } else if (ackRiskScore >= 2) {
+              routeHints.push('ack_sla: release owner and program owner should clear repeated acknowledgement SLA overruns this cycle');
+            } else if (ackRiskScore >= 1) {
+              routeHints.push('ack_sla: release owner should clear acknowledgement backlog before next run');
+            }
+            if (ackAgeTrendRisk.risk === 'high') {
+              routeHints.push('ack_age: release owner + program owner must stop worsening ack-age trend and report same-day ETA');
+            } else if (ackAgeTrendRisk.risk === 'medium') {
+              routeHints.push('ack_age: monitor rising acknowledgement age and prevent transition to 24h+ chronic zone');
+            }
+            if (routeHints.length === 0) {
+              routeHints.push('operations: maintain normal cadence and keep monitoring signals healthy');
+            }
+            const actionHintsByRisk = {
+              GREEN: [
+                'Keep scheduled governance workflows enabled.',
+                'Proceed with normal release cadence.',
+                'Continue routine monitoring of release-gate issues.',
+              ],
+              YELLOW: [
+                'Run `Lost Pets Release Gate Run` for currently blocked issues.',
+                'Review failing workflows and assign owners within the same day.',
+                'Re-validate release checklist items before next deployment window.',
+              ],
+              RED: [
+                'Freeze Lost Pets release changes until blockers are resolved.',
+                'Escalate immediately to release owner + security + legal reviewers.',
+                'Execute go/no-go review and prepare rollback decision path.',
+              ],
+            };
+            const selectedActionHints = [...(actionHintsByRisk[riskLevel] || actionHintsByRisk.YELLOW)];
+            if (ackAgeTrendRisk.risk === 'high') {
+              selectedActionHints.push('Ack age trend is worsening for 2+ cycles at 24h+; run same-day acknowledgement recovery checkpoint.');
+            } else if (ackAgeTrendRisk.risk === 'medium') {
+              selectedActionHints.push('Ack age trend is rising; clear acknowledgement backlog before next governance cycle.');
+            }
+
+            const trendForDays = (days) => ({
+              window_days: days,
+              created_issues: gateIssues.filter((i) => isWithinDays(i.created_at, days)).length,
+              closed_issues: gateIssues.filter((i) => i.state === 'closed' && isWithinDays(i.closed_at, days)).length,
+              blocked_open_issues: openIssues.filter((i) => {
+                const labels = (i.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+                return labels.includes('release-gate-blocked');
+              }).length,
+              critical_open_issues: openIssues.filter((i) => {
+                const labels = (i.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+                return labels.includes('release-gate-critical');
+              }).length,
+              escalation_24h_events: 0,
+              escalation_48h_events: 0,
+              ack_sla_warning_events: 0,
+              ack_sla_critical_events: 0,
+              ack_sla_avg_age_hours: 0,
+              smoke_pass_events: 0,
+              smoke_fail_events: 0,
+            });
+
+            const trend7 = trendForDays(7);
+            const trend30 = trendForDays(30);
+            const parseAckAgeHours = (body) => {
+              const m = (body || '').match(/Escalation age \(hours\):\s*`(\d+)`/i);
+              return m ? Number(m[1]) : null;
+            };
+            const summarizeAckSlaTrend = (days) => {
+              const inWindow = trackerAckSlaComments.filter((c) => isWithinDays(c.created_at, days));
+              let warning = 0;
+              let critical = 0;
+              const ages = [];
+              for (const c of inWindow) {
+                const body = c.body || '';
+                if (/SLO Ack Escalation SLA — Critical/i.test(body)) critical += 1;
+                else if (/SLO Ack Escalation SLA — Warning/i.test(body)) warning += 1;
+                const age = parseAckAgeHours(body);
+                if (age !== null) ages.push(age);
+              }
+              return {
+                warning,
+                critical,
+                avg_age_hours: ages.length ? Number((ages.reduce((a, b) => a + b, 0) / ages.length).toFixed(2)) : 0,
+              };
+            };
+            const ackTrend7 = summarizeAckSlaTrend(7);
+            const ackTrend30 = summarizeAckSlaTrend(30);
+            trend7.ack_sla_warning_events = ackTrend7.warning;
+            trend7.ack_sla_critical_events = ackTrend7.critical;
+            trend7.ack_sla_avg_age_hours = ackTrend7.avg_age_hours;
+            trend30.ack_sla_warning_events = ackTrend30.warning;
+            trend30.ack_sla_critical_events = ackTrend30.critical;
+            trend30.ack_sla_avg_age_hours = ackTrend30.avg_age_hours;
+            let resolvedChronic7d = 0;
+            let resolvedChronicIssueRefs = [];
+            const selfCheckRuns = allWorkflowRuns
+              .filter((r) => r.name === 'Lost Pets Governance Self Check')
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const successfulConclusions = new Set(['success', 'skipped', 'neutral']);
+            const selfCheckRecentRuns = selfCheckRuns.slice(0, 5).map((r) => ({
+              created_at: r.created_at,
+              status: r.status,
+              conclusion: r.conclusion || 'none',
+              url: r.html_url,
+            }));
+            const selfCheckFailureStreak = (() => {
+              let streak = 0;
+              for (const run of selfCheckRuns) {
+                const conclusion = run.conclusion || 'none';
+                if (successfulConclusions.has(conclusion)) break;
+                if (conclusion === 'failure' || conclusion === 'cancelled' || conclusion === 'timed_out' || conclusion === 'action_required') {
+                  streak += 1;
+                } else {
+                  break;
+                }
+              }
+              return streak;
+            })();
+            const selfCheckRuns7d = selfCheckRuns.filter((r) => isWithinDays(r.created_at, 7));
+            const selfCheckRuns30d = selfCheckRuns.filter((r) => isWithinDays(r.created_at, 30));
+            const countHealthyRuns = (runs) => runs.filter((r) => successfulConclusions.has(r.conclusion || 'none')).length;
+            const selfCheckHealth = {
+              latest_conclusion: selfCheckRuns[0]?.conclusion || 'missing',
+              latest_created_at: selfCheckRuns[0]?.created_at || null,
+              failure_streak: selfCheckFailureStreak,
+              runs_7d: selfCheckRuns7d.length,
+              runs_30d: selfCheckRuns30d.length,
+              healthy_runs_7d: countHealthyRuns(selfCheckRuns7d),
+              healthy_runs_30d: countHealthyRuns(selfCheckRuns30d),
+              pass_rate_7d: selfCheckRuns7d.length > 0
+                ? Number((countHealthyRuns(selfCheckRuns7d) / selfCheckRuns7d.length).toFixed(4))
+                : null,
+              pass_rate_30d: selfCheckRuns30d.length > 0
+                ? Number((countHealthyRuns(selfCheckRuns30d) / selfCheckRuns30d.length).toFixed(4))
+                : null,
+              recent_runs: selfCheckRecentRuns,
+            };
+
+            for (const issue of gateIssues) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: issue.number,
+                per_page: 100,
+              });
+
+              for (const c of comments) {
+                const body = c.body || '';
+                if (body.includes(escalation24Marker)) {
+                  if (isWithinDays(c.created_at, 7)) trend7.escalation_24h_events += 1;
+                  if (isWithinDays(c.created_at, 30)) trend30.escalation_24h_events += 1;
+                }
+                if (body.includes(escalation48Marker)) {
+                  if (isWithinDays(c.created_at, 7)) trend7.escalation_48h_events += 1;
+                  if (isWithinDays(c.created_at, 30)) trend30.escalation_48h_events += 1;
+                }
+                if (body.includes(runMarker)) {
+                  const passed = /Overall status:\s*`passed`/i.test(body);
+                  if (isWithinDays(c.created_at, 7)) {
+                    if (passed) trend7.smoke_pass_events += 1; else trend7.smoke_fail_events += 1;
+                  }
+                  if (isWithinDays(c.created_at, 30)) {
+                    if (passed) trend30.smoke_pass_events += 1; else trend30.smoke_fail_events += 1;
+                  }
+                }
+              }
+
+              const issueLabels = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+              const chronicSignal = issueLabels.includes('release-gate-blocked') ||
+                issueLabels.includes('release-gate-critical') ||
+                comments.some((c) => {
+                  const b = c.body || '';
+                  return b.includes(escalation24Marker) || b.includes(escalation48Marker);
+                });
+              if (issue.state === 'closed' && chronicSignal && isWithinDays(issue.closed_at, 7)) {
+                resolvedChronic7d += 1;
+                resolvedChronicIssueRefs.push({
+                  number: issue.number,
+                  title: issue.title,
+                  closed_at: issue.closed_at,
+                  url: issue.html_url,
+                });
+              }
+            }
+
+            trend7.blocked_share_of_open = openIssues.length > 0
+              ? Number((trend7.blocked_open_issues / openIssues.length).toFixed(4))
+              : 0;
+            trend30.blocked_share_of_open = openIssues.length > 0
+              ? Number((trend30.blocked_open_issues / openIssues.length).toFixed(4))
+              : 0;
+
+            const summary = {
+              generated_at: nowIso,
+              repo: `${owner}/${repo}`,
+              governance: {
+                workflows: workflowHealth,
+                release_gate_issues: {
+                  total: gateIssues.length,
+                  open: openIssues.length,
+                  closed: closedIssues.length,
+                  open_ready: readyOpenIssues,
+                  open_blocked: blockedOpenIssues,
+                  open_critical: criticalOpenIssues,
+                  blocked_share_of_open: blockedShare,
+                  open_smoke_passed: smokePassedOpenIssues,
+                },
+                sla: {
+                  open_blocked_24h: openBlocked24hCount,
+                  open_blocked_48h: openBlocked48hCount,
+                  chronic_open_issues: openIssueRows.filter((i) => i.chronic_score >= 3).length,
+                },
+                risk: {
+                  level: riskLevel,
+                  reasons: riskReasons,
+                  failing_workflows: failingWorkflows.map((w) => w.name),
+                  self_check_impact: latestSelfCheckImpact,
+                  ack_escalation_status: ackStatus,
+                  ack_escalation_score: ackRiskScore,
+                  ack_age_trend: ackAgeTrendRisk,
+                  action_hints: selectedActionHints,
+                  owner_routing_hints: routeHints,
+                },
+                trends: {
+                  d7: trend7,
+                  d30: trend30,
+                },
+                remediation_weekly: {
+                  resolved_chronic_issues_7d: resolvedChronic7d,
+                  newly_created_issues_7d: trend7.created_issues,
+                  newly_closed_issues_7d: trend7.closed_issues,
+                  net_open_delta_7d: trend7.created_issues - trend7.closed_issues,
+                  remediation_efficiency_ratio_7d: trend7.created_issues > 0
+                    ? Number((resolvedChronic7d / trend7.created_issues).toFixed(4))
+                    : (resolvedChronic7d > 0 ? 1 : 0),
+                  resolved_chronic_issue_refs: resolvedChronicIssueRefs
+                    .sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at))
+                    .slice(0, 10),
+                },
+                self_check: selfCheckHealth,
+                slo_ack: trackerAckSlaSnapshot,
+              },
+              open_issue_details: openIssueRows.sort((a, b) => b.chronic_score - a.chronic_score || (new Date(b.updated_at) - new Date(a.updated_at))),
+            };
+            const remediation = summary.governance.remediation_weekly;
+            const sla = summary.governance.sla;
+            const ackDigestActionsByStatus = {
+              monitoring: [
+                'Keep tracking acknowledgement checklist completion in routine mode.',
+              ],
+              warning: [
+                'Release owner: clear missing acknowledgements in current cycle.',
+                'Program owner: verify explicit ETA is present in SLO action plan.',
+              ],
+              warning_chronic: [
+                'Release owner + program owner: run same-day checkpoint for repeated 24h overruns.',
+                'Escalate unresolved acknowledgements to backend/platform if delivery is blocked.',
+              ],
+              critical: [
+                'Treat ack delay as release blocker and escalate immediately.',
+                'Release owner + backend/platform: provide explicit closure ETA in this run.',
+              ],
+              critical_chronic: [
+                'Declare chronic ack escalation incident and keep release closure blocked.',
+                'Program owner: run cross-owner checkpoint with release owner, backend/platform, security/legal.',
+                'Require recovery evidence in next governance summary run before downgrade.',
+              ],
+            };
+            const ackDigestActions = ackDigestActionsByStatus[summary.governance.slo_ack.status] || ackDigestActionsByStatus.monitoring;
+            let weeklyGrade = 'B';
+            const weeklyGradeReasons = [];
+            if (
+              summary.governance.risk.level === 'RED' ||
+              sla.open_blocked_48h > 0 ||
+              sla.chronic_open_issues >= 3 ||
+              selfCheckImpactScore >= 4 ||
+              ackRiskScore >= 3
+            ) {
+              weeklyGrade = 'D';
+              weeklyGradeReasons.push('high_risk_or_critical_sla_breach');
+              if (selfCheckImpactScore >= 4) weeklyGradeReasons.push('critical_self_check_impact');
+              if (ackRiskScore >= 3) weeklyGradeReasons.push('critical_ack_escalation');
+            } else if (
+              summary.governance.risk.level === 'YELLOW' ||
+              sla.open_blocked_24h > 0 ||
+              remediation.net_open_delta_7d > 0 ||
+              selfCheckImpactScore >= 2 ||
+              ackRiskScore >= 2
+            ) {
+              weeklyGrade = 'C';
+              weeklyGradeReasons.push('active_blockers_or_positive_net_delta');
+              if (selfCheckImpactScore >= 2) weeklyGradeReasons.push('self_check_impact_drag');
+              if (ackRiskScore >= 2) weeklyGradeReasons.push('ack_escalation_drag');
+            } else if (
+              summary.governance.risk.level === 'GREEN' &&
+              remediation.resolved_chronic_issues_7d >= 1 &&
+              remediation.net_open_delta_7d <= 0 &&
+              remediation.remediation_efficiency_ratio_7d >= 0.5 &&
+              selfCheckImpactScore <= 1 &&
+              ackRiskScore <= 1
+            ) {
+              weeklyGrade = 'A';
+              weeklyGradeReasons.push('healthy_risk_and_strong_remediation');
+            } else {
+              weeklyGradeReasons.push('stable_but_not_outstanding');
+            }
+            summary.governance.weekly_scorecard = {
+              grade: weeklyGrade,
+              reasons: weeklyGradeReasons,
+            };
+            const weeklyTop = summary.open_issue_details.slice(0, 3);
+            const weeklyPlanLines = [];
+            for (const i of weeklyTop) {
+              const ownerTrack = [];
+              if (i.blocked_48h || i.critical) {
+                ownerTrack.push('security/legal');
+              }
+              if (i.blocked_24h || i.decision === 'BLOCKED') {
+                ownerTrack.push('release owner');
+              }
+              if (i.smoke !== 'passed') {
+                ownerTrack.push('backend/platform');
+              }
+              if (!i.has_role_metadata) {
+                ownerTrack.push('release owner (fill metadata)');
+              }
+              const ownerRoute = ownerTrack.length ? ownerTrack.join(', ') : 'operations';
+              weeklyPlanLines.push(`- #${i.number}: score=${i.chronic_score}, route=${ownerRoute}, action=unblock gate and rerun smoke`);
+            }
+
+            const outDir = path.join(process.cwd(), 'artifacts');
+            fs.mkdirSync(outDir, { recursive: true });
+            fs.writeFileSync(path.join(outDir, 'lost-pets-governance-summary.json'), JSON.stringify(summary, null, 2));
+
+            const workflowLines = workflowHealth.map((w) => (
+              `| ${w.name} | ${w.latest_run_status} | ${w.latest_run_conclusion} | ${w.latest_run_created_at || 'n/a'} |`
+            ));
+            const md = [
+              '# Lost Pets Governance Summary',
+              '',
+              `Generated at: \`${summary.generated_at}\``,
+              '',
+              '## Weekly Scorecard',
+              '',
+              `- Grade: \`${summary.governance.weekly_scorecard.grade}\``,
+              `- Reasons: \`${summary.governance.weekly_scorecard.reasons.join(', ')}\``,
+              '',
+              '## Risk Signal',
+              '',
+              `- Level: \`${summary.governance.risk.level}\``,
+              `- Reasons: \`${summary.governance.risk.reasons.join(', ')}\``,
+              `- Failing workflows: \`${summary.governance.risk.failing_workflows.length ? summary.governance.risk.failing_workflows.join(', ') : 'none'}\``,
+              `- Owner routing hints: \`${summary.governance.risk.owner_routing_hints.join(' | ')}\``,
+              '',
+              '## Recommended Actions',
+              '',
+              ...summary.governance.risk.action_hints.map((h) => `- ${h}`),
+              '',
+              '## Owner Routing',
+              '',
+              ...summary.governance.risk.owner_routing_hints.map((h) => `- ${h}`),
+              '',
+              '## Trend (7d / 30d)',
+              '',
+              '| Metric | 7d | 30d |',
+              '|---|---:|---:|',
+              `| Created issues | ${summary.governance.trends.d7.created_issues} | ${summary.governance.trends.d30.created_issues} |`,
+              `| Closed issues | ${summary.governance.trends.d7.closed_issues} | ${summary.governance.trends.d30.closed_issues} |`,
+              `| Escalation 24h events | ${summary.governance.trends.d7.escalation_24h_events} | ${summary.governance.trends.d30.escalation_24h_events} |`,
+              `| Escalation 48h events | ${summary.governance.trends.d7.escalation_48h_events} | ${summary.governance.trends.d30.escalation_48h_events} |`,
+              `| Ack SLA warning events | ${summary.governance.trends.d7.ack_sla_warning_events} | ${summary.governance.trends.d30.ack_sla_warning_events} |`,
+              `| Ack SLA critical events | ${summary.governance.trends.d7.ack_sla_critical_events} | ${summary.governance.trends.d30.ack_sla_critical_events} |`,
+              `| Ack SLA avg age (hours) | ${summary.governance.trends.d7.ack_sla_avg_age_hours} | ${summary.governance.trends.d30.ack_sla_avg_age_hours} |`,
+              `| Smoke pass events | ${summary.governance.trends.d7.smoke_pass_events} | ${summary.governance.trends.d30.smoke_pass_events} |`,
+              `| Smoke fail events | ${summary.governance.trends.d7.smoke_fail_events} | ${summary.governance.trends.d30.smoke_fail_events} |`,
+              `| Blocked share of open | ${summary.governance.trends.d7.blocked_share_of_open} | ${summary.governance.trends.d30.blocked_share_of_open} |`,
+              '',
+              '## Weekly Remediation Effectiveness',
+              '',
+              `- Resolved chronic issues (7d): \`${summary.governance.remediation_weekly.resolved_chronic_issues_7d}\``,
+              `- Newly created issues (7d): \`${summary.governance.remediation_weekly.newly_created_issues_7d}\``,
+              `- Newly closed issues (7d): \`${summary.governance.remediation_weekly.newly_closed_issues_7d}\``,
+              `- Net open delta (7d): \`${summary.governance.remediation_weekly.net_open_delta_7d}\``,
+              `- Remediation efficiency ratio (7d): \`${summary.governance.remediation_weekly.remediation_efficiency_ratio_7d}\``,
+              '',
+              '## Governance Self-Check Health',
+              '',
+              `- Latest conclusion: \`${summary.governance.self_check.latest_conclusion}\``,
+              `- Failure streak: \`${summary.governance.self_check.failure_streak}\``,
+              `- Pass rate 7d: \`${summary.governance.self_check.pass_rate_7d === null ? 'n/a' : summary.governance.self_check.pass_rate_7d}\``,
+              `- Pass rate 30d: \`${summary.governance.self_check.pass_rate_30d === null ? 'n/a' : summary.governance.self_check.pass_rate_30d}\``,
+              '',
+              '## SLO Ack Escalation Digest',
+              '',
+              `- Status: \`${summary.governance.slo_ack.status}\``,
+              `- Mode: \`${summary.governance.slo_ack.escalation_mode}\``,
+              `- Escalation age (hours): \`${summary.governance.slo_ack.escalation_age_hours}\``,
+              `- 24h exceeded: \`${summary.governance.slo_ack.sla_24h_exceeded ? 'yes' : 'no'}\``,
+              `- 48h exceeded: \`${summary.governance.slo_ack.sla_48h_exceeded ? 'yes' : 'no'}\``,
+              `- 24h breach streak: \`${summary.governance.slo_ack.breach_streak_24h}\``,
+              `- 48h breach streak: \`${summary.governance.slo_ack.breach_streak_48h}\``,
+              `- Active labels: \`${summary.governance.slo_ack.active_labels.length ? summary.governance.slo_ack.active_labels.join(', ') : 'none'}\``,
+              '',
+              'Recommended ack actions:',
+              ...ackDigestActions.map((item) => `- ${item}`),
+              '',
+              '| Run created at | Status | Conclusion |',
+              '|---|---|---|',
+              ...(summary.governance.self_check.recent_runs.length
+                ? summary.governance.self_check.recent_runs.map((r) => `| ${r.created_at} | ${r.status} | ${r.conclusion} |`)
+                : ['| n/a | n/a | missing |']),
+              '',
+              'Recently resolved chronic issues (up to 10):',
+              ...(summary.governance.remediation_weekly.resolved_chronic_issue_refs.length
+                ? summary.governance.remediation_weekly.resolved_chronic_issue_refs.map((i) => `- #${i.number} (${i.closed_at}) [link](${i.url})`)
+                : ['- none']),
+              '',
+              '## Workflow Health',
+              '',
+              '| Workflow | Run status | Conclusion | Created at |',
+              '|---|---|---|---|',
+              ...(workflowLines.length ? workflowLines : ['| n/a | n/a | n/a | n/a |']),
+              '',
+              '## Release Gate Issues',
+              '',
+              `- Total: \`${summary.governance.release_gate_issues.total}\``,
+              `- Open: \`${summary.governance.release_gate_issues.open}\``,
+              `- Closed: \`${summary.governance.release_gate_issues.closed}\``,
+              `- Open READY: \`${summary.governance.release_gate_issues.open_ready}\``,
+              `- Open BLOCKED: \`${summary.governance.release_gate_issues.open_blocked}\``,
+              `- Open CRITICAL: \`${summary.governance.release_gate_issues.open_critical}\``,
+              `- Blocked share of open: \`${summary.governance.release_gate_issues.blocked_share_of_open}\``,
+              `- Open with smoke passed: \`${summary.governance.release_gate_issues.open_smoke_passed}\``,
+              '',
+              '## SLA Breach Counters',
+              '',
+              `- Open blocked >=24h: \`${summary.governance.sla.open_blocked_24h}\``,
+              `- Open blocked >=48h: \`${summary.governance.sla.open_blocked_48h}\``,
+              `- Chronic open issues: \`${summary.governance.sla.chronic_open_issues}\``,
+              '',
+              '## Weekly Remediation Digest',
+              '',
+              ...(weeklyTop.length
+                ? [
+                    '| Issue | Chronic score | Route | URL |',
+                    '|---|---:|---|---|',
+                    ...weeklyTop.map((i) => {
+                      const routes = [];
+                      if (i.blocked_48h || i.critical) routes.push('security/legal');
+                      if (i.blocked_24h || i.decision === 'BLOCKED') routes.push('release owner');
+                      if (i.smoke !== 'passed') routes.push('backend/platform');
+                      if (!i.has_role_metadata) routes.push('release owner (metadata)');
+                      const route = routes.length ? routes.join(', ') : 'operations';
+                      return `| #${i.number} | ${i.chronic_score} | ${route} | [link](${i.url}) |`;
+                    }),
+                    '',
+                    'Owner-routing weekly actions:',
+                    ...weeklyPlanLines,
+                  ]
+                : ['- No open chronic issues this week.']),
+              '',
+              '## Open Issue Details',
+              '',
+              '| Issue | Decision | Smoke | Critical | SLA 24h | SLA 48h | Esc24 | Esc48 | Chronic score | Role metadata | Updated at | URL |',
+              '|---|---|---|---|---|---|---:|---:|---:|---|---|---|',
+              ...(summary.open_issue_details.length
+                ? summary.open_issue_details.map((i) => `| #${i.number} | ${i.decision} | ${i.smoke} | ${i.critical ? 'yes' : 'no'} | ${i.blocked_24h ? 'yes' : 'no'} | ${i.blocked_48h ? 'yes' : 'no'} | ${i.escalation_24h_events} | ${i.escalation_48h_events} | ${i.chronic_score} | ${i.has_role_metadata ? 'complete' : 'missing'} | ${i.updated_at} | [link](${i.url}) |`)
+                : ['| n/a | n/a | n/a | n/a | n/a | n/a | 0 | 0 | 0 | n/a | n/a | n/a |']),
+              '',
+            ].join('\n');
+            fs.writeFileSync(path.join(outDir, 'lost-pets-governance-summary.md'), md);
+
+      - name: Upload governance summary artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lost-pets-governance-summary
+          path: |
+            artifacts/lost-pets-governance-summary.json
+            artifacts/lost-pets-governance-summary.md
+          if-no-files-found: error
+
+      - name: Print governance summary markdown
+        run: |
+          cat artifacts/lost-pets-governance-summary.md
+
+      - name: Publish governance digest to dedicated issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const digestMarker = '<!-- lost-pets-governance-digest -->';
+            const remediationMarker = '<!-- lost-pets-weekly-remediation -->';
+            const gradeHistoryMarker = '<!-- lost-pets-weekly-grade-history -->';
+            const selfCheckMarker = '<!-- lost-pets-self-check-health -->';
+            const selfCheckImpactMarker = '<!-- lost-pets-self-check-impact -->';
+            const selfCheckImpactHistoryMarker = '<!-- lost-pets-self-check-impact-history -->';
+            const selfCheckImpactAlertMarker = '<!-- lost-pets-self-check-impact-alert -->';
+            const selfCheckRecoveryMarker = '<!-- lost-pets-self-check-recovery -->';
+            const selfCheckEscalationMarker = '<!-- lost-pets-self-check-escalation -->';
+            const ackAgeTrendAlertMarker = '<!-- lost-pets-ack-age-trend-alert -->';
+            const sloMarker = '<!-- lost-pets-slo-status -->';
+            const anomalyMarker = '<!-- lost-pets-combined-anomaly -->';
+            const incidentExitMarker = '<!-- lost-pets-incident-exit -->';
+            const trackerMarker = '<!-- lost-pets-governance-tracker -->';
+            const summaryPath = 'artifacts/lost-pets-governance-summary.md';
+            const summaryJsonPath = 'artifacts/lost-pets-governance-summary.json';
+            const summary = fs.existsSync(summaryPath)
+              ? fs.readFileSync(summaryPath, 'utf8')
+              : '# Lost Pets Governance Summary\n\nSummary file was not generated.\n';
+            const summaryJson = fs.existsSync(summaryJsonPath)
+              ? JSON.parse(fs.readFileSync(summaryJsonPath, 'utf8'))
+              : null;
+
+            const { owner, repo } = context.repo;
+            const trackerTitle = '[Lost Pets Governance] Operational Digest';
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'lost-pets,governance-digest',
+              per_page: 100,
+            });
+            let tracker = openIssues.find((i) => i.title === trackerTitle);
+            if (!tracker) {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title: trackerTitle,
+                labels: ['lost-pets', 'governance-digest'],
+                body: [
+                  trackerMarker,
+                  '# Lost Pets Governance Digest Tracker',
+                  '',
+                  'This issue keeps the latest aggregated governance summary for Lost Pets.',
+                  '',
+                  'Workflow source: `.github/workflows/lost-pets-governance-summary.yml`',
+                ].join('\n'),
+              });
+              tracker = created.data;
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: tracker.number,
+              per_page: 100,
+            });
+            const nowMs = Date.now();
+            const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+            const parseTaggedValue = (body, label) => {
+              const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const m = (body || '').match(new RegExp(`${esc}:\\s*\`([^\\`]+)\``, 'i'));
+              return m ? m[1] : null;
+            };
+            const existingSloAckSlaSnapshot = comments
+              .filter((c) => c.user?.type === 'Bot' && (c.body || '').includes('<!-- lost-pets-slo-ack-sla -->'))
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            const ackLifecycleStatus = existingSloAckSlaSnapshot
+              ? (/Critical/i.test(existingSloAckSlaSnapshot.body || '')
+                  ? 'critical'
+                  : (/Warning/i.test(existingSloAckSlaSnapshot.body || '') ? 'warning' : 'monitoring'))
+              : 'monitoring';
+            const ackLifecycleAgeHours = Number(parseTaggedValue(existingSloAckSlaSnapshot?.body || '', 'Escalation age \\(hours\\)') || 0);
+            const ackLifecycleExitBlocked = ['critical', 'critical_chronic'].includes(
+              parseTaggedValue(existingSloAckSlaSnapshot?.body || '', 'Escalation mode') === 'self_check_blocked' &&
+              /Critical/i.test(existingSloAckSlaSnapshot?.body || '')
+                ? 'critical_chronic'
+                : ackLifecycleStatus
+            );
+
+            const anomalyComments = comments
+              .filter((c) => c.user?.type === 'Bot' && (c.body || '').includes(anomalyMarker))
+              .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            const exitComments = comments
+              .filter((c) => c.user?.type === 'Bot' && (c.body || '').includes(incidentExitMarker) && /Incident Exit Report/i.test(c.body || ''))
+              .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            const selfCheckRecoveryComments = comments
+              .filter((c) => c.user?.type === 'Bot' && (c.body || '').includes(selfCheckRecoveryMarker) && /## Governance Self-Check Recovery/i.test(c.body || ''))
+              .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+            const incidentStarts30d = anomalyComments.filter((c) => (nowMs - new Date(c.created_at).getTime()) <= THIRTY_DAYS_MS);
+            let mttrHours = null;
+            if (incidentStarts30d.length > 0) {
+              const recoveredDurations = [];
+              for (const start of incidentStarts30d) {
+                const startMs = new Date(start.created_at).getTime();
+                const exit = exitComments.find((e) => new Date(e.created_at).getTime() > startMs);
+                const selfCheckRecovery = selfCheckRecoveryComments.find((e) => new Date(e.created_at).getTime() > startMs);
+                if (exit && selfCheckRecovery) {
+                  const recoveryMs = Math.max(new Date(exit.created_at).getTime(), new Date(selfCheckRecovery.created_at).getTime());
+                  const dur = Math.max(0, Math.floor((recoveryMs - startMs) / (1000 * 60 * 60)));
+                  recoveredDurations.push(dur);
+                }
+              }
+              if (recoveredDurations.length > 0) {
+                mttrHours = Number((recoveredDurations.reduce((a, b) => a + b, 0) / recoveredDurations.length).toFixed(2));
+              }
+            }
+
+            const latestAnomaly = anomalyComments[anomalyComments.length - 1];
+            const latestExit = exitComments[exitComments.length - 1];
+            const latestSelfCheckRecovery = selfCheckRecoveryComments[selfCheckRecoveryComments.length - 1];
+            const latestRecoveryMs = latestExit && latestSelfCheckRecovery
+              ? Math.max(new Date(latestExit.created_at).getTime(), new Date(latestSelfCheckRecovery.created_at).getTime())
+              : null;
+            const recoveryBlockedBySelfCheck = Boolean(
+              latestAnomaly &&
+              latestExit &&
+              !latestSelfCheckRecovery &&
+              new Date(latestExit.created_at).getTime() > new Date(latestAnomaly.created_at).getTime()
+            );
+            const incidentCurrentlyActive = Boolean(
+              latestAnomaly && (!latestRecoveryMs || new Date(latestAnomaly.created_at).getTime() > latestRecoveryMs)
+            );
+            const activeIncidentDurationHours = incidentCurrentlyActive
+              ? Math.max(0, Math.floor((nowMs - new Date(latestAnomaly.created_at).getTime()) / (1000 * 60 * 60)))
+              : 0;
+            const SLO = {
+              mttr_hours_max: 72,
+              incidents_30d_max: 2,
+              active_incident_hours_max: 24,
+            };
+            const mttrBreach = mttrHours !== null && mttrHours > SLO.mttr_hours_max;
+            const incidentsBreach = incidentStarts30d.length > SLO.incidents_30d_max;
+            const activeDurationBreach = incidentCurrentlyActive && activeIncidentDurationHours > SLO.active_incident_hours_max;
+            const sloBreaches = [
+              mttrBreach ? `mttr>${SLO.mttr_hours_max}` : null,
+              incidentsBreach ? `incidents_30d>${SLO.incidents_30d_max}` : null,
+              activeDurationBreach ? `active_incident_duration>${SLO.active_incident_hours_max}` : null,
+              recoveryBlockedBySelfCheck ? 'recovery_blocked_by_self_check' : null,
+              ackLifecycleExitBlocked ? 'recovery_blocked_by_ack_escalation' : null,
+            ].filter(Boolean);
+            const sloStatus = sloBreaches.length > 0 ? 'SLO BREACH' : 'SLO OK';
+
+            const lifecycleBlock = [
+              '## Incident Lifecycle KPI',
+              '',
+              `- SLO status: \`${sloStatus}\``,
+              `- SLO breaches: \`${sloBreaches.length ? sloBreaches.join(', ') : 'none'}\``,
+              '',
+              `- Incidents started (last 30d): \`${incidentStarts30d.length}\``,
+              `- Mean time to recovery (hours): \`${mttrHours === null ? 'n/a' : mttrHours}\``,
+              `- Incident active now: \`${incidentCurrentlyActive ? 'yes' : 'no'}\``,
+              `- Active incident duration (hours): \`${activeIncidentDurationHours}\``,
+              `- Self-check recovery required for closure: \`yes\``,
+              `- Recovery blocked by self-check: \`${recoveryBlockedBySelfCheck ? 'yes' : 'no'}\``,
+              `- Ack escalation status: \`${ackLifecycleStatus}\``,
+              `- Ack escalation age (hours): \`${ackLifecycleAgeHours}\``,
+              `- Recovery blocked by ack escalation: \`${ackLifecycleExitBlocked ? 'yes' : 'no'}\``,
+              '',
+              `- SLO targets: mttr<=${SLO.mttr_hours_max}h, incidents/30d<=${SLO.incidents_30d_max}, active<=${SLO.active_incident_hours_max}h`,
+              '',
+            ].join('\n');
+            const digestBody = [
+              digestMarker,
+              '## Latest Digest',
+              '',
+              summary,
+              '',
+              lifecycleBlock,
+            ].join('\n');
+
+            const existing = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(digestMarker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body: digestBody,
+              });
+              core.info(`Updated governance digest comment in issue #${tracker.number}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: digestBody,
+              });
+              core.info(`Created governance digest comment in issue #${tracker.number}`);
+            }
+
+            const existingSlo = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(sloMarker));
+            const parseSloBreachStreak = (body) => {
+              const m = (body || '').match(/Breach streak:\s*`(\d+)`/i);
+              return m ? Number(m[1]) : 0;
+            };
+            const parseAckChecked = (body, labelFragment) => {
+              const esc = labelFragment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              return new RegExp(`-\\s*\\[x\\]\\s*${esc}`, 'i').test(body || '');
+            };
+            const parseMissingAckStreak = (body) => {
+              const m = (body || '').match(/Missing acknowledgement streak:\s*`(\d+)`/i);
+              return m ? Number(m[1]) : 0;
+            };
+            const parseSlaStreak = (body, key) => {
+              const esc = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const m = (body || '').match(new RegExp(`${esc}:\\s*\`(\\d+)\``, 'i'));
+              return m ? Number(m[1]) : 0;
+            };
+            const prevSloStreak = existingSlo ? parseSloBreachStreak(existingSlo.body || '') : 0;
+            const sloBreachStreak = sloStatus === 'SLO BREACH' ? (prevSloStreak + 1) : 0;
+            const requiresPlan = sloBreachStreak >= 2;
+            const prevBody = existingSlo?.body || '';
+            const ackReleaseOwner = parseAckChecked(prevBody, 'Release owner acknowledged');
+            const ackSecurityLegal = parseAckChecked(prevBody, 'Security/legal reviewed');
+            const ackEtaSet = parseAckChecked(prevBody, 'ETA set for SLO recovery');
+            const ackContractPathRestored = parseAckChecked(prevBody, 'Backend/platform confirmed contract path restored');
+            const requiredAckTotal = recoveryBlockedBySelfCheck ? 4 : 3;
+            const ackCompleted = [ackReleaseOwner, ackSecurityLegal, ackEtaSet, ...(recoveryBlockedBySelfCheck ? [ackContractPathRestored] : [])]
+              .filter(Boolean)
+              .length;
+            const prevMissingAckStreak = existingSlo ? parseMissingAckStreak(existingSlo.body || '') : 0;
+            const missingAckStreak = requiresPlan && ackCompleted < requiredAckTotal ? (prevMissingAckStreak + 1) : 0;
+            const ackLine = requiresPlan
+              ? `- Acknowledgements: \`${ackCompleted}/${requiredAckTotal}\``
+              : '- Acknowledgements: `n/a`';
+
+            const sloBody = [
+              sloMarker,
+              '## SLO Status Monitor',
+              '',
+              `- Current status: \`${sloStatus}\``,
+              `- Breach streak: \`${sloBreachStreak}\``,
+              `- Breaches: \`${sloBreaches.length ? sloBreaches.join(', ') : 'none'}\``,
+              `- Recovery blocked by self-check: \`${recoveryBlockedBySelfCheck ? 'yes' : 'no'}\``,
+              ackLine,
+              `- Missing acknowledgement streak: \`${missingAckStreak}\``,
+              '',
+              requiresPlan
+                ? '### Required SLO Action Plan (2+ breach runs)'
+                : 'SLO action plan not required yet.',
+              ...(requiresPlan
+                ? [
+                    `- [${ackReleaseOwner ? 'x' : ' '}] Release owner acknowledged`,
+                    `- [${ackSecurityLegal ? 'x' : ' '}] Security/legal reviewed`,
+                    `- [${ackEtaSet ? 'x' : ' '}] ETA set for SLO recovery`,
+                    ...(recoveryBlockedBySelfCheck
+                      ? [`- [${ackContractPathRestored ? 'x' : ' '}] Backend/platform confirmed contract path restored`]
+                      : []),
+                    '',
+                    ...(recoveryBlockedBySelfCheck
+                      ? [
+                          '- [ ] Release owner: set explicit self-check recovery ETA and keep release closure blocked until signal turns safe.',
+                          '- [ ] Backend/platform: restore governance contract validation path and clear `recovery_blocked_by_self_check`.',
+                        ]
+                      : [
+                          '- [ ] Release owner: provide remediation deadline within 24h.',
+                          '- [ ] Backend/platform: restore failing reliability paths.',
+                        ]),
+                    '- [ ] Security/legal: assess compliance risk from prolonged breach.',
+                    '- [ ] Re-run governance summary after fixes and verify `SLO OK`.',
+                    ...(ackCompleted < requiredAckTotal
+                      ? ['','⚠️ Missing acknowledgements: complete all required checks above.']
+                      : []),
+                  ]
+                : []),
+            ].join('\n');
+
+            if (existingSlo) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingSlo.id,
+                body: sloBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: sloBody,
+              });
+            }
+
+            const sloAckMarker = '<!-- lost-pets-slo-ack-escalation -->';
+            const existingSloAck = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(sloAckMarker));
+            const shouldEscalateAck = missingAckStreak >= 2;
+            const ackEscalationMode = recoveryBlockedBySelfCheck ? 'self_check_blocked' : 'standard';
+            const sloAckBody = shouldEscalateAck
+              ? [
+                  sloAckMarker,
+                  '## SLO Acknowledgement Escalation',
+                  '',
+                  `Missing acknowledgement streak: \`${missingAckStreak}\``,
+                  `Escalation mode: \`${ackEscalationMode}\``,
+                  '',
+                  'Required confirmations are still incomplete for multiple runs.',
+                  '',
+                  'Escalation routing:',
+                  '- release owner: acknowledge breach and set ETA immediately',
+                  '- security/legal: record review status immediately',
+                  ...(recoveryBlockedBySelfCheck
+                    ? ['- backend/platform: confirm governance contract path restored and mark dedicated acknowledgement immediately']
+                    : []),
+                  '- program owner: block closure of SLO action plan until all acknowledgements are complete',
+                ].join('\n')
+              : [
+                  sloAckMarker,
+                  '## SLO Acknowledgement Monitoring',
+                  '',
+                  `Missing acknowledgement streak: \`${missingAckStreak}\``,
+                  `Escalation mode: \`${ackEscalationMode}\``,
+                  '',
+                  'Acknowledgement escalation threshold not reached.',
+                ].join('\n');
+
+            if (existingSloAck) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingSloAck.id,
+                body: sloAckBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: sloAckBody,
+              });
+            }
+
+            const sloAckSlaMarker = '<!-- lost-pets-slo-ack-sla -->';
+            const existingSloAckSla = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(sloAckSlaMarker));
+            const prevSla24Streak = parseSlaStreak(existingSloAckSla?.body || '', '24h breach streak');
+            const prevSla48Streak = parseSlaStreak(existingSloAckSla?.body || '', '48h breach streak');
+            const baseEscalationTimestamp = shouldEscalateAck
+              ? new Date(existingSloAck?.created_at || nowIso).getTime()
+              : null;
+            const ackEscalationAgeHours = baseEscalationTimestamp
+              ? Math.max(0, Math.floor((nowMs - baseEscalationTimestamp) / (1000 * 60 * 60)))
+              : 0;
+            const ackSla24Exceeded = shouldEscalateAck && ackEscalationAgeHours >= 24;
+            const ackSla48Exceeded = shouldEscalateAck && ackEscalationAgeHours >= 48;
+            const sla24BreachStreak = ackSla24Exceeded ? (prevSla24Streak + 1) : 0;
+            const sla48BreachStreak = ackSla48Exceeded ? (prevSla48Streak + 1) : 0;
+            const chronicSlaBreach = sla24BreachStreak >= 2 || sla48BreachStreak >= 2;
+            const ackSlaRouting = recoveryBlockedBySelfCheck
+              ? [
+                  '- backend/platform: clear `recovery_blocked_by_self_check` and confirm contract-path recovery now',
+                  '- release owner: keep release closure blocked until backend/platform acknowledgement is marked',
+                  '- program owner: require explicit unblock plan before accepting any closure',
+                ]
+              : [
+                  '- release owner: close missing acknowledgements immediately and provide ETA',
+                  '- program owner: keep SLO action plan open until required acknowledgements are complete',
+                ];
+            const sloAckSlaBody = shouldEscalateAck
+              ? [
+                  sloAckSlaMarker,
+                  ackSla48Exceeded
+                    ? '## SLO Ack Escalation SLA — Critical (48h+)'
+                    : (ackSla24Exceeded ? '## SLO Ack Escalation SLA — Warning (24h+)' : '## SLO Ack Escalation SLA — Monitoring'),
+                  '',
+                  `Escalation mode: \`${ackEscalationMode}\``,
+                  `Escalation age (hours): \`${ackEscalationAgeHours}\``,
+                  `24h SLA exceeded: \`${ackSla24Exceeded ? 'yes' : 'no'}\``,
+                  `48h SLA exceeded: \`${ackSla48Exceeded ? 'yes' : 'no'}\``,
+                  `24h breach streak: \`${sla24BreachStreak}\``,
+                  `48h breach streak: \`${sla48BreachStreak}\``,
+                  '',
+                  'Owner routing:',
+                  ...ackSlaRouting,
+                  ...(chronicSlaBreach
+                    ? [
+                        '- program owner: treat as chronic SLA breach and run immediate cross-owner checkpoint',
+                        '- release owner + backend/platform: provide explicit closure ETA in the same run',
+                      ]
+                    : []),
+                  '',
+                  ackSla48Exceeded
+                    ? 'Critical action: treat acknowledgement delay as release-blocking incident.'
+                    : (ackSla24Exceeded
+                        ? 'Warning action: escalate in the same business day and track ETA explicitly.'
+                        : 'Monitoring action: continue tracking until acknowledgement checklist is complete.'),
+                ].join('\n')
+              : [
+                  sloAckSlaMarker,
+                  '## SLO Ack Escalation SLA — Monitoring',
+                  '',
+                  'No active acknowledgement escalation.',
+                  '',
+                  `Escalation mode: \`${ackEscalationMode}\``,
+                  'Escalation age (hours): `0`',
+                  '24h SLA exceeded: `no`',
+                  '48h SLA exceeded: `no`',
+                  '24h breach streak: `0`',
+                  '48h breach streak: `0`',
+                ].join('\n');
+
+            if (existingSloAckSla) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingSloAckSla.id,
+                body: sloAckSlaBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: sloAckSlaBody,
+              });
+            }
+
+            const ackEscalatedLabel = 'slo-ack-escalated';
+            const ackSelfCheckBlockedLabel = 'slo-ack-self-check-blocked';
+            const ackSla24Label = 'slo-ack-sla-24h';
+            const ackSla48Label = 'slo-ack-sla-48h';
+            const ackSlaChronicLabel = 'slo-ack-sla-chronic';
+            if (shouldEscalateAck) {
+              const labelsToAdd = [
+                ackEscalatedLabel,
+                ...(recoveryBlockedBySelfCheck ? [ackSelfCheckBlockedLabel] : []),
+                ...(ackSla24Exceeded ? [ackSla24Label] : []),
+                ...(ackSla48Exceeded ? [ackSla48Label] : []),
+                ...(chronicSlaBreach ? [ackSlaChronicLabel] : []),
+              ];
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                labels: labelsToAdd,
+              });
+              const labelsToRemove = [
+                ...(!recoveryBlockedBySelfCheck ? [ackSelfCheckBlockedLabel] : []),
+                ...(!ackSla24Exceeded ? [ackSla24Label] : []),
+                ...(!ackSla48Exceeded ? [ackSla48Label] : []),
+                ...(!chronicSlaBreach ? [ackSlaChronicLabel] : []),
+              ];
+              for (const labelName of labelsToRemove) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: tracker.number,
+                    name: labelName,
+                  });
+                } catch (error) {
+                  if (error.status !== 404) throw error;
+                }
+              }
+            } else {
+              for (const labelName of [ackEscalatedLabel, ackSelfCheckBlockedLabel, ackSla24Label, ackSla48Label, ackSlaChronicLabel]) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: tracker.number,
+                    name: labelName,
+                  });
+                } catch (error) {
+                  if (error.status !== 404) throw error;
+                }
+              }
+            }
+
+            const top3 = (summaryJson?.open_issue_details || []).slice(0, 3);
+            const remediationLines = top3.length
+              ? top3.map((i) => {
+                  const routes = [];
+                  if (i.blocked_48h || i.critical) routes.push('security/legal');
+                  if (i.blocked_24h || i.decision === 'BLOCKED') routes.push('release owner');
+                  if (i.smoke !== 'passed') routes.push('backend/platform');
+                  if (!i.has_role_metadata) routes.push('release owner (metadata)');
+                  const route = routes.length ? routes.join(', ') : 'operations';
+                  return `- #${i.number} (score=${i.chronic_score}) -> ${route} -> [issue link](${i.url})`;
+                })
+              : ['- No chronic open issues this week.'];
+
+            const remediationBody = [
+              remediationMarker,
+              '## Weekly Remediation Plan',
+              '',
+              `Generated at: \`${summaryJson?.generated_at || 'n/a'}\``,
+              '',
+              'Top-3 chronic issues and routing actions:',
+              ...remediationLines,
+              '',
+              'Execution rule:',
+              '- Resolve in priority order (highest chronic score first), then rerun `Lost Pets Release Gate Run`.',
+            ].join('\n');
+
+            const remediationComment = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(remediationMarker));
+            if (remediationComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: remediationComment.id,
+                body: remediationBody,
+              });
+              core.info(`Updated weekly remediation comment in issue #${tracker.number}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: remediationBody,
+              });
+              core.info(`Created weekly remediation comment in issue #${tracker.number}`);
+            }
+
+            const existingGradeHistory = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(gradeHistoryMarker));
+            const existingSelfCheck = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(selfCheckMarker));
+            const existingSelfCheckImpact = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(selfCheckImpactMarker));
+            const existingSelfCheckImpactHistory = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(selfCheckImpactHistoryMarker));
+            const existingSelfCheckImpactAlert = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(selfCheckImpactAlertMarker));
+            const existingSelfCheckRecovery = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(selfCheckRecoveryMarker));
+            const existingSelfCheckEscalation = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(selfCheckEscalationMarker));
+            const existingAckAgeTrendAlert = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(ackAgeTrendAlertMarker));
+            let historyRows = [];
+            if (existingGradeHistory) {
+              const lines = (existingGradeHistory.body || '').split('\n');
+              historyRows = lines
+                .filter((l) => /^\|\s*\d{4}-\d{2}-\d{2}\s*\|/.test(l))
+                .map((l) => {
+                  const cols = l.split('|').map((x) => x.trim()).filter(Boolean);
+                  return {
+                    date: cols[0] || '',
+                    grade: cols[1] || '',
+                    risk: cols[2] || '',
+                    reason: cols[3] || '',
+                    self_check_impact: cols[4] || 'n/a',
+                    ack_status: cols[5] || 'monitoring',
+                    ack_age_trend: cols[6] || 'none',
+                  };
+                });
+            }
+
+            const today = (summaryJson?.generated_at || new Date().toISOString()).slice(0, 10);
+            const newRow = {
+              date: today,
+              grade: summaryJson?.governance?.weekly_scorecard?.grade || 'n/a',
+              risk: summaryJson?.governance?.risk?.level || 'n/a',
+              reason: (summaryJson?.governance?.weekly_scorecard?.reasons || []).join(', ') || 'n/a',
+              self_check_impact: summaryJson?.governance?.risk?.self_check_impact?.class || 'none',
+              ack_status: summaryJson?.governance?.risk?.ack_escalation_status || 'monitoring',
+              ack_age_trend: summaryJson?.governance?.risk?.ack_age_trend?.risk || 'low',
+            };
+
+            historyRows = [newRow, ...historyRows.filter((r) => r.date !== today)].slice(0, 4);
+
+            const trendHint = (() => {
+              if (historyRows.length < 2) return 'insufficient_data';
+              const mapScore = { A: 4, B: 3, C: 2, D: 1 };
+              const cur = mapScore[historyRows[0].grade] || 0;
+              const prev = mapScore[historyRows[1].grade] || 0;
+              if (cur > prev) return 'improving';
+              if (cur < prev) return 'declining';
+              return 'stable';
+            })();
+            const decliningStreak = (() => {
+              if (historyRows.length < 3) return 0;
+              const mapScore = { A: 4, B: 3, C: 2, D: 1 };
+              const g0 = mapScore[historyRows[0].grade] || 0;
+              const g1 = mapScore[historyRows[1].grade] || 0;
+              const g2 = mapScore[historyRows[2].grade] || 0;
+              return g0 < g1 && g1 < g2 ? 2 : 0;
+            })();
+            const improvingStreak = (() => {
+              if (historyRows.length < 3) return 0;
+              const mapScore = { A: 4, B: 3, C: 2, D: 1 };
+              const g0 = mapScore[historyRows[0].grade] || 0;
+              const g1 = mapScore[historyRows[1].grade] || 0;
+              const g2 = mapScore[historyRows[2].grade] || 0;
+              return g0 > g1 && g1 > g2 ? 2 : 0;
+            })();
+            const shouldEscalateDecline = trendHint === 'declining' && decliningStreak >= 2;
+            const shouldConfirmRecovery = trendHint === 'improving' && improvingStreak >= 2;
+            const selfCheckImpactClassRank = {
+              none: 0,
+              unknown: 0,
+              'docs-only-drift': 1,
+              'release-doc-coverage-drift': 2,
+              'branch-protection-drift': 2,
+              'release-template-contract-broken': 3,
+              'workflow-contract-broken': 3,
+              'critical-governance-markers': 4,
+              'contract-source-broken': 4,
+            };
+            const currentSelfCheckImpactClass = historyRows[0]?.self_check_impact || 'none';
+            const previousSelfCheckImpactClass = historyRows[1]?.self_check_impact || 'none';
+            const selfCheckIncidentAmplifier =
+              selfCheckImpactClassRank[currentSelfCheckImpactClass] >= 3 &&
+              selfCheckImpactClassRank[currentSelfCheckImpactClass] > selfCheckImpactClassRank[previousSelfCheckImpactClass] &&
+              shouldEscalateDecline;
+            const ackStatusIncidentRank = {
+              monitoring: 0,
+              warning: 1,
+              warning_chronic: 2,
+              critical: 3,
+              critical_chronic: 4,
+            };
+            const ackIncidentStatus = summaryJson?.governance?.risk?.ack_escalation_status || 'monitoring';
+            const previousAckIncidentStatus = historyRows[1]?.ack_status || 'monitoring';
+            const ackIncidentAmplifier =
+              ackStatusIncidentRank[ackIncidentStatus] >= 3 &&
+              ackStatusIncidentRank[ackIncidentStatus] >= ackStatusIncidentRank[previousAckIncidentStatus] &&
+              shouldEscalateDecline;
+            const combinedAnomaly =
+              (summaryJson?.governance?.risk?.level || 'GREEN') === 'RED' &&
+              trendHint === 'declining' &&
+              (
+                (summaryJson?.governance?.sla?.open_blocked_48h || 0) > 0 ||
+                selfCheckIncidentAmplifier ||
+                ackIncidentAmplifier
+              );
+            const declineAlertLine = shouldEscalateDecline
+              ? '⚠️ Degradation alert: weekly grade has declined for 2+ consecutive weeks.'
+              : 'No degradation alert (last 2+ weeks check).';
+            const recoveryLine = shouldConfirmRecovery
+              ? '✅ Recovery signal: weekly grade improved for 2+ consecutive weeks.'
+              : 'No recovery signal (last 2+ weeks check).';
+            const anomalyLine = combinedAnomaly
+              ? ((selfCheckIncidentAmplifier || ackIncidentAmplifier)
+                  ? '🚨 Combined anomaly: RED risk + declining trend + self-check incident amplifier.'
+                  : '🚨 Combined anomaly: RED risk + declining trend + blocked>=48h.')
+              : 'No combined anomaly condition.';
+            const selfCheckGradeContribution = (() => {
+              const current = historyRows[0];
+              const previous = historyRows[1];
+              if (!current) return 'n/a';
+              if ((current.self_check_impact || 'none') === 'none' || (current.self_check_impact || 'none') === 'unknown') {
+                return 'none';
+              }
+              if (!previous) return `current=${current.self_check_impact}`;
+              if (current.grade !== previous.grade && current.self_check_impact !== previous.self_check_impact) {
+                return `grade_shift_with_self_check_change:${previous.self_check_impact}->${current.self_check_impact}`;
+              }
+              return `stable_self_check_signal:${current.self_check_impact}`;
+            })();
+            const selfCheckDrivesDecline = shouldEscalateDecline && selfCheckGradeContribution.startsWith('grade_shift_with_self_check_change:');
+            const selfCheckDrivesRecovery = shouldConfirmRecovery &&
+              historyRows.length >= 2 &&
+              (historyRows[0].self_check_impact || 'none') !== (historyRows[1].self_check_impact || 'none') &&
+              ((historyRows[0].self_check_impact || 'none') === 'none' || (historyRows[0].self_check_impact || 'none') === 'low' || (historyRows[0].self_check_impact || 'none') === 'docs-only-drift');
+            const ackAgeGradeContribution = (() => {
+              const current = historyRows[0];
+              const previous = historyRows[1];
+              if (!current) return 'n/a';
+              if ((current.ack_age_trend || 'low') === 'low') return 'none';
+              if (!previous) return `current=${current.ack_age_trend || 'unknown'}`;
+              if (current.grade !== previous.grade && (current.ack_age_trend || 'low') !== (previous.ack_age_trend || 'low')) {
+                return `grade_shift_with_ack_age_change:${previous.ack_age_trend || 'unknown'}->${current.ack_age_trend || 'unknown'}`;
+              }
+              return `stable_ack_age_signal:${current.ack_age_trend || 'unknown'}`;
+            })();
+            const ackAgeDrivesDecline = shouldEscalateDecline && ackAgeGradeContribution.startsWith('grade_shift_with_ack_age_change:');
+            const ackAgeDrivesRecovery =
+              shouldConfirmRecovery &&
+              historyRows.length >= 2 &&
+              (historyRows[0].ack_age_trend || 'low') !== (historyRows[1].ack_age_trend || 'low') &&
+              (historyRows[0].ack_age_trend || 'low') === 'low';
+
+            const gradeBody = [
+              gradeHistoryMarker,
+              '## Weekly Grade History (Last 4 Weeks)',
+              '',
+              `Trend hint: \`${trendHint}\``,
+              `Declining streak: \`${decliningStreak}\``,
+              `Improving streak: \`${improvingStreak}\``,
+              declineAlertLine,
+              recoveryLine,
+              anomalyLine,
+              `Self-check contribution: \`${selfCheckGradeContribution}\``,
+              `Ack-age contribution: \`${ackAgeGradeContribution}\``,
+              '',
+              '| Week | Grade | Risk | Reason | Self-check impact | Ack status | Ack-age trend |',
+              '|---|---|---|---|---|---|---|',
+              ...historyRows.map((r) => `| ${r.date} | ${r.grade} | ${r.risk} | ${r.reason} | ${r.self_check_impact || 'n/a'} | ${r.ack_status || 'monitoring'} | ${r.ack_age_trend || 'low'} |`),
+            ].join('\n');
+
+            if (existingGradeHistory) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingGradeHistory.id,
+                body: gradeBody,
+              });
+              core.info(`Updated weekly grade history in issue #${tracker.number}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: gradeBody,
+              });
+              core.info(`Created weekly grade history in issue #${tracker.number}`);
+            }
+
+            const selfCheckRecentLines = (summaryJson?.governance?.self_check?.recent_runs || []).length
+              ? (summaryJson.governance.self_check.recent_runs || []).map((r) => `| ${r.created_at} | ${r.status} | ${r.conclusion} |`)
+              : ['| n/a | n/a | missing |'];
+            const selfCheckFailureStreak = summaryJson?.governance?.self_check?.failure_streak || 0;
+            const selfCheckBody = [
+              selfCheckMarker,
+              '## Governance Self-Check History',
+              '',
+              `- Latest conclusion: \`${summaryJson?.governance?.self_check?.latest_conclusion || 'missing'}\``,
+              `- Latest run at: \`${summaryJson?.governance?.self_check?.latest_created_at || 'n/a'}\``,
+              `- Failure streak: \`${selfCheckFailureStreak}\``,
+              `- Pass rate 7d: \`${summaryJson?.governance?.self_check?.pass_rate_7d ?? 'n/a'}\``,
+              `- Pass rate 30d: \`${summaryJson?.governance?.self_check?.pass_rate_30d ?? 'n/a'}\``,
+              '',
+              selfCheckFailureStreak >= 2
+                ? '⚠️ Governance self-check failed for 2+ consecutive runs.'
+                : 'No self-check degradation streak detected.',
+              '',
+              '| Run created at | Status | Conclusion |',
+              '|---|---|---|',
+              ...selfCheckRecentLines,
+            ].join('\n');
+
+            if (existingSelfCheck) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingSelfCheck.id,
+                body: selfCheckBody,
+              });
+              core.info(`Updated self-check history comment in issue #${tracker.number}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: selfCheckBody,
+              });
+              core.info(`Created self-check history comment in issue #${tracker.number}`);
+            }
+
+            const shouldEscalateSelfCheck = selfCheckFailureStreak >= 2;
+            const parseImpactValue = (body, label) => {
+              const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const m = (body || '').match(new RegExp(`${esc}:\\s*\`([^\\`]+)\``, 'i'));
+              return m ? m[1] : null;
+            };
+            const impactScore = (level) => ({ none: 0, low: 1, medium: 2, high: 3, critical: 4 }[level] || 0);
+            const latestSelfCheckImpactLevel = parseImpactValue(existingSelfCheckImpact?.body || '', 'Impact level') || 'unknown';
+            const latestSelfCheckImpactClass = parseImpactValue(existingSelfCheckImpact?.body || '', 'Impact class') || 'unknown';
+            const latestSelfCheckRouting = parseImpactValue(existingSelfCheckImpact?.body || '', 'Routing') || 'backend/platform, release owner';
+            let selfCheckImpactHistoryRows = [];
+            if (existingSelfCheckImpactHistory) {
+              selfCheckImpactHistoryRows = (existingSelfCheckImpactHistory.body || '')
+                .split('\n')
+                .filter((l) => /^\|\s*\d{4}-\d{2}-\d{2}\s*\|/.test(l))
+                .map((l) => {
+                  const cols = l.split('|').map((x) => x.trim()).filter(Boolean);
+                  return {
+                    date: cols[0] || '',
+                    level: cols[1] || '',
+                    klass: cols[2] || '',
+                    status: cols[3] || '',
+                  };
+                });
+            }
+            const newImpactRow = {
+              date: today,
+              level: latestSelfCheckImpactLevel,
+              klass: latestSelfCheckImpactClass,
+              status: summaryJson?.governance?.self_check?.latest_conclusion || 'unknown',
+            };
+            selfCheckImpactHistoryRows = [newImpactRow, ...selfCheckImpactHistoryRows.filter((r) => r.date !== today)].slice(0, 5);
+            const selfCheckImpactTrend = (() => {
+              if (selfCheckImpactHistoryRows.length < 2) return 'insufficient_data';
+              const cur = impactScore(selfCheckImpactHistoryRows[0].level);
+              const prev = impactScore(selfCheckImpactHistoryRows[1].level);
+              if (cur > prev) return 'worsening';
+              if (cur < prev) return 'improving';
+              return 'stable';
+            })();
+            const selfCheckImpactWorseningStreak = (() => {
+              if (selfCheckImpactHistoryRows.length < 3) return 0;
+              const a = impactScore(selfCheckImpactHistoryRows[0].level);
+              const b = impactScore(selfCheckImpactHistoryRows[1].level);
+              const c = impactScore(selfCheckImpactHistoryRows[2].level);
+              return a > b && b > c ? 2 : 0;
+            })();
+            const selfCheckImpactHistoryBody = [
+              selfCheckImpactHistoryMarker,
+              '## Governance Self-Check Impact History',
+              '',
+              `- Trend: \`${selfCheckImpactTrend}\``,
+              `- Worsening streak: \`${selfCheckImpactWorseningStreak}\``,
+              '',
+              '| Date | Impact level | Impact class | Latest status |',
+              '|---|---|---|---|',
+              ...selfCheckImpactHistoryRows.map((r) => `| ${r.date} | ${r.level} | ${r.klass} | ${r.status} |`),
+            ].join('\n');
+            if (existingSelfCheckImpactHistory) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingSelfCheckImpactHistory.id,
+                body: selfCheckImpactHistoryBody,
+              });
+              core.info(`Updated self-check impact history comment in issue #${tracker.number}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: selfCheckImpactHistoryBody,
+              });
+              core.info(`Created self-check impact history comment in issue #${tracker.number}`);
+            }
+            const shouldAlertSelfCheckImpact = selfCheckImpactTrend === 'worsening' && selfCheckImpactWorseningStreak >= 2;
+            const selfCheckImpactImprovingStreak = (() => {
+              if (selfCheckImpactHistoryRows.length < 3) return 0;
+              const a = impactScore(selfCheckImpactHistoryRows[0].level);
+              const b = impactScore(selfCheckImpactHistoryRows[1].level);
+              const c = impactScore(selfCheckImpactHistoryRows[2].level);
+              return a < b && b < c ? 2 : 0;
+            })();
+            const shouldConfirmSelfCheckRecovery =
+              selfCheckImpactTrend === 'improving' &&
+              selfCheckImpactImprovingStreak >= 2 &&
+              impactScore(latestSelfCheckImpactLevel) <= 1;
+            const selfCheckImpactAlertBody = shouldAlertSelfCheckImpact
+              ? [
+                  selfCheckImpactAlertMarker,
+                  '## Governance Self-Check Impact Trend Alert',
+                  '',
+                  `Trend: \`${selfCheckImpactTrend}\``,
+                  `Worsening streak: \`${selfCheckImpactWorseningStreak}\``,
+                  `Current impact level: \`${latestSelfCheckImpactLevel}\``,
+                  `Current impact class: \`${latestSelfCheckImpactClass}\``,
+                  '',
+                  'Self-check impact severity is worsening across consecutive governance cycles.',
+                  '',
+                  'Priority routing:',
+                  ...latestSelfCheckRouting.split(/\s*,\s*/).filter(Boolean).map((ownerName) => `- ${ownerName}: review trend worsening before it becomes a broader governance outage`),
+                ].join('\n')
+              : [
+                  selfCheckImpactAlertMarker,
+                  '## Governance Self-Check Impact Trend Monitoring',
+                  '',
+                  `Trend: \`${selfCheckImpactTrend}\``,
+                  `Worsening streak: \`${selfCheckImpactWorseningStreak}\``,
+                  '',
+                  'Trend alert threshold not reached.',
+                ].join('\n');
+            if (existingSelfCheckImpactAlert) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingSelfCheckImpactAlert.id,
+                body: selfCheckImpactAlertBody,
+              });
+              core.info(`Updated self-check impact trend alert in issue #${tracker.number}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: selfCheckImpactAlertBody,
+              });
+              core.info(`Created self-check impact trend alert in issue #${tracker.number}`);
+            }
+            let ackAgeHistoryRows = [];
+            if (existingAckAgeTrendAlert) {
+              ackAgeHistoryRows = (existingAckAgeTrendAlert.body || '')
+                .split('\n')
+                .filter((l) => /^\|\s*\d{4}-\d{2}-\d{2}\s*\|/.test(l))
+                .map((l) => {
+                  const cols = l.split('|').map((x) => x.trim()).filter(Boolean);
+                  return {
+                    date: cols[0] || '',
+                    avg_age_7d: Number(cols[1] || 0),
+                    warning_7d: Number(cols[2] || 0),
+                    critical_7d: Number(cols[3] || 0),
+                  };
+                });
+            }
+            const ackAgeCurrent = Number(summaryJson?.governance?.trends?.d7?.ack_sla_avg_age_hours || 0);
+            const ackWarningCurrent = Number(summaryJson?.governance?.trends?.d7?.ack_sla_warning_events || 0);
+            const ackCriticalCurrent = Number(summaryJson?.governance?.trends?.d7?.ack_sla_critical_events || 0);
+            ackAgeHistoryRows = [
+              {
+                date: today,
+                avg_age_7d: ackAgeCurrent,
+                warning_7d: ackWarningCurrent,
+                critical_7d: ackCriticalCurrent,
+              },
+              ...ackAgeHistoryRows.filter((r) => r.date !== today),
+            ].slice(0, 5);
+            const ackAgeTrend = (() => {
+              if (ackAgeHistoryRows.length < 2) return 'insufficient_data';
+              if (ackAgeHistoryRows[0].avg_age_7d > ackAgeHistoryRows[1].avg_age_7d) return 'worsening';
+              if (ackAgeHistoryRows[0].avg_age_7d < ackAgeHistoryRows[1].avg_age_7d) return 'improving';
+              return 'stable';
+            })();
+            const ackAgeWorseningStreak = (() => {
+              if (ackAgeHistoryRows.length < 3) return 0;
+              const a = ackAgeHistoryRows[0].avg_age_7d;
+              const b = ackAgeHistoryRows[1].avg_age_7d;
+              const c = ackAgeHistoryRows[2].avg_age_7d;
+              return a > b && b > c ? 2 : 0;
+            })();
+            const ackAgeImprovingStreak = (() => {
+              if (ackAgeHistoryRows.length < 3) return 0;
+              const a = ackAgeHistoryRows[0].avg_age_7d;
+              const b = ackAgeHistoryRows[1].avg_age_7d;
+              const c = ackAgeHistoryRows[2].avg_age_7d;
+              return a < b && b < c ? 2 : 0;
+            })();
+            const shouldAlertAckAgeTrend =
+              ackAgeTrend === 'worsening' &&
+              ackAgeWorseningStreak >= 2 &&
+              ackAgeCurrent >= 24;
+            const shouldConfirmAckAgeRecovery =
+              ackAgeTrend === 'improving' &&
+              ackAgeImprovingStreak >= 2 &&
+              ackAgeCurrent <= 12;
+            const ackAgeTrendBody = shouldAlertAckAgeTrend
+              ? [
+                  ackAgeTrendAlertMarker,
+                  '## Ack Escalation Age Trend Alert',
+                  '',
+                  `Trend: \`${ackAgeTrend}\``,
+                  `Worsening streak: \`${ackAgeWorseningStreak}\``,
+                  `7d avg escalation age (hours): \`${ackAgeCurrent}\``,
+                  `7d warning events: \`${ackWarningCurrent}\``,
+                  `7d critical events: \`${ackCriticalCurrent}\``,
+                  '',
+                  'Ack escalation age is worsening across consecutive governance cycles.',
+                  '',
+                  'Priority routing:',
+                  '- release owner: clear acknowledgement backlog in current cycle',
+                  '- backend/platform: remove technical blockers for acknowledgement closure',
+                  '- program owner: enforce same-day checkpoint until avg age trend stabilizes',
+                  '',
+                  '| Date | 7d avg age (hours) | 7d warning events | 7d critical events |',
+                  '|---|---:|---:|---:|',
+                  ...ackAgeHistoryRows.map((r) => `| ${r.date} | ${r.avg_age_7d} | ${r.warning_7d} | ${r.critical_7d} |`),
+                ].join('\n')
+              : [
+                  ackAgeTrendAlertMarker,
+                  shouldConfirmAckAgeRecovery ? '## Ack Escalation Age Recovery Signal' : '## Ack Escalation Age Trend Monitoring',
+                  '',
+                  `Trend: \`${ackAgeTrend}\``,
+                  `Worsening streak: \`${ackAgeWorseningStreak}\``,
+                  `Improving streak: \`${ackAgeImprovingStreak}\``,
+                  `7d avg escalation age (hours): \`${ackAgeCurrent}\``,
+                  '',
+                  shouldConfirmAckAgeRecovery
+                    ? 'Ack escalation age trend recovered to a safer trajectory.'
+                    : 'Trend alert threshold not reached.',
+                  '',
+                  '| Date | 7d avg age (hours) | 7d warning events | 7d critical events |',
+                  '|---|---:|---:|---:|',
+                  ...ackAgeHistoryRows.map((r) => `| ${r.date} | ${r.avg_age_7d} | ${r.warning_7d} | ${r.critical_7d} |`),
+                ].join('\n');
+            if (existingAckAgeTrendAlert) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingAckAgeTrendAlert.id,
+                body: ackAgeTrendBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: ackAgeTrendBody,
+              });
+            }
+            const selfCheckRecoveryBody = shouldConfirmSelfCheckRecovery
+              ? [
+                  selfCheckRecoveryMarker,
+                  '## Governance Self-Check Recovery',
+                  '',
+                  `Trend: \`${selfCheckImpactTrend}\``,
+                  `Improving streak: \`${selfCheckImpactImprovingStreak}\``,
+                  `Current impact level: \`${latestSelfCheckImpactLevel}\``,
+                  `Current impact class: \`${latestSelfCheckImpactClass}\``,
+                  '',
+                  'Self-check has recovered to a safe state after prior governance drift.',
+                  '',
+                  'Recovery routing:',
+                  '- backend/platform: keep contract validation green and prevent regression',
+                  '- release owner: resume normal governance/process cadence',
+                ].join('\n')
+              : [
+                  selfCheckRecoveryMarker,
+                  '## Governance Self-Check Recovery Monitoring',
+                  '',
+                  `Trend: \`${selfCheckImpactTrend}\``,
+                  `Improving streak: \`${selfCheckImpactImprovingStreak}\``,
+                  `Current impact level: \`${latestSelfCheckImpactLevel}\``,
+                  '',
+                  'Recovery threshold not reached.',
+                ].join('\n');
+            if (existingSelfCheckRecovery) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingSelfCheckRecovery.id,
+                body: selfCheckRecoveryBody,
+              });
+              core.info(`Updated self-check recovery comment in issue #${tracker.number}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: selfCheckRecoveryBody,
+              });
+              core.info(`Created self-check recovery comment in issue #${tracker.number}`);
+            }
+            const selfCheckEscalationText = (() => {
+              if (latestSelfCheckImpactClass === 'docs-only-drift') {
+                return 'Latest self-check impact is documentation-only drift; release process wiring remains intact, but docs/runbooks need cleanup.';
+              }
+              if (latestSelfCheckImpactClass === 'release-template-contract-broken') {
+                return 'Latest self-check impact points to release template/schema drift; release control checklist integrity may be degraded.';
+              }
+              if (latestSelfCheckImpactClass === 'workflow-contract-broken') {
+                return 'Latest self-check impact points to broken workflow contract; automated governance controls may not evaluate release readiness correctly.';
+              }
+              if (latestSelfCheckImpactClass === 'critical-governance-markers' || latestSelfCheckImpactClass === 'contract-source-broken') {
+                return 'Latest self-check impact is critical; governance markers or the source contract are broken and digest integrity is at risk.';
+              }
+              return 'Latest self-check impact requires governance review and remediation.';
+            })();
+            const selfCheckEscalationBody = shouldEscalateSelfCheck
+              ? [
+                  selfCheckEscalationMarker,
+                  '## Governance Self-Check Escalation',
+                  '',
+                  `Failure streak: \`${selfCheckFailureStreak}\``,
+                  `Impact level: \`${latestSelfCheckImpactLevel}\``,
+                  `Impact class: \`${latestSelfCheckImpactClass}\``,
+                  `Impact trend: \`${selfCheckImpactTrend}\``,
+                  '',
+                  selfCheckEscalationText,
+                  '',
+                  'Escalation routing:',
+                  ...latestSelfCheckRouting.split(/\s*,\s*/).filter(Boolean).map((ownerName) => `- ${ownerName}: act on current self-check impact immediately`),
+                ].join('\n')
+              : [
+                  selfCheckEscalationMarker,
+                  '## Governance Self-Check Monitoring',
+                  '',
+                  `Failure streak: \`${selfCheckFailureStreak}\``,
+                  `Impact class: \`${latestSelfCheckImpactClass}\``,
+                  '',
+                  'Escalation threshold not reached.',
+                ].join('\n');
+
+            if (existingSelfCheckEscalation) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingSelfCheckEscalation.id,
+                body: selfCheckEscalationBody,
+              });
+              core.info(`Updated self-check escalation comment in issue #${tracker.number}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: selfCheckEscalationBody,
+              });
+              core.info(`Created self-check escalation comment in issue #${tracker.number}`);
+            }
+
+            if (shouldEscalateDecline) {
+              const declineMarker = '<!-- lost-pets-grade-decline-alert -->';
+              const releaseOwner = (summaryJson?.open_issue_details || [])
+                .find((i) => !i.has_role_metadata) ? 'release owner (metadata needed)' : 'release owner';
+              const declineBody = [
+                declineMarker,
+                '## Grade Degradation Alert',
+                '',
+                'Weekly scorecard trend indicates degradation for 2+ consecutive weeks.',
+                selfCheckDrivesDecline
+                  ? `Self-check contribution: \`${selfCheckGradeContribution}\``
+                  : 'Self-check contribution is not the primary degradation driver.',
+                ackAgeDrivesDecline
+                  ? `Ack-age contribution: \`${ackAgeGradeContribution}\``
+                  : 'Ack-age contribution is not the primary degradation driver.',
+                '',
+                'Priority routing:',
+                `- ${releaseOwner}: run recovery plan and unblock top chronic issues`,
+                '- security/legal: review risk posture if RED or critical blockers persist',
+                '- backend/platform: stabilize failing governance workflows',
+              ].join('\n');
+
+              const existingDecline = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(declineMarker));
+              if (existingDecline) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existingDecline.id,
+                  body: declineBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: tracker.number,
+                  body: declineBody,
+                });
+              }
+            }
+
+            const recoveryMarker = '<!-- lost-pets-grade-recovery -->';
+            const existingRecovery = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(recoveryMarker));
+            const shouldConfirmOverallRecovery = shouldConfirmRecovery && shouldConfirmSelfCheckRecovery;
+            if (shouldConfirmOverallRecovery) {
+              const recoveryBody = [
+                recoveryMarker,
+                '## Recovery Confirmed',
+                '',
+                'Weekly scorecard trend is improving for 2+ consecutive weeks.',
+                `Self-check recovery: \`${shouldConfirmSelfCheckRecovery ? 'confirmed' : 'pending'}\``,
+                selfCheckDrivesRecovery
+                  ? `Self-check contribution: governance drift improved alongside grade recovery (\`${historyRows[1].self_check_impact || 'unknown'} -> ${historyRows[0].self_check_impact || 'unknown'}\`).`
+                  : 'Self-check contribution is not the primary recovery driver.',
+                ackAgeDrivesRecovery
+                  ? `Ack-age contribution: acknowledgement-age signal improved alongside grade recovery (\`${historyRows[1].ack_age_trend || 'unknown'} -> ${historyRows[0].ack_age_trend || 'unknown'}\`).`
+                  : 'Ack-age contribution is not the primary recovery driver.',
+                '',
+                'Recovery routing:',
+                '- release owner: continue remediation cadence and keep gate checklist discipline',
+                '- backend/platform: maintain workflow stability and prevent regression',
+                '- security/legal: keep monitoring until risk remains stable for next cycle',
+              ].join('\n');
+              if (existingRecovery) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existingRecovery.id,
+                  body: recoveryBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: tracker.number,
+                  body: recoveryBody,
+                });
+              }
+            } else if (existingRecovery) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingRecovery.id,
+                body: [
+                  recoveryMarker,
+                  '## Recovery Monitoring',
+                  '',
+                  shouldConfirmRecovery && !shouldConfirmSelfCheckRecovery
+                    ? `Weekly grade recovered, but self-check recovery is still pending (impact=\`${latestSelfCheckImpactClass}\`, trend=\`${selfCheckImpactTrend}\`).`
+                    : (shouldConfirmRecovery && !shouldConfirmAckAgeRecovery
+                        ? `Weekly grade recovered, but ack-age recovery is still pending (trend=\`${ackAgeTrend}\`, 7d avg=\`${ackAgeCurrent}\`).`
+                        : 'Recovery condition is not currently met (needs 2+ week improving streak).'),
+                  `Ack-age contribution snapshot: \`${ackAgeGradeContribution}\``,
+                ].join('\n'),
+              });
+            }
+
+            const existingAnomaly = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(anomalyMarker));
+            if (combinedAnomaly) {
+              const anomalyConditionText = (selfCheckIncidentAmplifier || ackIncidentAmplifier)
+                ? 'Detected condition: `RED risk` + `declining trend` + (`open_blocked_48h > 0` or severe amplifier from `self-check`/`ack escalation`).'
+                : 'Detected condition: `RED risk` + `declining trend` + `open_blocked_48h > 0`.';
+              const anomalyBody = [
+                anomalyMarker,
+                '## Incident Mode: Combined Governance Anomaly',
+                '',
+                anomalyConditionText,
+                selfCheckIncidentAmplifier
+                  ? `Self-check amplifier: \`${latestSelfCheckImpactClass}\` / level=\`${latestSelfCheckImpactLevel}\` / trend=\`${selfCheckImpactTrend}\``
+                  : 'Self-check amplifier: not active.',
+                ackIncidentAmplifier
+                  ? `Ack escalation amplifier: status=\`${ackIncidentStatus}\` / score=\`${summaryJson?.governance?.risk?.ack_escalation_score || 0}\``
+                  : 'Ack escalation amplifier: not active.',
+                ackAgeDrivesDecline
+                  ? `Ack-age contribution: \`${ackAgeGradeContribution}\``
+                  : 'Ack-age contribution: not a primary incident amplifier in this cycle.',
+                '',
+                '### Playbook (execute in order)',
+                '- [ ] Freeze Lost Pets release changes (except remediation fixes).',
+                '- [ ] Run `Lost Pets Release Gate Run` and attach latest artifacts.',
+                '- [ ] Resolve top chronic issue(s) with `chronic_score` highest first.',
+                '- [ ] Security/legal review and go/no-go checkpoint.',
+                '- [ ] Backend/platform restores all failing governance workflows.',
+                ...(selfCheckIncidentAmplifier
+                  ? ['- [ ] Backend/platform + release owner: restore self-check contract path and reduce impact trend before incident exit.']
+                  : []),
+                ...(ackIncidentAmplifier
+                  ? ['- [ ] Release owner + program owner + backend/platform: clear ack chronic critical state before incident exit.']
+                  : []),
+                '- [ ] Re-check scorecard trend and confirm exit from incident mode.',
+              ].join('\n');
+              if (existingAnomaly) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existingAnomaly.id,
+                  body: anomalyBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: tracker.number,
+                  body: anomalyBody,
+                });
+              }
+            } else if (existingAnomaly) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingAnomaly.id,
+                body: [
+                  anomalyMarker,
+                  '## Incident Mode Monitoring',
+                  '',
+                  'Combined anomaly condition is currently not met.',
+                  selfCheckIncidentAmplifier
+                    ? 'Self-check amplifier remains active; monitor closely.'
+                    : 'Self-check amplifier is not active.',
+                  ackIncidentAmplifier
+                    ? `Ack escalation amplifier remains active: status=\`${ackIncidentStatus}\`.`
+                    : 'Ack escalation amplifier is not active.',
+                  `Ack-age contribution snapshot: \`${ackAgeGradeContribution}\``,
+                  'Keep standard governance remediation cadence.',
+                ].join('\n'),
+              });
+            }
+
+            const existingExit = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(incidentExitMarker));
+            const parseAckAgePostmortemValue = (body) => {
+              const m = (body || '').match(/Ack-age contribution at incident\/recovery boundaries:\s*(.+)$/im);
+              if (!m) return '';
+              const value = (m[1] || '').trim();
+              if (!value || value === '-') return '';
+              return value;
+            };
+            const parseStableRuns = (body) => {
+              const m = (body || '').match(/Stable runs without anomaly:\s*`(\d+)`/i);
+              return m ? Number(m[1]) : 0;
+            };
+            const previousStableRuns = existingExit ? parseStableRuns(existingExit.body || '') : 0;
+            const previousAckAgePostmortemValue = existingExit ? parseAckAgePostmortemValue(existingExit.body || '') : '';
+            const ackAgePostmortemValue = previousAckAgePostmortemValue || ackAgeGradeContribution;
+            const ackAgePostmortemCaptured = ackAgePostmortemValue.length > 0;
+            const selfCheckExitBlocked =
+              impactScore(latestSelfCheckImpactLevel) >= 3 ||
+              selfCheckImpactTrend === 'worsening';
+            const ackExitBlocked = ['critical', 'critical_chronic'].includes(ackIncidentStatus);
+            const stableRuns = (combinedAnomaly || selfCheckExitBlocked || ackExitBlocked) ? 0 : (previousStableRuns + 1);
+            const shouldPublishExit = stableRuns >= 3 && !selfCheckExitBlocked && !ackExitBlocked;
+
+            const exitBody = shouldPublishExit
+              ? [
+                  incidentExitMarker,
+                  '## Incident Exit Report',
+                  '',
+                  `Stable runs without anomaly: \`${stableRuns}\``,
+                  '',
+                  'Combined anomaly condition has remained cleared for multiple consecutive runs.',
+                  'Self-check and ack escalation exit gates are cleared.',
+                  `Ack-age contribution at exit: \`${ackAgeGradeContribution}\``,
+                  '',
+                  '### Post-incident summary template',
+                  '- Root cause:',
+                  '- What was fixed:',
+                  '- Evidence of stabilization:',
+                  `- Ack-age contribution at incident/recovery boundaries: ${ackAgePostmortemValue}`,
+                  '- Preventive actions:',
+                  '- Owner and due date for preventive tasks:',
+                ].join('\n')
+              : [
+                  incidentExitMarker,
+                  '## Incident Exit Monitoring',
+                  '',
+                  `Stable runs without anomaly: \`${stableRuns}\``,
+                  '',
+                  combinedAnomaly
+                    ? 'Combined anomaly is active; exit condition is reset.'
+                    : (selfCheckExitBlocked
+                        ? `Incident exit is blocked by self-check state: impact=\`${latestSelfCheckImpactClass}\`, trend=\`${selfCheckImpactTrend}\`.`
+                        : (ackExitBlocked
+                            ? `Incident exit is blocked by ack escalation state: status=\`${ackIncidentStatus}\`, ack-age contribution=\`${ackAgeGradeContribution}\`.`
+                            : 'Collecting stable runs; exit report triggers at 3 consecutive stable runs.')),
+                  `Ack-age postmortem field: \`${ackAgePostmortemCaptured ? 'complete' : 'incomplete'}\``,
+                ].join('\n');
+
+            if (existingExit) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingExit.id,
+                body: exitBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: tracker.number,
+                body: exitBody,
+              });
+            }

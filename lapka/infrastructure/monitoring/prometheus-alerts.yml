@@ -1,0 +1,59 @@
+groups:
+  - name: lapka-security-messaging
+    rules:
+      - alert: LapkaSecureMessagingCooldownSpike
+        expr: sum(increase(lapka_security_events_total{event="messages.cooldown_active"}[5m])) >= 20
+        for: 5m
+        labels:
+          severity: warning
+          service: lapka-api
+          domain: security
+        annotations:
+          summary: "Secure messaging cooldown spike"
+          description: "Cooldown blocks are elevated over the last 5 minutes; review abuse patterns and UX friction."
+
+      - alert: LapkaSecureMessagingRateLimitedSpike
+        expr: sum(increase(lapka_security_events_total{event="messages.rate_limited"}[5m])) >= 30
+        for: 5m
+        labels:
+          severity: warning
+          service: lapka-api
+          domain: security
+        annotations:
+          summary: "Secure messaging rate-limit spike"
+          description: "Rate-limited sends are elevated over the last 5 minutes; investigate burst traffic or automation."
+
+      - alert: LapkaSecureMessagingAbuseCritical
+        expr: sum(increase(lapka_security_events_total{event=~"messages\\.(cooldown_active|rate_limited)"}[10m])) >= 120
+        for: 10m
+        labels:
+          severity: critical
+          service: lapka-api
+          domain: security
+        annotations:
+          summary: "Potential secure messaging abuse"
+          description: "Combined secure messaging blocks are critically high for 10 minutes; investigate possible abuse and escalate."
+
+  - name: lapka-operations
+    rules:
+      - alert: LapkaNoShowAutoRunnerMissedNightlyWarning
+        expr: max(lapka_no_show_auto_runner_consecutive_missed_days) >= 1
+        for: 15m
+        labels:
+          severity: warning
+          service: lapka-api
+          domain: operations
+        annotations:
+          summary: "No-show auto-runner missed nightly run"
+          description: "At least one clinic missed one nightly no-show auto-run day; check worker health and audit trail."
+
+      - alert: LapkaNoShowAutoRunnerMissedNightlyCritical
+        expr: max(lapka_no_show_auto_runner_consecutive_missed_days) >= 2
+        for: 30m
+        labels:
+          severity: critical
+          service: lapka-api
+          domain: operations
+        annotations:
+          summary: "No-show auto-runner stale for multiple days"
+          description: "A clinic missed at least two consecutive nightly no-show runs; intervention required."

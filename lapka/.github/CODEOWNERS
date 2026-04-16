@@ -1,0 +1,35 @@
+# Replace placeholder owners below with real GitHub users/teams.
+# Example:
+#   @your-org/security-team
+#   @your-org/backend-team
+#
+# Notes:
+# - CODEOWNERS rules are evaluated top-to-bottom; last matching rule wins.
+# - Keep broad defaults first, critical Lost Pets zones later with stricter ownership.
+
+# Default fallback owners for the repository
+* @lapka/core-maintainers
+
+# Lost Pets critical backend domain
+/backend/src/api/routes/growth.py @lapka/backend-maintainers @lapka/security-maintainers
+/backend/src/models/ @lapka/backend-maintainers @lapka/security-maintainers
+/backend/alembic/versions/ @lapka/backend-maintainers
+/backend/tests/test_growth_loops.py @lapka/backend-maintainers
+
+# Lost Pets frontend surfaces
+/frontend/app/(marketing)/lost-pets/ @lapka/frontend-maintainers
+/frontend/app/platform/lost-pets-ads/ @lapka/frontend-maintainers @lapka/security-maintainers
+/frontend/app/platform/lost-pets-moderation/ @lapka/frontend-maintainers @lapka/security-maintainers
+/frontend/app/platform/lost-pets-hotspot-ops/ @lapka/frontend-maintainers @lapka/security-maintainers
+/frontend/components/maps/ @lapka/frontend-maintainers
+
+# Legal/compliance and operational gate ownership
+/docs/russia_2026_lost_pets_payments_legal.md @lapka/legal-maintainers @lapka/security-maintainers
+/docs/lost_pets_quality_gate.md @lapka/core-maintainers @lapka/security-maintainers
+/docs/lost_pets_branch_protection.md @lapka/core-maintainers @lapka/security-maintainers
+
+# CI governance for Lost Pets gate
+/.github/workflows/lost-pets-smoke.yml @lapka/core-maintainers @lapka/security-maintainers
+/.github/workflows/lost-pets-governance.yml @lapka/core-maintainers @lapka/security-maintainers
+/.github/pull_request_template.md @lapka/core-maintainers @lapka/security-maintainers
+/scripts/verify-lost-pets-stack.sh @lapka/core-maintainers @lapka/backend-maintainers

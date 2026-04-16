@@ -1,0 +1,90 @@
+name: "Lost Pets Release Gate"
+description: "Pre-release control checklist for Lost Pets scope"
+title: "[Lost Pets Release] "
+labels:
+  - lost-pets
+  - release-gate
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this issue as a mandatory release gate for Lost Pets changes.
+        Complete all required checklists before production rollout.
+
+  - type: input
+    id: version
+    attributes:
+      label: Release tag/version
+      placeholder: "vX.Y.Z or RC label"
+    validations:
+      required: true
+
+  - type: input
+    id: rollout_date
+    attributes:
+      label: Planned rollout date (UTC)
+      placeholder: "YYYY-MM-DD HH:MM UTC"
+    validations:
+      required: true
+
+  - type: input
+    id: owner
+    attributes:
+      label: Release owner
+      placeholder: "@username or team"
+    validations:
+      required: true
+
+  - type: input
+    id: security_reviewer
+    attributes:
+      label: Security reviewer
+      placeholder: "@username or team"
+    validations:
+      required: false
+
+  - type: input
+    id: legal_reviewer
+    attributes:
+      label: Legal reviewer
+      placeholder: "@username or team"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: runtime
+    attributes:
+      label: Runtime and migration gate
+      options:
+        - label: "docker compose up --build -d succeeds"
+        - label: "GET /health and /docs return 200"
+        - label: "alembic upgrade head succeeds"
+        - label: "seed flow is idempotent"
+
+  - type: checkboxes
+    id: smoke
+    attributes:
+      label: Lost Pets smoke gate
+      options:
+        - label: "Lost Pets smoke workflow passed"
+        - label: "JSON and Markdown smoke artifacts reviewed"
+        - label: "Sticky PR smoke comment confirms passed status"
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Payments, privacy, moderation, legal
+      options:
+        - label: "Payment idempotency and anti-fraud checks completed"
+        - label: "Phone/geolocation/privacy controls verified"
+        - label: "Moderation + abuse lifecycle validated"
+        - label: "RU 2026 legal checks (152-FZ/54-FZ) reviewed"
+
+  - type: checkboxes
+    id: decision
+    attributes:
+      label: Final go/no-go
+      options:
+        - label: "Known risks documented"
+        - label: "Rollback plan confirmed"
+        - label: "Final release approval recorded"
