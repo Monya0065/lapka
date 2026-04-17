@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { loginWithPassword, logoutUser, selectClinic, getStoredSession } from '@/lib/auth';
@@ -27,6 +28,32 @@ export default function AuthDropdown({ mode = 'menu', initialRole }) {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [session, setSession] = useState(getStoredSession());
+  const triggerRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  const isCard = mode === 'card';
+
+  const updateMenuPosition = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setMenuPosition({
+      top: r.bottom + 12,
+      right: Math.max(12, window.innerWidth - r.right),
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (isCard || !isOpen) return;
+    updateMenuPosition();
+    const onWin = () => updateMenuPosition();
+    window.addEventListener('resize', onWin);
+    window.addEventListener('scroll', onWin, true);
+    return () => {
+      window.removeEventListener('resize', onWin);
+      window.removeEventListener('scroll', onWin, true);
+    };
+  }, [isCard, isOpen, updateMenuPosition]);
 
   useEffect(() => {
     setSession(getStoredSession());
@@ -83,14 +110,120 @@ export default function AuthDropdown({ mode = 'menu', initialRole }) {
     router.push(`/login?role=${role}`);
   }
 
-  const isCard = mode === 'card';
   const avatarLetter = String(session.email || selectedRole || 'U').trim().charAt(0).toUpperCase();
+
+  const formInner = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xl font-extrabold tracking-tight text-lapka-900">{t('auth.title')}</h3>
+        {!isCard ? (
+          <button type="button" className="btn-secondary !px-3 !py-2 text-sm" onClick={() => setIsOpen(false)}>
+            {t('auth.close')}
+          </button>
+        ) : null}
+      </div>
+
+      <label className="block">
+        <span className="label">{t('auth.role')}</span>
+        <select className="input" value={selectedRole} onChange={(e) => onRoleChange(e.target.value)}>
+          {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
+            <option key={key} value={key}>{roleOptionLabel(key)}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="block">
+        <span className="label">{t('auth.email')}</span>
+        <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </label>
+
+      {(selectedRole === 'vet' || selectedRole === 'clinic_admin') && (
+        <label className="block">
+          <span className="label">{t('auth.clinicId')}</span>
+          <input
+            className="input"
+            value={clinicId}
+            onChange={(e) => setClinicId(e.target.value)}
+            placeholder="UUID of clinic"
+          />
+        </label>
+      )}
+
+      <label className="block">
+        <span className="label">{t('auth.password')}</span>
+        <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </label>
+
+      {error ? (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        <button className="btn-primary" disabled={isLoading} type="submit">
+          {isLoading ? t('auth.loggingIn') : t('auth.login')}
+        </button>
+        {switching && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={async () => {
+              try {
+                setIsLoading(true);
+                await selectClinic(clinicId);
+                setSwitching(false);
+              } catch (e) {
+                setError(e.message || t('auth.defaultError'));
+              } finally {
+                setIsLoading(false);
+              }
+            }}
+          >
+            {t('auth.switch')}
+          </button>
+        )}
+        {session.role ? (
+          <>
+            <button type="button" className="btn-secondary" onClick={() => router.push(profileRoute(session.role))}>
+              {t('auth.profile')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={onLogout}>
+              {t('auth.logout')}
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="btn-secondary" onClick={() => goToLogin('owner')}>
+              {t('auth.ownerPage')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => goToLogin('vet')}>
+              {t('auth.vetPage')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => goToLogin('clinic_admin')}>
+              {t('auth.adminPage')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => goToLogin('network_admin')}>
+              {isEn ? 'Platform center' : 'Центр платформы'}
+            </button>
+          </>
+        )}
+      </div>
+
+      <p className="text-xs text-lapka-600">{t('auth.apiHint')}</p>
+
+      {roleLabel ? (
+        <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2 text-xs text-lapka-700">
+          {t('auth.currentSession')}: <span className="font-semibold">{roleLabel}</span> ({session.email})
+        </div>
+      ) : null}
+    </>
+  );
 
   return (
     <div className={`relative ${isCard ? 'w-full' : ''}`}>
       {isCard ? null : (
         <div className="flex items-center gap-3">
           <button
+            ref={triggerRef}
             type="button"
             className={session.role ? 'inline-flex h-14 items-center gap-2 rounded-full border border-lapka-200 bg-white px-2.5 pr-3 text-lapka-800 shadow-soft transition hover:border-lapka-300 hover:bg-lapka-50' : 'btn-primary'}
             onClick={() => setIsOpen((prev) => !prev)}
@@ -111,114 +244,24 @@ export default function AuthDropdown({ mode = 'menu', initialRole }) {
         </div>
       )}
 
-      {(isOpen || isCard) && (
-        <form
-          onSubmit={onLogin}
-          className={`surface-card z-30 space-y-4 p-5 ${isCard ? '' : 'absolute right-0 mt-3 w-[min(94vw,420px)] shadow-float'}`}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-xl font-extrabold tracking-tight text-lapka-900">{t('auth.title')}</h3>
-            {!isCard ? (
-              <button type="button" className="btn-secondary !px-3 !py-2 text-sm" onClick={() => setIsOpen(false)}>
-                {t('auth.close')}
-              </button>
-            ) : null}
-          </div>
-
-          <label className="block">
-            <span className="label">{t('auth.role')}</span>
-            <select className="input" value={selectedRole} onChange={(e) => onRoleChange(e.target.value)}>
-              {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
-                <option key={key} value={key}>{roleOptionLabel(key)}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="label">{t('auth.email')}</span>
-            <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </label>
-
-          {(selectedRole === 'vet' || selectedRole === 'clinic_admin') && (
-            <label className="block">
-              <span className="label">{t('auth.clinicId')}</span>
-              <input
-                className="input"
-                value={clinicId}
-                onChange={(e) => setClinicId(e.target.value)}
-                placeholder="UUID of clinic"
-              />
-            </label>
-          )}
-
-          <label className="block">
-            <span className="label">{t('auth.password')}</span>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </label>
-
-          {error ? (
-            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>
-          ) : null}
-
-          <div className="flex flex-wrap gap-2">
-            <button className="btn-primary" disabled={isLoading} type="submit">
-              {isLoading ? t('auth.loggingIn') : t('auth.login')}
-            </button>
-            {switching && (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={async () => {
-                  try {
-                    setIsLoading(true);
-                    await selectClinic(clinicId);
-                    setSwitching(false);
-                  } catch (e) {
-                    setError(e.message || t('auth.defaultError'));
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }}
-              >
-                {t('auth.switch')}
-              </button>
-            )}
-            {session.role ? (
-              <>
-                <button type="button" className="btn-secondary" onClick={() => router.push(profileRoute(session.role))}>
-                  {t('auth.profile')}
-                </button>
-                <button type="button" className="btn-secondary" onClick={onLogout}>
-                  {t('auth.logout')}
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="btn-secondary" onClick={() => goToLogin('owner')}>
-                  {t('auth.ownerPage')}
-                </button>
-                <button type="button" className="btn-secondary" onClick={() => goToLogin('vet')}>
-                  {t('auth.vetPage')}
-                </button>
-                <button type="button" className="btn-secondary" onClick={() => goToLogin('clinic_admin')}>
-                  {t('auth.adminPage')}
-                </button>
-                <button type="button" className="btn-secondary" onClick={() => goToLogin('network_admin')}>
-                  {isEn ? 'Platform center' : 'Центр платформы'}
-                </button>
-              </>
-            )}
-          </div>
-
-          <p className="text-xs text-lapka-600">{t('auth.apiHint')}</p>
-
-          {roleLabel ? (
-            <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2 text-xs text-lapka-700">
-              {t('auth.currentSession')}: <span className="font-semibold">{roleLabel}</span> ({session.email})
-            </div>
-          ) : null}
+      {isCard && (
+        <form onSubmit={onLogin} className="surface-card z-30 space-y-4 p-5">
+          {formInner}
         </form>
       )}
+
+      {!isCard && isOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <form
+              onSubmit={onLogin}
+              className="surface-card fixed z-[250] w-[min(94vw,420px)] space-y-4 p-5 shadow-float"
+              style={{ top: menuPosition.top, right: menuPosition.right }}
+            >
+              {formInner}
+            </form>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

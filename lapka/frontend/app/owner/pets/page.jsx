@@ -15,7 +15,9 @@ import { apiRequest } from '@/lib/api';
 import { localizePetBreed, localizePetSpecies } from '@/lib/pets';
 
 export default function OwnerPetsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const isEn = langCode.startsWith('en');
   const [pets, setPets] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -125,7 +127,7 @@ export default function OwnerPetsPage() {
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = () => reject(new Error('Не удалось прочитать файл'));
+        reader.onerror = () => reject(new Error(isEn ? 'Failed to read file' : 'Не удалось прочитать файл'));
         reader.readAsDataURL(file);
       });
 
@@ -139,15 +141,15 @@ export default function OwnerPetsPage() {
           ? { ...pet, ...(updatedPet || {}), photo_url: updatedPet?.photo_url || dataUrl }
           : pet
       )));
-      setSuccess('Фото питомца обновлено.');
+      setSuccess(isEn ? 'Pet photo updated.' : 'Фото питомца обновлено.');
     } catch (requestError) {
-      setPhotoUploadError(requestError.message || 'Не удалось сохранить фото');
+      setPhotoUploadError(requestError.message || (isEn ? 'Failed to save photo' : 'Не удалось сохранить фото'));
     } finally {
       setPhotoUploadingFor('');
       setPhotoTargetPetId('');
       if (event.target) event.target.value = '';
     }
-  }, [photoTargetPetId]);
+  }, [isEn, photoTargetPetId]);
 
   const catCount = pets.filter((p) => String(p.species || '').toLowerCase().includes('cat') || String(p.species || '').toLowerCase().includes('кот')).length;
   const dogCount = pets.filter((p) => String(p.species || '').toLowerCase().includes('dog') || String(p.species || '').toLowerCase().includes('собак')).length;
@@ -186,23 +188,33 @@ export default function OwnerPetsPage() {
       />
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <Card title="Вторичные инструменты профиля" subtitle="Breed ID больше не живёт как самостоятельный первый раздел. Это вторичный инструмент рядом с карточкой питомца.">
+        <Card
+          title={isEn ? 'Secondary profile tools' : 'Вторичные инструменты профиля'}
+          subtitle={isEn
+            ? 'Breed ID is now a secondary helper next to the pet card, not a primary section.'
+            : 'Breed ID больше не живёт как самостоятельный первый раздел. Это вторичный инструмент рядом с карточкой питомца.'}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-lg font-bold text-lapka-900">Определить породу по фото</p>
-              <p className="mt-1 text-sm text-lapka-600">Используйте как вспомогательный инструмент при добавлении питомца или уточнении профиля.</p>
+              <p className="text-lg font-bold text-lapka-900">{isEn ? 'Identify breed by photo' : 'Определить породу по фото'}</p>
+              <p className="mt-1 text-sm text-lapka-600">{isEn ? 'Use it as a helper while creating or refining the pet profile.' : 'Используйте как вспомогательный инструмент при добавлении питомца или уточнении профиля.'}</p>
             </div>
             <Link href="/owner/breed-id" className="btn-secondary">
-              Открыть инструмент
+              {isEn ? 'Open tool' : 'Открыть инструмент'}
             </Link>
           </div>
         </Card>
-        <Card title="Где дальше искать нужное" subtitle="Профиль, медкарта, документы и уход теперь собраны в одном логичном контуре.">
+        <Card
+          title={isEn ? 'Where to go next' : 'Где дальше искать нужное'}
+          subtitle={isEn
+            ? 'Profile, records, documents and care are grouped in one clear workflow.'
+            : 'Профиль, медкарта, документы и уход теперь собраны в одном логичном контуре.'}
+        >
           <div className="flex flex-wrap gap-2">
-            <Link href="/owner/records" className="btn-secondary">Медкарта</Link>
-            <Link href="/owner/documents" className="btn-secondary">Документы</Link>
-            <Link href="/owner/care" className="btn-secondary">Уход и питание</Link>
-            <Link href="/owner/timeline" className="btn-secondary">Лента здоровья</Link>
+            <Link href="/owner/records" className="btn-secondary">{isEn ? 'Medical record' : 'Медкарта'}</Link>
+            <Link href="/owner/documents" className="btn-secondary">{isEn ? 'Documents' : 'Документы'}</Link>
+            <Link href="/owner/care" className="btn-secondary">{isEn ? 'Care & nutrition' : 'Уход и питание'}</Link>
+            <Link href="/owner/timeline" className="btn-secondary">{isEn ? 'Health timeline' : 'Лента здоровья'}</Link>
           </div>
         </Card>
       </section>
@@ -265,9 +277,9 @@ export default function OwnerPetsPage() {
                 <div className="relative overflow-hidden border-b border-lapka-200 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.96),transparent_25%),linear-gradient(180deg,#f8fbff_0%,#edf7ff_100%)] p-4 md:border-b-0 md:border-r">
                   <PetVisualGallery
                     pet={pet}
-                    language="ru"
-                    title="Визуальный профиль"
-                    subtitle="Фото из карты, породный ориентир и 3D-визуал."
+                    language={isEn ? 'en' : 'ru'}
+                    title={isEn ? 'Visual profile' : 'Визуальный профиль'}
+                    subtitle={isEn ? 'Profile photo, breed reference and 3D visual.' : 'Фото из карты, породный ориентир и 3D-визуал.'}
                     compact
                     imageClassName="object-cover"
                   />
@@ -277,7 +289,7 @@ export default function OwnerPetsPage() {
                     <div>
                       <h2 className="text-[2rem] font-black tracking-tight text-lapka-900">{pet.name || t('common.noName')}</h2>
                       <p className="mt-1 text-base text-lapka-600">
-                        {localizePetSpecies(pet.species, 'ru')} · {localizePetBreed(pet.breed, 'ru')}
+                        {localizePetSpecies(pet.species, isEn ? 'en' : 'ru')} · {localizePetBreed(pet.breed, isEn ? 'en' : 'ru')}
                       </p>
                     </div>
                     <span
@@ -295,16 +307,16 @@ export default function OwnerPetsPage() {
 
                   <div className="grid gap-2 text-sm text-lapka-700 lg:grid-cols-2">
                     <div className="rounded-2xl border border-lapka-200 bg-lapka-50 px-4 py-3">
-                      <span className="font-semibold text-lapka-900">Чип:</span> {pet.chip_id || 'не указан'}
+                      <span className="font-semibold text-lapka-900">{isEn ? 'Chip:' : 'Чип:'}</span> {pet.chip_id || (isEn ? 'not set' : 'не указан')}
                     </div>
                     <div className="rounded-2xl border border-lapka-200 bg-white px-4 py-3">
-                      <span className="font-semibold text-lapka-900">Паспорт:</span> {pet.passport_id || 'не указан'}
+                      <span className="font-semibold text-lapka-900">{isEn ? 'Passport:' : 'Паспорт:'}</span> {pet.passport_id || (isEn ? 'not set' : 'не указан')}
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     <Link href={`/owner/pet/${pet.id}`} className="btn-primary">
-                      Открыть профиль
+                      {isEn ? 'Open profile' : 'Открыть профиль'}
                     </Link>
                     <button
                       type="button"
@@ -312,13 +324,13 @@ export default function OwnerPetsPage() {
                       onClick={() => handlePhotoButtonClick(pet.id)}
                       disabled={photoUploadingFor === pet.id}
                     >
-                      {photoUploadingFor === pet.id ? 'Сохраняю фото…' : 'Загрузить фото'}
+                      {photoUploadingFor === pet.id ? (isEn ? 'Saving photo…' : 'Сохраняю фото…') : (isEn ? 'Upload photo' : 'Загрузить фото')}
                     </button>
                     <Link href={`/owner/pet/${pet.id}/records`} className="btn-secondary">
-                      Медкарта
+                      {isEn ? 'Medical record' : 'Медкарта'}
                     </Link>
                     <Link href={`/owner/pet/${pet.id}/passport`} className="btn-secondary">
-                      QR-паспорт
+                      {isEn ? 'QR passport' : 'QR-паспорт'}
                     </Link>
                   </div>
                   {photoUploadError && photoTargetPetId === pet.id ? (

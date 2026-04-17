@@ -1,12 +1,20 @@
 import { apiRequest } from '@/lib/api';
 
 export async function loadOwnerBaseData() {
-  const [petsPayload, remindersPayload, appointmentsPayload, invoicesPayload] = await Promise.all([
+  const [petsR, remindersR, appointmentsR, invoicesR] = await Promise.allSettled([
     apiRequest('/api/v1/pets'),
     apiRequest('/api/v1/reminders?upcoming_days=120&limit=200'),
     apiRequest('/api/v1/appointments?mine=true'),
     apiRequest('/api/v1/owner/invoices'),
   ]);
+
+  if (petsR.status === 'rejected') {
+    throw petsR.reason;
+  }
+  const petsPayload = petsR.value;
+  const remindersPayload = remindersR.status === 'fulfilled' ? remindersR.value : [];
+  const appointmentsPayload = appointmentsR.status === 'fulfilled' ? appointmentsR.value : [];
+  const invoicesPayload = invoicesR.status === 'fulfilled' ? invoicesR.value : [];
 
   return {
     pets: Array.isArray(petsPayload) ? petsPayload : [],

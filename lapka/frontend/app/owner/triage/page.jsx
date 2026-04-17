@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import AppImage from '@/components/ui/AppImage';
 import AIWidget from '@/components/ui/AIWidget';
 import Card from '@/components/ui/Card';
@@ -15,42 +16,37 @@ import { DANGEROUS_PRODUCTS } from '@/lib/owner-experience';
 import { EMERGENCY_SCENARIOS, formatDateTimeLabel } from '@/lib/owner-workspace';
 import { localizeDocumentType, localizePetBreed, localizePetSpecies, resolvePetPhoto } from '@/lib/pets';
 
-const RED_FLAGS = [
-  'Судороги или потеря сознания',
-  'Тяжёлое дыхание или синюшность',
-  'Сильное кровотечение',
-  'Подозрение на отравление',
-  'Температура выше 41°C',
-  'Сильная боль или травма',
-];
-
-function levelMeta(level) {
+function levelMeta(level, isEn) {
   if (level === 'RED') {
     return {
-      label: 'RED · срочно в клинику',
+      label: isEn ? 'RED · go to clinic now' : 'RED · срочно в клинику',
       badgeClass: 'badge-red',
       cardClass: 'border-rose-200 bg-[linear-gradient(180deg,#fff9f9_0%,#fff1f1_100%)]',
     };
   }
   if (level === 'YELLOW') {
     return {
-      label: 'YELLOW · нужен осмотр',
+      label: isEn ? 'YELLOW · exam needed' : 'YELLOW · нужен осмотр',
       badgeClass: 'badge-yellow',
       cardClass: 'border-amber-200 bg-[linear-gradient(180deg,#fffdf8_0%,#fff8eb_100%)]',
     };
   }
   return {
-    label: 'GREEN · наблюдение дома',
+    label: isEn ? 'GREEN · monitor at home' : 'GREEN · наблюдение дома',
     badgeClass: 'pill',
     cardClass: 'border-emerald-200 bg-[linear-gradient(180deg,#f8fffb_0%,#f1fff7_100%)]',
   };
 }
 
 export default function OwnerEmergencyFlowPage() {
+  const { i18n } = useTranslation();
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const isEn = langCode.startsWith('en');
+  const dtLocale = isEn ? 'en' : 'ru';
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode') || '';
   const requestedPetId = searchParams.get('pet') || '';
-  const requestedScenario = searchParams.get('scenario') || (mode === 'sos' ? 'poison' : 'vomit');
+  const requestedScenario = searchParams.get('scenario') || (mode === 'sos' ? 'poisoning' : 'poisoning');
 
   const [loading, setLoading] = useState(true);
   const [petLoading, setPetLoading] = useState(false);
@@ -79,7 +75,7 @@ export default function OwnerEmergencyFlowPage() {
       const fallbackPet = base.pets.find((item) => item.id === requestedPetId)?.id || base.pets[0]?.id || '';
       setSelectedPetId((current) => current || fallbackPet);
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось открыть SOS-режим');
+      setError(requestError.message || (isEn ? 'Failed to open SOS mode' : 'Не удалось открыть SOS-режим'));
       setPets([]);
       setAppointments([]);
       setReminders([]);
@@ -87,7 +83,7 @@ export default function OwnerEmergencyFlowPage() {
     } finally {
       setLoading(false);
     }
-  }, [requestedPetId]);
+  }, [isEn, requestedPetId]);
 
   const loadPetBundle = useCallback(async (petId) => {
     if (!petId) {
@@ -105,7 +101,7 @@ export default function OwnerEmergencyFlowPage() {
       setPrescriptions(bundle.prescriptions || []);
       setVaccines(bundle.vaccines || []);
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось загрузить карту питомца для SOS-сценария');
+      setError(requestError.message || (isEn ? 'Failed to load pet card for SOS scenario' : 'Не удалось загрузить карту питомца для SOS-сценария'));
       setVisits([]);
       setDocuments([]);
       setPrescriptions([]);
@@ -113,11 +109,19 @@ export default function OwnerEmergencyFlowPage() {
     } finally {
       setPetLoading(false);
     }
-  }, []);
+  }, [isEn]);
 
   useEffect(() => {
     loadBase();
   }, [loadBase]);
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('scenario');
+    if (!fromUrl) return;
+    if (EMERGENCY_SCENARIOS.some((s) => s.id === fromUrl)) {
+      setScenarioId(fromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (selectedPetId) {
@@ -127,7 +131,7 @@ export default function OwnerEmergencyFlowPage() {
 
   const selectedPet = useMemo(() => pets.find((item) => item.id === selectedPetId) || null, [pets, selectedPetId]);
   const selectedScenario = useMemo(() => EMERGENCY_SCENARIOS.find((item) => item.id === scenarioId) || EMERGENCY_SCENARIOS[0], [scenarioId]);
-  const scenarioMeta = useMemo(() => levelMeta(selectedScenario?.level), [selectedScenario]);
+  const scenarioMeta = useMemo(() => levelMeta(selectedScenario?.level, isEn), [isEn, selectedScenario]);
 
   const nearbyClinics = useMemo(() => {
     return [...clinics]
@@ -154,7 +158,7 @@ export default function OwnerEmergencyFlowPage() {
   const dangerMatches = useMemo(() => {
     const q = String(dangerQuery || '').trim().toLowerCase();
     const base = DANGEROUS_PRODUCTS.filter((item) => !q || [item.name, item.category, item.why, item.safeAlternative].join(' ').toLowerCase().includes(q));
-    if (selectedScenario.id === 'poison' && !q) {
+    if (selectedScenario.id === 'poisoning' && !q) {
       return [...base].sort((a, b) => {
         const rank = { critical: 0, high: 1, moderate: 2 };
         return (rank[a.severity] ?? 3) - (rank[b.severity] ?? 3);
@@ -175,22 +179,39 @@ export default function OwnerEmergencyFlowPage() {
 
   const petSnapshot = useMemo(() => {
     return [
-      selectedPet?.chip_id ? `Чип: ${selectedPet.chip_id}` : 'Чип не указан',
-      selectedPet?.passport_id ? `Паспорт: ${selectedPet.passport_id}` : 'Паспорт не указан',
-      nextMedication ? `Следующее лекарство: ${nextMedication.title || nextMedication.notes || 'по графику'} · ${formatDateTimeLabel(nextMedication.due_at)}` : 'Активные лекарственные напоминания не найдены',
-      documents[0] ? `Последний документ: ${localizeDocumentType(documents[0].doc_type, 'ru')} · ${formatDateTimeLabel(documents[0].created_at)}` : 'Последние документы не найдены',
-      nextAppointment ? `Следующий визит: ${formatDateTimeLabel(nextAppointment.scheduled_at)}` : 'Следующий визит не назначен',
-      vaccines[0]?.vaccine_name ? `Последняя вакцинация: ${vaccines[0].vaccine_name}` : 'Вакцинации в этой выборке не найдены',
+      selectedPet?.chip_id ? `${isEn ? 'Chip' : 'Чип'}: ${selectedPet.chip_id}` : (isEn ? 'Chip is not set' : 'Чип не указан'),
+      selectedPet?.passport_id ? `${isEn ? 'Passport' : 'Паспорт'}: ${selectedPet.passport_id}` : (isEn ? 'Passport is not set' : 'Паспорт не указан'),
+      nextMedication ? `${isEn ? 'Next medication' : 'Следующее лекарство'}: ${nextMedication.title || nextMedication.notes || (isEn ? 'on schedule' : 'по графику')} · ${formatDateTimeLabel(nextMedication.due_at, dtLocale)}` : (isEn ? 'No active medication reminders found' : 'Активные лекарственные напоминания не найдены'),
+      documents[0] ? `${isEn ? 'Latest document' : 'Последний документ'}: ${localizeDocumentType(documents[0].doc_type, isEn ? 'en' : 'ru')} · ${formatDateTimeLabel(documents[0].created_at, dtLocale)}` : (isEn ? 'No recent documents found' : 'Последние документы не найдены'),
+      nextAppointment ? `${isEn ? 'Next visit' : 'Следующий визит'}: ${formatDateTimeLabel(nextAppointment.scheduled_at, dtLocale)}` : (isEn ? 'No next visit scheduled' : 'Следующий визит не назначен'),
+      vaccines[0]?.vaccine_name ? `${isEn ? 'Latest vaccination' : 'Последняя вакцинация'}: ${vaccines[0].vaccine_name}` : (isEn ? 'No vaccinations found in this selection' : 'Вакцинации в этой выборке не найдены'),
     ];
-  }, [documents, nextAppointment, nextMedication, selectedPet?.chip_id, selectedPet?.passport_id, vaccines]);
+  }, [documents, dtLocale, isEn, nextAppointment, nextMedication, selectedPet?.chip_id, selectedPet?.passport_id, vaccines]);
 
   return (
-    <div className="space-y-7">
-      <header className="page-header">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-rose-500">SOS и срочные сценарии</p>
-          <h1 className="page-title">Пошаговый SOS-режим для владельца</h1>
-          <p className="page-subtitle">Не просто триаж, а готовый режим: признаки срочности, что сделать сразу, чего не делать, что взять с собой и куда ехать.</p>
+    <div className="min-w-0 space-y-6 md:space-y-7">
+      <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-rose-600">{isEn ? 'SOS and urgent scenarios' : 'SOS и срочные сценарии'}</p>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900 sm:text-3xl">
+            {isEn ? 'Step-by-step SOS mode for owners' : 'Пошаговый SOS-режим для владельца'}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-slate-500">
+            {isEn
+              ? 'Not just triage, but a ready flow: urgency signs, immediate actions, what not to do, what to pack, and where to go.'
+              : 'Не просто триаж, а готовый режим: признаки срочности, что сделать сразу, чего не делать, что взять с собой и куда ехать.'}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link
+            href="/owner/quick-triage"
+            className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            {isEn ? 'Quick hub' : 'Быстрый центр'}
+          </Link>
+          <Link href="/owner/dashboard" className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            {isEn ? 'Dashboard' : 'Дашборд'}
+          </Link>
         </div>
       </header>
 
@@ -208,18 +229,28 @@ export default function OwnerEmergencyFlowPage() {
           <Skeleton className="h-[620px] w-full" />
         </section>
       ) : !selectedPet ? (
-        <EmptyState title="Сначала добавьте питомца" text="SOS-сценарий опирается на активного питомца, его карту, лекарства и документы." />
+        <EmptyState title={isEn ? 'Add a pet first' : 'Сначала добавьте питомца'} text={isEn ? 'SOS scenario uses the active pet profile, medications and documents.' : 'SOS-сценарий опирается на активного питомца, его карту, лекарства и документы.'} />
       ) : (
         <>
-          <Card className={`overflow-hidden ${scenarioMeta.cardClass}`}>
-            <div className="grid gap-5 lg:grid-cols-[1.06fr_340px] lg:items-center">
-              <div className="space-y-5">
+          <section
+            className={`min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${
+              selectedScenario.level === 'RED'
+                ? 'border-l-4 border-l-rose-500'
+                : selectedScenario.level === 'YELLOW'
+                  ? 'border-l-4 border-l-amber-400'
+                  : 'border-l-4 border-l-emerald-500'
+            }`}
+          >
+            <div className="grid min-w-0 gap-0 border-b border-slate-100 lg:grid-cols-[1fr_min(340px,100%)]">
+              <div className="space-y-5 p-6 sm:p-8">
                 <div className="flex flex-wrap gap-2">
                   {pets.map((pet) => (
                     <button
                       key={pet.id}
                       type="button"
-                      className={pet.id === selectedPetId ? 'btn-primary !min-h-[42px] !px-4 !py-2 text-sm' : 'btn-secondary !min-h-[42px] !px-4 !py-2 text-sm'}
+                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                        pet.id === selectedPetId ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
                       onClick={() => setSelectedPetId(pet.id)}
                     >
                       {pet.name}
@@ -227,74 +258,120 @@ export default function OwnerEmergencyFlowPage() {
                   ))}
                 </div>
                 <div>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className={scenarioMeta.badgeClass}>{scenarioMeta.label}</span>
-                    <span className="pill !px-3 !py-1.5">{localizePetSpecies(selectedPet.species, 'ru')} · {localizePetBreed(selectedPet.breed, 'ru')}</span>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                      {localizePetSpecies(selectedPet.species, isEn ? 'en' : 'ru')} · {localizePetBreed(selectedPet.breed, isEn ? 'en' : 'ru')}
+                    </span>
                   </div>
-                  <h2 className="mt-4 text-[2.7rem] font-black tracking-tight text-lapka-950 md:text-[3.45rem]">{selectedPet.name}</h2>
-                  <p className="mt-3 max-w-3xl text-xl leading-relaxed text-lapka-700">
-                    Сценарий «{selectedScenario.title.toLowerCase()}» собран вокруг активного питомца: сразу видны критические шаги, ближайшие клиники, документы и активные лекарства.
+                  <h2 className="mt-4 text-xl font-semibold text-slate-900 sm:text-2xl">{selectedPet.name}</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">
+                    {isEn
+                      ? `Scenario “${selectedScenario.title}” is built around this pet: urgent steps, clinics, documents and medications in one view.`
+                      : `Сценарий «${selectedScenario.title.toLowerCase()}» собран вокруг этого питомца: шаги, клиники, документы и лекарства в одном экране.`}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  <Link href={`/owner/pet/${selectedPet.id}/passport`} className="btn-primary">Открыть паспорт питомца</Link>
-                  <Link href={`/owner/medications?pet=${selectedPet.id}`} className="btn-secondary">Лекарства и назначения</Link>
-                  <Link href="/owner/services" className="btn-secondary">Клиники и карта</Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/owner/pet/${selectedPet.id}/passport`}
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                  >
+                    {isEn ? 'Pet passport' : 'Паспорт питомца'}
+                  </Link>
+                  <Link
+                    href={`/owner/medications?pet=${selectedPet.id}`}
+                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    {isEn ? 'Medications' : 'Лекарства'}
+                  </Link>
+                  <Link href="/owner/services" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    {isEn ? 'Clinics & map' : 'Клиники и карта'}
+                  </Link>
                 </div>
               </div>
-              <div className="relative overflow-hidden rounded-[34px] border border-white/70 bg-white/88 p-4 shadow-soft backdrop-blur">
+              <div className="border-t border-slate-200 bg-slate-50/60 p-6 sm:p-8 lg:border-l lg:border-t-0">
                 <AppImage
                   src={resolvePetPhoto(selectedPet)}
                   alt={selectedPet.name}
                   width={900}
                   height={900}
                   sizes="340px"
-                  className="h-[280px] w-full object-cover drop-shadow-[0_28px_44px_rgba(18,63,111,0.16)]"
+                  className="h-[240px] w-full rounded-xl border border-slate-200 object-cover sm:h-[280px]"
                 />
-                <div className="rounded-[22px] border border-lapka-200 bg-lapka-50/80 px-4 py-3">
-                  <p className="text-lg font-bold text-lapka-950">Карточка для выезда</p>
-                  <p className="mt-1 text-sm text-lapka-600">Чип, документы, лекарства и ближайшие действия собраны рядом, чтобы не искать их в отдельных разделах.</p>
+                <div className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-900">{isEn ? 'Trip card' : 'Карточка для выезда'}</p>
+                  <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+                    {isEn
+                      ? 'Chip, documents, meds and next steps stay visible so you do not jump between tabs.'
+                      : 'Чип, документы, лекарства и шаги рядом — без прыжков по разделам.'}
+                  </p>
                 </div>
               </div>
             </div>
-          </Card>
+          </section>
 
-          <section className="grid gap-4 lg:grid-cols-4">
-            <Card dense title="Сценарий" subtitle="Текущий уровень срочности">
-              <p className="text-[2rem] font-black tracking-tight text-lapka-950">{selectedScenario.level}</p>
-              <p className="mt-2 text-sm text-lapka-600">{selectedScenario.title}</p>
-            </Card>
-            <Card dense title="Клиники рядом" subtitle="Что доступно сейчас">
-              <p className="text-[2rem] font-black tracking-tight text-lapka-950">{nearbyClinics.length}</p>
-              <p className="mt-2 text-sm text-lapka-600">{nearbyClinics.filter((item) => item.emergency_available).length} с экстренным приёмом</p>
-            </Card>
-            <Card dense title="Активные лекарства" subtitle="Что важно не забыть">
-              <p className="text-[2rem] font-black tracking-tight text-lapka-950">{prescriptions.length}</p>
-              <p className="mt-2 text-sm text-lapka-600">{nextMedication ? formatDateTimeLabel(nextMedication.due_at) : 'Следующая доза не найдена'}</p>
-            </Card>
-            <Card dense title="Документы" subtitle="Что уже есть в архиве">
-              <p className="text-[2rem] font-black tracking-tight text-lapka-950">{documents.length}</p>
-              <p className="mt-2 text-sm text-lapka-600">{documents[0] ? localizeDocumentType(documents[0].doc_type, 'ru') : 'Пока пусто'}</p>
-            </Card>
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                title: isEn ? 'Scenario' : 'Сценарий',
+                sub: isEn ? 'Urgency level' : 'Уровень срочности',
+                val: selectedScenario.level,
+                hint: selectedScenario.title,
+              },
+              {
+                title: isEn ? 'Clinics' : 'Клиники',
+                sub: isEn ? 'In your list' : 'В списке',
+                val: String(nearbyClinics.length),
+                hint: `${nearbyClinics.filter((item) => item.emergency_available).length} ${isEn ? 'with emergency' : 'с экстренным приёмом'}`,
+              },
+              {
+                title: isEn ? 'Medications' : 'Лекарства',
+                sub: isEn ? 'Active in profile' : 'Активные в профиле',
+                val: String(prescriptions.length),
+                hint: nextMedication ? formatDateTimeLabel(nextMedication.due_at, dtLocale) : isEn ? 'No next dose' : 'Доза не найдена',
+              },
+              {
+                title: isEn ? 'Documents' : 'Документы',
+                sub: isEn ? 'In archive' : 'В архиве',
+                val: String(documents.length),
+                hint: documents[0] ? localizeDocumentType(documents[0].doc_type, isEn ? 'en' : 'ru') : isEn ? 'Empty' : 'Пусто',
+              },
+            ].map((box) => (
+              <div key={box.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{box.title}</p>
+                <p className="mt-1 text-xs text-slate-500">{box.sub}</p>
+                <p className="mt-3 text-2xl font-semibold tabular-nums text-slate-900 sm:text-3xl">{box.val}</p>
+                <p className="mt-2 text-sm text-slate-600">{box.hint}</p>
+              </div>
+            ))}
           </section>
 
           <section className="grid items-start gap-5 2xl:grid-cols-[1.04fr_0.96fr]">
             <div className="space-y-5">
-              <Card title="Выберите сценарий" subtitle="Не ищите нужную страницу: SOS-режим начинается с реального вопроса владельца.">
+              <Card
+                className="border-slate-200"
+                title={isEn ? 'Choose scenario' : 'Выберите сценарий'}
+                subtitle={isEn ? 'Pick what matches the situation — you can switch anytime.' : 'Выберите то, что ближе к ситуации — можно переключить в любой момент.'}
+              >
                 <div className="grid gap-3 md:grid-cols-2">
                   {EMERGENCY_SCENARIOS.map((scenario) => {
-                    const meta = levelMeta(scenario.level);
+                    const meta = levelMeta(scenario.level, isEn);
+                    const active = scenario.id === selectedScenario.id;
                     return (
                       <button
                         key={scenario.id}
                         type="button"
-                        className={`rounded-[26px] border px-4 py-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft ${scenario.id === selectedScenario.id ? `${meta.cardClass} border-lapka-300` : 'border-lapka-200 bg-white'}`}
+                        className={`rounded-2xl border px-4 py-4 text-left transition ${
+                          active ? 'border-slate-900 bg-slate-50 ring-2 ring-slate-900 ring-offset-2' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80'
+                        }`}
                         onClick={() => setScenarioId(scenario.id)}
                       >
                         <span className={meta.badgeClass}>{meta.label}</span>
-                        <p className="mt-3 text-xl font-black tracking-tight text-lapka-950">{scenario.title}</p>
-                        <p className="mt-2 text-sm leading-relaxed text-lapka-600">
-                          {scenario.level === 'RED' ? 'Сразу включите режим выезда и подготовьте документы.' : 'Соберите наблюдения и определите, нужен ли срочный осмотр.'}
+                        <p className="mt-3 text-base font-semibold text-slate-900 sm:text-lg">{scenario.title}</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                          {scenario.level === 'RED'
+                            ? (isEn ? 'Prepare for clinic visit and gather documents.' : 'Готовьтесь к визиту в клинику и соберите документы.')
+                            : (isEn ? 'Collect observations and decide if an urgent exam is needed.' : 'Соберите наблюдения и решите, нужен ли срочный осмотр.')}
                         </p>
                       </button>
                     );
@@ -302,42 +379,60 @@ export default function OwnerEmergencyFlowPage() {
                 </div>
               </Card>
 
-              <Card title="Что сделать прямо сейчас" subtitle="Actionable flow на 30–60 секунд без самолечения и без потери важных деталей.">
+              <Card
+                className="border-slate-200"
+                title={isEn ? 'What to do right now' : 'Что сделать прямо сейчас'}
+                subtitle={isEn ? 'Short checklist — no self-medication; call your clinic when in doubt.' : 'Короткий чеклист — без самолечения; при сомнениях звоните в клинику.'}
+              >
                 <div className="grid gap-4 lg:grid-cols-3">
-                  <div className="rounded-[24px] border border-lapka-200 bg-white px-4 py-4">
-                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-lapka-500">Сделать сразу</p>
-                    <ul className="mt-3 space-y-2 text-base text-lapka-700">
-                      {selectedScenario.immediate.map((item) => <li key={item}>• {item}</li>)}
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{isEn ? 'Do now' : 'Сделать сразу'}</p>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-700 sm:text-base">
+                      {selectedScenario.immediate.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
-                  <div className="rounded-[24px] border border-rose-200 bg-rose-50/80 px-4 py-4">
-                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rose-600">Чего не делать</p>
-                    <ul className="mt-3 space-y-2 text-base text-rose-800">
-                      {selectedScenario.avoid.map((item) => <li key={item}>• {item}</li>)}
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-rose-700">{isEn ? "Don't" : 'Чего не делать'}</p>
+                    <ul className="mt-3 space-y-2 text-sm text-rose-900 sm:text-base">
+                      {selectedScenario.avoid.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
-                  <div className="rounded-[24px] border border-lapka-200 bg-lapka-50/80 px-4 py-4">
-                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-lapka-500">Что взять с собой</p>
-                    <ul className="mt-3 space-y-2 text-base text-lapka-700">
-                      {emergencyBag.map((item) => <li key={item}>• {item}</li>)}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{isEn ? 'Bring with you' : 'Взять с собой'}</p>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-700 sm:text-base">
+                      {emergencyBag.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
                 </div>
               </Card>
 
-              <Card title="Оценка срочности по симптомам" subtitle="Если сценарий неочевиден, используйте оценку срочности по симптомам. AI выдаёт только уровень срочности и безопасный следующий шаг.">
-                <AIWidget title="Опишите симптомы или выберите их из списка" subtitle="Система вернёт только GREEN / YELLOW / RED, красные флаги и безопасные дальнейшие действия." mode="owner" />
+              <Card
+                className="border-slate-200"
+                title={isEn ? 'Symptom urgency check' : 'Оценка срочности по симптомам'}
+                subtitle={isEn ? 'AI returns only urgency level and safe next steps.' : 'AI возвращает только уровень срочности и безопасные шаги.'}
+              >
+                <AIWidget title={isEn ? 'Describe symptoms or pick from list' : 'Опишите симптомы или выберите их из списка'} subtitle={isEn ? 'System returns only GREEN / YELLOW / RED, red flags, and safe follow-up actions.' : 'Система вернёт только GREEN / YELLOW / RED, красные флаги и безопасные дальнейшие действия.'} mode="owner" />
               </Card>
             </div>
 
             <div className="space-y-5">
-              <Card title="Карта питомца для выезда" subtitle="То, что пригодится в клинике, без переходов по десяти разным разделам.">
+              <Card
+                className="border-slate-200"
+                title={isEn ? 'Pet card for the visit' : 'Карта питомца для визита'}
+                subtitle={isEn ? 'Snapshot before you leave — no tab switching.' : 'Сводка перед выездом — без переключения вкладок.'}
+              >
                 {petLoading ? (
                   <Skeleton className="h-[260px] w-full" />
                 ) : (
                   <div className="space-y-3">
                     {petSnapshot.map((item) => (
-                      <div key={item} className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4 text-sm leading-relaxed text-lapka-700">
+                      <div key={item} className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm leading-relaxed text-slate-700">
                         {item}
                       </div>
                     ))}
@@ -345,85 +440,137 @@ export default function OwnerEmergencyFlowPage() {
                 )}
               </Card>
 
-              <Card title="Ближайшие клиники" subtitle="Если нужен срочный выезд, здесь уже собраны ближайшие точки и быстрые переходы.">
+              <Card
+                className="border-slate-200"
+                title={isEn ? 'Nearest clinics' : 'Ближайшие клиники'}
+                subtitle={isEn ? 'Quick links to your saved clinics.' : 'Быстрые ссылки на ваши клиники.'}
+              >
                 {nearbyClinics.length ? (
                   <div className="space-y-3">
                     {nearbyClinics.map((clinic) => (
-                      <Link key={clinic.id} href={`/owner/clinic/${clinic.id}`} className="block rounded-[24px] border border-lapka-200 bg-white px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-soft">
+                      <Link
+                        key={clinic.id}
+                        href={`/owner/clinic/${clinic.id}`}
+                        className="block rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-slate-300 hover:bg-slate-50"
+                      >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <p className="text-lg font-bold text-lapka-900">{clinic.name}</p>
-                            <p className="mt-1 text-sm text-lapka-600">{[clinic.city, clinic.address].filter(Boolean).join(' · ')}</p>
+                            <p className="text-sm font-semibold text-slate-900 sm:text-base">{clinic.name}</p>
+                            <p className="mt-1 text-xs text-slate-500 sm:text-sm">{[clinic.city, clinic.address].filter(Boolean).join(' · ')}</p>
                           </div>
-                          {clinic.emergency_available ? <span className="badge-red">Экстренный приём</span> : <span className="pill !px-3 !py-1.5">Плановый приём</span>}
+                          {clinic.emergency_available ? (
+                            <span className="badge-red">{isEn ? 'Emergency' : 'Экстренно'}</span>
+                          ) : (
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                              {isEn ? 'Planned' : 'Планово'}
+                            </span>
+                          )}
                         </div>
                       </Link>
                     ))}
-                    <Link href="/owner/map" className="btn-secondary w-full">Открыть карту и все точки рядом</Link>
+                    <Link href="/owner/map" className="flex w-full items-center justify-center rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      {isEn ? 'Open map' : 'Открыть карту'}
+                    </Link>
                   </div>
                 ) : (
-                  <EmptyState title="Клиники не найдены" text="Проверьте карту или попробуйте открыть сервисный центр позже." />
+                  <EmptyState title={isEn ? 'No clinics found' : 'Клиники не найдены'} text={isEn ? 'Check the map or try service hub again later.' : 'Проверьте карту или попробуйте открыть сервисный центр позже.'} />
                 )}
               </Card>
 
-              <Card title="Если питомец что-то съел" subtitle="Проверка опасных продуктов встроена прямо в SOS-сценарий, а не вынесена в отдельный крупный раздел.">
-                <SearchInput label="Поиск по продуктам" placeholder="шоколад, ксилит, виноград, лук…" value={dangerQuery} onChange={(event) => setDangerQuery(event.target.value)} />
+              <Card
+                className="border-slate-200"
+                title={isEn ? 'If your pet ate something' : 'Если питомец что-то съел'}
+                subtitle={isEn ? 'Search common risky products (reference only).' : 'Поиск по типичным опасным продуктам (справочно).'}
+              >
+                <SearchInput label={isEn ? 'Search products' : 'Поиск по продуктам'} placeholder={isEn ? 'chocolate, xylitol, grapes, onion...' : 'шоколад, ксилит, виноград, лук…'} value={dangerQuery} onChange={(event) => setDangerQuery(event.target.value)} />
                 {dangerMatches.length ? (
                   <div className="mt-4 space-y-3">
                     {dangerMatches.map((item) => (
-                      <div key={item.id} className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
+                      <div key={item.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={item.severity === 'critical' ? 'badge-red' : item.severity === 'high' ? 'badge-yellow' : 'pill !px-3 !py-1.5'}>
-                            {item.severity === 'critical' ? 'Критично' : item.severity === 'high' ? 'Высокий риск' : 'Умеренный риск'}
+                          <span className={item.severity === 'critical' ? 'badge-red' : item.severity === 'high' ? 'badge-yellow' : 'rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600'}>
+                            {item.severity === 'critical' ? (isEn ? 'Critical' : 'Критично') : item.severity === 'high' ? (isEn ? 'High risk' : 'Высокий риск') : (isEn ? 'Moderate' : 'Умеренно')}
                           </span>
-                          <span className="pill !px-3 !py-1.5">{item.category}</span>
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs text-slate-600">{item.category}</span>
                         </div>
-                        <p className="mt-3 text-lg font-bold text-lapka-900">{item.name}</p>
-                        <p className="mt-1 text-sm leading-relaxed text-lapka-600">{item.why}</p>
-                        <p className="mt-3 text-sm font-semibold text-lapka-500">На что смотреть: {item.symptoms.join(', ')}</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-900 sm:text-base">{item.name}</p>
+                        <p className="mt-1 text-sm text-slate-600">{item.why}</p>
+                        <p className="mt-2 text-xs text-slate-500 sm:text-sm">
+                          {isEn ? 'Watch for:' : 'На что смотреть:'} {item.symptoms.join(', ')}
+                        </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-4 text-sm text-lapka-600">По этому запросу продукт не найден. Если ситуация кажется опасной, открывайте карту клиник и берите последние документы с собой.</p>
+                  <p className="mt-4 text-sm text-slate-600">{isEn ? 'No product found for this query. If situation seems dangerous, open clinic map and bring latest documents.' : 'По этому запросу продукт не найден. Если ситуация кажется опасной, открывайте карту клиник и берите последние документы с собой.'}</p>
                 )}
               </Card>
             </div>
           </section>
 
-          <section className="grid items-start gap-5 2xl:grid-cols-[1.04fr_0.96fr]">
-            <Card title="Красные флаги, при которых нельзя ждать" subtitle="Эти сценарии сразу переводят владельца из справочного режима в срочный.">
+          <section className="grid items-start gap-5 lg:grid-cols-2">
+            <Card
+              className="border-slate-200"
+              title={isEn ? 'Red flags — do not wait' : 'Красные флаги — не ждать'}
+              subtitle={isEn ? 'Go to a clinic or emergency service immediately.' : 'Сразу обращайтесь в клинику или экстренную службу.'}
+            >
               <div className="flex flex-wrap gap-2">
-                {RED_FLAGS.map((item) => (
-                  <span key={item} className="badge-red">{item}</span>
+                {(isEn
+                  ? [
+                    'Seizures or loss of consciousness',
+                    'Severe breathing issues or cyanosis',
+                    'Heavy bleeding',
+                    'Suspected poisoning',
+                    'Temperature above 41°C',
+                    'Severe pain or trauma',
+                  ]
+                  : [
+                    'Судороги или потеря сознания',
+                    'Тяжёлое дыхание или синюшность',
+                    'Сильное кровотечение',
+                    'Подозрение на отравление',
+                    'Температура выше 41°C',
+                    'Сильная боль или травма',
+                  ]).map((item) => (
+                  <span key={item} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-900 sm:text-sm">
+                    {item}
+                  </span>
                 ))}
               </div>
             </Card>
-            <Card title="Куда идти дальше после SOS-сценария" subtitle="После острой ситуации рабочее пространство не распадается на хаотичные страницы. Оно ведёт в нужный следующий раздел.">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Link href="/owner/timeline" className="action-grid-link">
-                  <div>
-                    <p className="text-lg font-bold text-lapka-900">Лента здоровья</p>
-                    <p className="mt-1 text-sm text-lapka-600">Посмотреть историю визитов, лекарств, документов и симптомов.</p>
-                  </div>
+            <Card
+              className="border-slate-200"
+              title={isEn ? 'Next steps in Lapka' : 'Дальше в Lapka'}
+              subtitle={isEn ? 'After you stabilise the situation.' : 'Когда ситуация под контролем.'}
+            >
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Link
+                  href="/owner/timeline"
+                  className="flex min-h-[72px] flex-col justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <p className="text-sm font-semibold text-slate-900">{isEn ? 'Timeline' : 'Лента здоровья'}</p>
+                  <p className="mt-1 text-xs text-slate-500">{isEn ? 'Visits, meds, documents' : 'Визиты, лекарства, документы'}</p>
                 </Link>
-                <Link href="/owner/medications" className="action-grid-link">
-                  <div>
-                    <p className="text-lg font-bold text-lapka-900">Центр лекарств</p>
-                    <p className="mt-1 text-sm text-lapka-600">Отследить курс, следующую дозу и что нужно докупить.</p>
-                  </div>
+                <Link
+                  href="/owner/medications"
+                  className="flex min-h-[72px] flex-col justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <p className="text-sm font-semibold text-slate-900">{isEn ? 'Medications' : 'Лекарства'}</p>
+                  <p className="mt-1 text-xs text-slate-500">{isEn ? 'Doses and refills' : 'Дозы и продления'}</p>
                 </Link>
-                <Link href="/owner/documents" className="action-grid-link">
-                  <div>
-                    <p className="text-lg font-bold text-lapka-900">Документы</p>
-                    <p className="mt-1 text-sm text-lapka-600">Открыть выписки, анализы и изображения питомца.</p>
-                  </div>
+                <Link
+                  href="/owner/documents"
+                  className="flex min-h-[72px] flex-col justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <p className="text-sm font-semibold text-slate-900">{isEn ? 'Documents' : 'Документы'}</p>
+                  <p className="mt-1 text-xs text-slate-500">{isEn ? 'Labs and images' : 'Анализы и снимки'}</p>
                 </Link>
-                <Link href="/owner/services" className="action-grid-link">
-                  <div>
-                    <p className="text-lg font-bold text-lapka-900">Клиники и сервисы</p>
-                    <p className="mt-1 text-sm text-lapka-600">Карта, запись, счета и страхование в одном контуре.</p>
-                  </div>
+                <Link
+                  href="/owner/services"
+                  className="flex min-h-[72px] flex-col justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <p className="text-sm font-semibold text-slate-900">{isEn ? 'Clinics' : 'Клиники'}</p>
+                  <p className="mt-1 text-xs text-slate-500">{isEn ? 'Map and booking' : 'Карта и запись'}</p>
                 </Link>
               </div>
             </Card>

@@ -46,6 +46,7 @@ services:
       PHARMACY_AVAILABILITY_RATE_LIMIT: 40
       PHARMACY_AVAILABILITY_WINDOW_SEC: 60
       REDIS_URL: redis://redis:6379/0
+      APP_PUBLIC_URL: http://localhost:3000
     depends_on:
       db:
         condition: service_healthy

@@ -357,6 +357,7 @@
     "redFlags": "Red flags",
     "nextSteps": "Next steps",
     "triageError": "Unable to run triage. Please try again.",
+    "policyBlocked": "This request can't include treatment or dosing instructions. Contact your veterinarian.",
     "triageFallback": "Unable to get triage output.",
     "structurerEmpty": "Add a note or transcript to structure the protocol.",
     "ownerDisclaimer": "AI does not diagnose or prescribe treatment to owners.",

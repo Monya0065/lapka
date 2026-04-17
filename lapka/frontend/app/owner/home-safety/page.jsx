@@ -132,7 +132,7 @@ export default function OwnerHomeSafetyPage() {
                   </div>
                   <span className="pill !px-3 !py-1.5">Знания</span>
                 </Link>
-                <Link href="/owner/triage?mode=sos" className="action-grid-link">
+                <Link href="/owner/quick-triage" className="action-grid-link">
                   <div>
                     <p className="text-lg font-bold text-lapka-900">SOS-сценарий</p>
                     <p className="mt-1 text-sm text-lapka-600">Если есть риск отравления или тяжёлой реакции.</p>

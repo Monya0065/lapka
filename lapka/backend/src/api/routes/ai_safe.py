@@ -72,7 +72,11 @@ async def ai_triage(
     severity = sanitize_list(payload.severity_indicators, max_items=20, max_len=128)
     payload_size = len(symptom_text) + sum(len(item) for item in selected_ids) + sum(len(item) for item in severity)
 
-    if current_user.role == RoleEnum.owner and has_policy_violation(symptom_text):
+    symptom_map = {s.get("id"): s.get("name", "") for s in get_symptoms()}
+    selected_names = [symptom_map.get(i, "") for i in selected_ids]
+    combined_owner_text = " ".join([symptom_text, *severity, *selected_names]).strip()
+
+    if current_user.role == RoleEnum.owner and has_policy_violation(combined_owner_text):
         execution = await prepare_ai_execution(
             db,
             current_user=current_user,
@@ -106,8 +110,6 @@ async def ai_triage(
             },
         )
 
-    symptom_map = {s.get("id"): s.get("name", "") for s in get_symptoms()}
-    selected_names = [symptom_map.get(i, "") for i in selected_ids]
     governed = await execute_governed_ai(
         db,
         current_user=current_user,

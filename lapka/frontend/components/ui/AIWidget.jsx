@@ -58,6 +58,7 @@ export default function AIWidget({
 
   const tone = useMemo(() => {
     if (mode === 'vet') return 'info';
+    if (level === 'POLICY') return 'warning';
     if (level === 'RED') return 'danger';
     if (level === 'GREEN') return 'success';
     return 'warning';
@@ -84,8 +85,15 @@ export default function AIWidget({
       setLevel(String(triagePayload?.level || 'YELLOW').toUpperCase());
       setOutput(formatTriageOutput(triagePayload, t));
     } catch (requestError) {
-      setOutput(requestError.message || t('aiWidget.triageError'));
-      setLevel('YELLOW');
+      const detail = requestError?.payload?.detail;
+      const code = typeof detail === 'object' && detail ? detail.code : null;
+      if (requestError.status === 422 && code === 'POLICY_VIOLATION') {
+        setLevel('POLICY');
+        setOutput(detail?.message || requestError.message || t('aiWidget.policyBlocked'));
+      } else {
+        setOutput(requestError.message || t('aiWidget.triageError'));
+        setLevel('YELLOW');
+      }
     } finally {
       setRunning(false);
     }

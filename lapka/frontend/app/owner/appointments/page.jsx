@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorBanner from '@/components/ui/ErrorBanner';
@@ -14,25 +15,42 @@ import { apiRequest } from '@/lib/api';
 import { localizeResourceType } from '@/lib/clinic-operations';
 import { localizeServiceType, localizeVisitType } from '@/lib/pets';
 
-const STEP_LABELS = ['1. Питомец', '2. Клиника и врач', '3. Услуга и формат', '4. Слот и подтверждение'];
+function getStepLabels(isEn) {
+  return isEn
+    ? ['1. Pet', '2. Clinic and vet', '3. Service and format', '4. Slot and confirmation']
+    : ['1. Питомец', '2. Клиника и врач', '3. Услуга и формат', '4. Слот и подтверждение'];
+}
 
-const STATUS_LABELS = {
-  scheduled: 'Запланирован',
-  confirmed: 'Подтвержден',
-  in_progress: 'Идёт приём',
-  completed: 'Завершён',
-  cancelled: 'Отменён',
-  no_show: 'Неявка',
-  new: 'Новая',
-  waiting: 'Ожидание',
-};
+function getStatusLabel(status, isEn) {
+  const ru = {
+    scheduled: 'Запланирован',
+    confirmed: 'Подтвержден',
+    in_progress: 'Идёт приём',
+    completed: 'Завершён',
+    cancelled: 'Отменён',
+    no_show: 'Неявка',
+    new: 'Новая',
+    waiting: 'Ожидание',
+  };
+  const en = {
+    scheduled: 'Scheduled',
+    confirmed: 'Confirmed',
+    in_progress: 'In progress',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    no_show: 'No show',
+    new: 'New',
+    waiting: 'Waiting',
+  };
+  return (isEn ? en : ru)[status] || status;
+}
 
-function describeSlotConflict(slot) {
+function describeSlotConflict(slot, isEn) {
   const scopes = Array.isArray(slot?.conflict_scopes) ? slot.conflict_scopes : [];
-  if (scopes.includes('vet') && scopes.includes('resource')) return 'заняты врач и кабинет';
-  if (scopes.includes('resource')) return slot?.room_label ? `занят ${slot.room_label.toLowerCase()}` : 'занят кабинет';
-  if (scopes.includes('vet')) return 'занят врач';
-  return 'слот недоступен';
+  if (scopes.includes('vet') && scopes.includes('resource')) return isEn ? 'vet and room are occupied' : 'заняты врач и кабинет';
+  if (scopes.includes('resource')) return slot?.room_label ? (isEn ? `${slot.room_label.toLowerCase()} is occupied` : `занят ${slot.room_label.toLowerCase()}`) : (isEn ? 'room is occupied' : 'занят кабинет');
+  if (scopes.includes('vet')) return isEn ? 'vet is occupied' : 'занят врач';
+  return isEn ? 'slot unavailable' : 'слот недоступен';
 }
 
 function toLocalDateInput(daysShift = 1) {
@@ -44,7 +62,7 @@ function toLocalDateInput(daysShift = 1) {
   return date.toISOString().slice(0, 10);
 }
 
-function statusPill(status) {
+function statusPill(status, isEn) {
   const map = {
     scheduled: 'pill',
     confirmed: 'badge-green',
@@ -55,10 +73,14 @@ function statusPill(status) {
     new: 'pill',
     waiting: 'badge-yellow',
   };
-  return <span className={map[status] || 'pill'}>{STATUS_LABELS[status] || status}</span>;
+  return <span className={map[status] || 'pill'}>{getStatusLabel(status, isEn)}</span>;
 }
 
 export default function OwnerAppointmentsPage() {
+  const { i18n } = useTranslation();
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const isEn = langCode.startsWith('en');
+  const stepLabels = getStepLabels(isEn);
   const searchParams = useSearchParams();
   const [pets, setPets] = useState([]);
   const [clinics, setClinics] = useState([]);
@@ -122,14 +144,14 @@ export default function OwnerAppointmentsPage() {
         : clinicsRows[0]?.id;
       if (!clinicId && clinicFromQuery) setClinicId(clinicFromQuery);
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось загрузить данные для записи');
+      setError(requestError.message || (isEn ? 'Failed to load appointment data' : 'Не удалось загрузить данные для записи'));
       setPets([]);
       setClinics([]);
       setAppointments([]);
     } finally {
       setLoading(false);
     }
-  }, [clinicId, petId, preselectedClinicId]);
+  }, [clinicId, isEn, petId, preselectedClinicId]);
 
   const loadClinicContext = useCallback(async (targetClinicId) => {
     if (!targetClinicId) return;
@@ -179,14 +201,14 @@ export default function OwnerAppointmentsPage() {
         setVisitType('video_consultation');
       }
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось загрузить расписание клиники');
+      setError(requestError.message || (isEn ? 'Failed to load clinic schedule' : 'Не удалось загрузить расписание клиники'));
       setVets([]);
       setServices([]);
       setAppointmentTypes([]);
     } finally {
       setClinicLoading(false);
     }
-  }, [appointmentTypeId, clinics, preselectedService, preselectedVetId]);
+  }, [appointmentTypeId, clinics, isEn, preselectedService, preselectedVetId]);
 
   const loadResources = useCallback(async () => {
     if (!clinicId) {
@@ -204,13 +226,13 @@ export default function OwnerAppointmentsPage() {
       setResources(rows);
       setClinicResourceId((prev) => (prev && rows.some((row) => row.id === prev) ? prev : ''));
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось загрузить кабинеты и ресурсы');
+      setError(requestError.message || (isEn ? 'Failed to load rooms and resources' : 'Не удалось загрузить кабинеты и ресурсы'));
       setResources([]);
       setClinicResourceId('');
     } finally {
       setResourcesLoading(false);
     }
-  }, [clinicId, clinicLocationId]);
+  }, [clinicId, clinicLocationId, isEn]);
 
   const loadSlots = useCallback(async () => {
     if (!clinicId || !vetId || !dateValue) {
@@ -241,13 +263,13 @@ export default function OwnerAppointmentsPage() {
         return firstAvailable?.start_at || '';
       });
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось получить слоты');
+      setError(requestError.message || (isEn ? 'Failed to load slots' : 'Не удалось получить слоты'));
       setSlots([]);
       setSlotValue('');
     } finally {
       setSlotsLoading(false);
     }
-  }, [appointmentTypeId, clinicId, clinicLocationId, clinicResourceId, dateValue, durationMinutes, vetId]);
+  }, [appointmentTypeId, clinicId, clinicLocationId, clinicResourceId, dateValue, durationMinutes, vetId, isEn]);
 
   useEffect(() => {
     loadBaseData();
@@ -287,7 +309,7 @@ export default function OwnerAppointmentsPage() {
     setSuccess('');
 
     if (!petId || !clinicId || !vetId || !serviceType || !slotValue) {
-      setError('Заполните все обязательные поля и выберите свободный слот.');
+      setError(isEn ? 'Fill all required fields and choose an available slot.' : 'Заполните все обязательные поля и выберите свободный слот.');
       return;
     }
 
@@ -311,13 +333,13 @@ export default function OwnerAppointmentsPage() {
         },
       });
 
-      setSuccess('Запись создана. Напоминания на 24 часа и 2 часа добавлены автоматически.');
+      setSuccess(isEn ? 'Appointment created. 24h and 2h reminders were added automatically.' : 'Запись создана. Напоминания на 24 часа и 2 часа добавлены автоматически.');
       setStep(1);
       setNotes('');
       await loadBaseData();
       await loadSlots();
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось создать запись');
+      setError(requestError.message || (isEn ? 'Failed to create appointment' : 'Не удалось создать запись'));
     } finally {
       setSaving(false);
     }
@@ -332,12 +354,12 @@ export default function OwnerAppointmentsPage() {
     try {
       await apiRequest(`/api/v1/appointments/${appointmentId}/cancel`, {
         method: 'POST',
-        body: { notes: 'Отменено владельцем' },
+        body: { notes: isEn ? 'Cancelled by owner' : 'Отменено владельцем' },
       });
-      setSuccess('Запись отменена. Напоминания автоматически закрыты.');
+      setSuccess(isEn ? 'Appointment canceled. Reminders were closed automatically.' : 'Запись отменена. Напоминания автоматически закрыты.');
       await loadBaseData();
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось отменить запись');
+      setError(requestError.message || (isEn ? 'Failed to cancel appointment' : 'Не удалось отменить запись'));
     } finally {
       setCancelingId('');
     }
@@ -352,18 +374,19 @@ export default function OwnerAppointmentsPage() {
   const availableSlots = slots.filter((slot) => slot.available);
   const unavailableSlots = slots.filter((slot) => !slot.available);
 
+  const locale = isEn ? 'en-US' : 'ru-RU';
   const appointmentRows = appointments
     .slice()
     .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
     .map((item) => [
-      new Date(item.scheduled_at).toLocaleString('ru-RU'),
-      localizeServiceType(item.service_type || item.service_name, 'ru'),
-      item.room_label || 'Автоподбор клиники',
-      localizeVisitType(item.visit_type, 'ru'),
-      statusPill(item.status),
+      new Date(item.scheduled_at).toLocaleString(locale),
+      localizeServiceType(item.service_type || item.service_name, isEn ? 'en' : 'ru'),
+      item.room_label || (isEn ? 'Clinic auto-assignment' : 'Автоподбор клиники'),
+      localizeVisitType(item.visit_type, isEn ? 'en' : 'ru'),
+      statusPill(item.status, isEn),
       <div key={item.id} className="flex flex-wrap gap-2">
         <Link className="btn-secondary !px-3 !py-1" href={`/owner/appointment/${item.id}`}>
-          Карточка записи
+          {isEn ? 'Appointment card' : 'Карточка записи'}
         </Link>
         {['scheduled', 'confirmed', 'new', 'waiting'].includes(item.status) ? (
           <button
@@ -372,7 +395,7 @@ export default function OwnerAppointmentsPage() {
             onClick={() => setCancelConfirmId(item.id)}
             disabled={cancelingId === item.id}
           >
-            {cancelingId === item.id ? 'Отменяем...' : 'Отменить'}
+            {cancelingId === item.id ? (isEn ? 'Canceling...' : 'Отменяем...') : (isEn ? 'Cancel' : 'Отменить')}
           </button>
         ) : null}
       </div>,
@@ -389,17 +412,17 @@ export default function OwnerAppointmentsPage() {
     <>
       <header className="page-header">
         <div>
-          <h1 className="page-title">Онлайн-запись и телемедицина</h1>
-          <p className="page-subtitle">Выберите питомца, врача, услугу и свободный слот. Для видеоконсультации будет создана ссылка.</p>
+          <h1 className="page-title">{isEn ? 'Online booking and telemedicine' : 'Онлайн-запись и телемедицина'}</h1>
+          <p className="page-subtitle">{isEn ? 'Choose a pet, vet, service and available slot. A link is created for video consultations.' : 'Выберите питомца, врача, услугу и свободный слот. Для видеоконсультации будет создана ссылка.'}</p>
         </div>
       </header>
 
       <ShowcasePanel
-        eyebrow="Запись в клинику"
-        title="Выбор врача, услуги и удобного слота в одном мастере"
-        description="Владелец бронирует очный приём или видеоконсультацию в одном процессе, а напоминания создаются автоматически."
+        eyebrow={isEn ? 'Clinic booking' : 'Запись в клинику'}
+        title={isEn ? 'Choose vet, service and convenient slot in one flow' : 'Выбор врача, услуги и удобного слота в одном мастере'}
+        description={isEn ? 'Book an in-clinic visit or video consultation in one flow, with automatic reminders.' : 'Владелец бронирует очный приём или видеоконсультацию в одном процессе, а напоминания создаются автоматически.'}
         imageSrc="/assets/img/owner-banner.svg"
-        imageAlt="Онлайн-запись владельца"
+        imageAlt={isEn ? 'Owner online booking' : 'Онлайн-запись владельца'}
       />
 
       {error ? <ErrorBanner message={error} onRetry={loadBaseData} /> : null}
@@ -413,10 +436,10 @@ export default function OwnerAppointmentsPage() {
         </section>
       ) : (
         <>
-          <Card title="Мастер записи" subtitle="Пошаговое бронирование приёма">
+          <Card title={isEn ? 'Booking wizard' : 'Мастер записи'} subtitle={isEn ? 'Step-by-step appointment booking' : 'Пошаговое бронирование приёма'}>
             <form className="space-y-5" onSubmit={onCreateAppointment}>
               <div className="grid gap-2 md:grid-cols-4">
-                {STEP_LABELS.map((label, index) => {
+                {stepLabels.map((label, index) => {
                   const stepNumber = index + 1;
                   const isActive = step === stepNumber;
                   const isPassed = step > stepNumber;
@@ -436,7 +459,7 @@ export default function OwnerAppointmentsPage() {
               {step >= 1 ? (
                 <section className="grid gap-3 md:grid-cols-2">
                   <label className="block">
-                    <span className="label">Питомец</span>
+                      <span className="label">{isEn ? 'Pet' : 'Питомец'}</span>
                     <select className="input" value={petId} onChange={(event) => setPetId(event.target.value)}>
                       {pets.map((pet) => (
                         <option key={pet.id} value={pet.id}>
@@ -446,7 +469,7 @@ export default function OwnerAppointmentsPage() {
                     </select>
                   </label>
                   <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2 text-sm text-lapka-700">
-                    <span className="font-semibold">Выбрано:</span> {selectedPet ? `${selectedPet.name} (${selectedPet.species})` : '—'}
+                    <span className="font-semibold">{isEn ? 'Selected:' : 'Выбрано:'}</span> {selectedPet ? `${selectedPet.name} (${selectedPet.species})` : '—'}
                   </div>
                 </section>
               ) : null}
@@ -454,7 +477,7 @@ export default function OwnerAppointmentsPage() {
               {step >= 2 ? (
                 <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <label className="block">
-                    <span className="label">Клиника</span>
+                      <span className="label">{isEn ? 'Clinic' : 'Клиника'}</span>
                     <select className="input" value={clinicId} onChange={(event) => setClinicId(event.target.value)}>
                       {clinics.map((clinic) => (
                         <option key={clinic.id} value={clinic.id}>
@@ -465,18 +488,18 @@ export default function OwnerAppointmentsPage() {
                   </label>
 
                   <label className="block">
-                    <span className="label">Филиал</span>
+                      <span className="label">{isEn ? 'Branch' : 'Филиал'}</span>
                     <select className="input" value={clinicLocationId} onChange={(event) => setClinicLocationId(event.target.value)} disabled={!selectedClinicLocations.length}>
                       {selectedClinicLocations.map((location) => (
                         <option key={location.id} value={location.id}>
-                          {location.is_primary ? 'Основной · ' : ''}{location.address}
+                          {location.is_primary ? (isEn ? 'Primary · ' : 'Основной · ') : ''}{location.address}
                         </option>
                       ))}
                     </select>
                   </label>
 
                   <label className="block">
-                    <span className="label">Врач</span>
+                      <span className="label">{isEn ? 'Vet' : 'Врач'}</span>
                     <select className="input" value={vetId} onChange={(event) => setVetId(event.target.value)} disabled={clinicLoading}>
                       {vets.map((vet) => (
                         <option key={vet.id} value={vet.id}>
@@ -487,11 +510,11 @@ export default function OwnerAppointmentsPage() {
                   </label>
 
                   <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-3 py-2 text-sm text-lapka-700">
-                    <span className="font-semibold">Клиника:</span> {selectedClinic?.name || '—'}
+                    <span className="font-semibold">{isEn ? 'Clinic:' : 'Клиника:'}</span> {selectedClinic?.name || '—'}
                     <br />
-                    <span className="font-semibold">Филиал:</span> {selectedClinicLocation?.address || '—'}
+                    <span className="font-semibold">{isEn ? 'Branch:' : 'Филиал:'}</span> {selectedClinicLocation?.address || '—'}
                     <br />
-                    <span className="font-semibold">Врач:</span> {selectedVet?.full_name || '—'}
+                    <span className="font-semibold">{isEn ? 'Vet:' : 'Врач:'}</span> {selectedVet?.full_name || '—'}
                   </div>
                 </section>
               ) : null}
@@ -499,19 +522,19 @@ export default function OwnerAppointmentsPage() {
               {step >= 3 ? (
                 <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                   <label className="block">
-                    <span className="label">Тип приёма</span>
+                    <span className="label">{isEn ? 'Appointment type' : 'Тип приёма'}</span>
                     <select className="input" value={appointmentTypeId} onChange={(event) => setAppointmentTypeId(event.target.value)}>
-                      <option value="">Без типа</option>
+                      <option value="">{isEn ? 'No type' : 'Без типа'}</option>
                       {appointmentTypes.map((row) => (
                         <option key={row.id} value={row.id}>
-                          {row.name}{row.is_telemedicine ? ' · телемедицина' : ''}
+                          {row.name}{row.is_telemedicine ? (isEn ? ' · telemedicine' : ' · телемедицина') : ''}
                         </option>
                       ))}
                     </select>
                   </label>
 
                   <label className="block">
-                    <span className="label">Услуга</span>
+                    <span className="label">{isEn ? 'Service' : 'Услуга'}</span>
                     <select className="input" value={serviceType} onChange={(event) => setServiceType(event.target.value)}>
                       {services.map((service) => (
                         <option key={service.id} value={service.name}>
@@ -522,17 +545,17 @@ export default function OwnerAppointmentsPage() {
                   </label>
 
                   <label className="block">
-                    <span className="label">Формат визита</span>
+                    <span className="label">{isEn ? 'Visit format' : 'Формат визита'}</span>
                     <select className="input" value={visitType} onChange={(event) => setVisitType(event.target.value)}>
-                      <option value="clinic_visit">Очный визит</option>
-                      <option value="video_consultation">Видеоконсультация</option>
+                      <option value="clinic_visit">{isEn ? 'In-clinic visit' : 'Очный визит'}</option>
+                      <option value="video_consultation">{isEn ? 'Video consultation' : 'Видеоконсультация'}</option>
                     </select>
                   </label>
 
                   <label className="block">
-                    <span className="label">Кабинет / ресурс</span>
+                    <span className="label">{isEn ? 'Room / resource' : 'Кабинет / ресурс'}</span>
                     <select className="input" value={clinicResourceId} onChange={(event) => setClinicResourceId(event.target.value)} disabled={resourcesLoading || !resources.length}>
-                      <option value="">Автоподбор</option>
+                      <option value="">{isEn ? 'Auto-assign' : 'Автоподбор'}</option>
                       {resources.map((resource) => (
                         <option key={resource.id} value={resource.id}>
                           {resource.name} · {localizeResourceType(resource.resource_type)}
@@ -542,7 +565,7 @@ export default function OwnerAppointmentsPage() {
                   </label>
 
                   <label className="block">
-                    <span className="label">Длительность (мин.)</span>
+                    <span className="label">{isEn ? 'Duration (min)' : 'Длительность (мин.)'}</span>
                     <input
                       className="input"
                       type="number"
@@ -557,9 +580,9 @@ export default function OwnerAppointmentsPage() {
 
               {step >= 3 ? (
                 <div className="rounded-xl border border-lapka-200 bg-lapka-50 px-4 py-3 text-sm text-lapka-700">
-                  <span className="font-semibold">Выбранный филиал:</span> {selectedClinicLocation?.address || '—'}
+                  <span className="font-semibold">{isEn ? 'Selected branch:' : 'Выбранный филиал:'}</span> {selectedClinicLocation?.address || '—'}
                   <br />
-                  <span className="font-semibold">Кабинет / ресурс:</span> {selectedResource ? `${selectedResource.name} · ${localizeResourceType(selectedResource.resource_type)}` : 'Автоподбор по клинике'}
+                  <span className="font-semibold">{isEn ? 'Room / resource:' : 'Кабинет / ресурс:'}</span> {selectedResource ? `${selectedResource.name} · ${localizeResourceType(selectedResource.resource_type)}` : (isEn ? 'Auto-assigned by clinic' : 'Автоподбор по клинике')}
                 </div>
               ) : null}
 
@@ -567,17 +590,17 @@ export default function OwnerAppointmentsPage() {
                 <section className="space-y-3">
                   <div className="grid gap-3 md:grid-cols-[220px_1fr]">
                     <label className="block">
-                      <span className="label">Дата визита</span>
+                      <span className="label">{isEn ? 'Visit date' : 'Дата визита'}</span>
                       <input className="input" type="date" value={dateValue} onChange={(event) => setDateValue(event.target.value)} />
                     </label>
 
                     <label className="block">
-                      <span className="label">Комментарий</span>
+                      <span className="label">{isEn ? 'Notes' : 'Комментарий'}</span>
                       <input
                         className="input"
                         value={notes}
                         onChange={(event) => setNotes(event.target.value)}
-                        placeholder="Что важно учесть на приёме"
+                        placeholder={isEn ? 'What should be considered during the visit' : 'Что важно учесть на приёме'}
                       />
                     </label>
                   </div>
@@ -593,7 +616,7 @@ export default function OwnerAppointmentsPage() {
                       <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-5">
                         {slots.map((slot) => {
                           const isSelected = slotValue === slot.start_at;
-                          const timeLabel = new Date(slot.start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                          const timeLabel = new Date(slot.start_at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
                           return (
                             <button
                               key={slot.start_at}
@@ -603,7 +626,7 @@ export default function OwnerAppointmentsPage() {
                               disabled={!slot.available}
                             >
                               <div className="font-semibold">{timeLabel}</div>
-                              <div className={`mt-1 text-xs ${slot.available ? 'text-emerald-700' : 'text-lapka-500'}`}>{slot.available ? 'Свободно' : describeSlotConflict(slot)}</div>
+                              <div className={`mt-1 text-xs ${slot.available ? 'text-emerald-700' : 'text-lapka-500'}`}>{slot.available ? (isEn ? 'Available' : 'Свободно') : describeSlotConflict(slot, isEn)}</div>
                               {!slot.available && slot.room_label ? <div className="mt-1 text-[11px] text-lapka-400">{slot.room_label}</div> : null}
                             </button>
                           );
@@ -611,25 +634,25 @@ export default function OwnerAppointmentsPage() {
                       </div>
                       {unavailableSlots.length ? (
                         <div className="rounded-2xl border border-lapka-200 bg-lapka-50 px-4 py-3 text-sm text-lapka-700">
-                          <p className="font-semibold text-lapka-900">Почему часть слотов недоступна</p>
+                          <p className="font-semibold text-lapka-900">{isEn ? 'Why some slots are unavailable' : 'Почему часть слотов недоступна'}</p>
                           <ul className="mt-2 space-y-1 text-lapka-600">
-                            <li>• Занят врач — в это время уже идёт другой приём у выбранного врача.</li>
-                            <li>• Занят кабинет — конфликт по кабинету, диагностике или телемедицинской комнате.</li>
-                            <li>• Заняты врач и кабинет — конфликт сразу по двум линиям расписания.</li>
+                            <li>{isEn ? '• Vet occupied — another visit already uses this doctor at the same time.' : '• Занят врач — в это время уже идёт другой приём у выбранного врача.'}</li>
+                            <li>{isEn ? '• Room occupied — conflict with room, diagnostics or telemedicine resource.' : '• Занят кабинет — конфликт по кабинету, диагностике или телемедицинской комнате.'}</li>
+                            <li>{isEn ? '• Vet and room occupied — conflict on both scheduling dimensions.' : '• Заняты врач и кабинет — конфликт сразу по двум линиям расписания.'}</li>
                           </ul>
                         </div>
                       ) : null}
                       <div className="rounded-xl border border-lapka-200 bg-white px-4 py-3 text-sm text-lapka-700">
-                        <span className="font-semibold text-lapka-900">Итог бронирования:</span>{' '}
+                        <span className="font-semibold text-lapka-900">{isEn ? 'Booking summary:' : 'Итог бронирования:'}</span>{' '}
                         {selectedClinic?.name || '—'} · {selectedClinicLocation?.address || '—'} · {selectedVet?.full_name || '—'}
                         <br />
-                        <span className="font-semibold">Кабинет / ресурс:</span> {selectedResource ? selectedResource.name : 'Автоподбор клиники'}
+                        <span className="font-semibold">{isEn ? 'Room / resource:' : 'Кабинет / ресурс:'}</span> {selectedResource ? selectedResource.name : (isEn ? 'Clinic auto-assignment' : 'Автоподбор клиники')}
                         <br />
-                        <span className="font-semibold">Формат:</span> {localizeVisitType(visitType, 'ru')}
+                        <span className="font-semibold">{isEn ? 'Format:' : 'Формат:'}</span> {localizeVisitType(visitType, isEn ? 'en' : 'ru')}
                       </div>
                     </div>
                   ) : (
-                    <EmptyState title="Слоты не найдены" text="Выберите другую дату, врача, филиал или кабинет." />
+                    <EmptyState title={isEn ? 'No slots found' : 'Слоты не найдены'} text={isEn ? 'Pick another date, vet, branch or room.' : 'Выберите другую дату, врача, филиал или кабинет.'} />
                   )}
                 </section>
               ) : null}
@@ -642,7 +665,7 @@ export default function OwnerAppointmentsPage() {
                     onClick={() => setStep((prev) => Math.max(1, prev - 1))}
                     disabled={step === 1}
                   >
-                    Назад
+                    {isEn ? 'Back' : 'Назад'}
                   </button>
                   <button
                     type="button"
@@ -650,32 +673,32 @@ export default function OwnerAppointmentsPage() {
                     onClick={() => setStep((prev) => Math.min(4, prev + 1))}
                     disabled={step >= 4 || !canGoNextFromStep[step]}
                   >
-                    Далее
+                    {isEn ? 'Next' : 'Далее'}
                   </button>
                 </div>
 
                 <button className="btn-primary" type="submit" disabled={saving || !slotValue}>
-                  {saving ? 'Создаём запись...' : 'Подтвердить запись'}
+                  {saving ? (isEn ? 'Creating appointment...' : 'Создаём запись...') : (isEn ? 'Confirm booking' : 'Подтвердить запись')}
                 </button>
               </section>
             </form>
           </Card>
 
-          <Card title="Мои записи" subtitle="Очные и дистанционные консультации">
+          <Card title={isEn ? 'My appointments' : 'Мои записи'} subtitle={isEn ? 'In-clinic and remote consultations' : 'Очные и дистанционные консультации'}>
             {appointmentRows.length ? (
-              <Table columns={['Дата и время', 'Услуга', 'Кабинет', 'Формат', 'Статус', 'Действия']} rows={appointmentRows} />
+              <Table columns={isEn ? ['Date & time', 'Service', 'Room', 'Format', 'Status', 'Actions'] : ['Дата и время', 'Услуга', 'Кабинет', 'Формат', 'Статус', 'Действия']} rows={appointmentRows} />
             ) : (
-              <EmptyState title="Пока нет записей" text="Создайте первую запись через wizard выше." />
+              <EmptyState title={isEn ? 'No appointments yet' : 'Пока нет записей'} text={isEn ? 'Create the first appointment using the wizard above.' : 'Создайте первую запись через мастер выше.'} />
             )}
           </Card>
         </>
       )}
       <ConfirmDialog
         open={Boolean(cancelConfirmId)}
-        title="Отменить выбранную запись?"
-        message="Действие нельзя откатить автоматически. При необходимости создайте новую запись."
-        confirmLabel="Да, отменить"
-        cancelLabel="Нет"
+        title={isEn ? 'Cancel selected appointment?' : 'Отменить выбранную запись?'}
+        message={isEn ? 'This action cannot be automatically undone. Create a new appointment if needed.' : 'Действие нельзя откатить автоматически. При необходимости создайте новую запись.'}
+        confirmLabel={isEn ? 'Yes, cancel' : 'Да, отменить'}
+        cancelLabel={isEn ? 'No' : 'Нет'}
         danger
         loading={Boolean(cancelingId)}
         onCancel={() => setCancelConfirmId('')}

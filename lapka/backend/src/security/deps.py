@@ -193,3 +193,8 @@ async def enforce_pet_scope(
 
     await require_clinic_membership(db, user_id=current_user.id, clinic_id=clinic_id)
     await require_active_consent(db, pet_id=pet_id, clinic_id=clinic_id, required_scope=required_scope)
+
+
+async def require_current_legal_ack(_current_user: User = Depends(get_current_user)) -> None:
+    """Runs after authentication; extend to enforce LegalAcceptance when product policy requires it."""
+    return None

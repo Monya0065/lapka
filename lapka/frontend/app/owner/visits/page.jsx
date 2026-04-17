@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorBanner from '@/components/ui/ErrorBanner';
@@ -10,6 +11,10 @@ import { loadOwnerBaseData, loadPetHealthBundle } from '@/lib/owner-data';
 import { buildVisitCenter, formatDateTimeLabel } from '@/lib/owner-workspace';
 
 export default function OwnerVisitCenterPage() {
+  const { i18n } = useTranslation();
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const isEn = langCode.startsWith('en');
+  const dtLocale = isEn ? 'en' : 'ru';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pets, setPets] = useState([]);
@@ -44,7 +49,7 @@ export default function OwnerVisitCenterPage() {
         setDocuments([]);
       }
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось загрузить центр визитов');
+      setError(requestError.message || (isEn ? 'Failed to load visit center' : 'Не удалось загрузить центр визитов'));
       setPets([]);
       setAppointments([]);
       setReminders([]);
@@ -53,7 +58,7 @@ export default function OwnerVisitCenterPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isEn]);
 
   useEffect(() => {
     loadPage();
@@ -82,9 +87,9 @@ export default function OwnerVisitCenterPage() {
     <div className="space-y-7">
       <header className="page-header">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">Центр визитов</p>
-          <h1 className="page-title">Визиты и подготовка к ним</h1>
-          <p className="page-subtitle">Единый центр прошедших приёмов, будущих записей, повторных действий, документов и подготовки к следующему контакту с клиникой.</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">{isEn ? 'Visit center' : 'Центр визитов'}</p>
+          <h1 className="page-title">{isEn ? 'Visits and preparation' : 'Визиты и подготовка к ним'}</h1>
+          <p className="page-subtitle">{isEn ? 'Unified center for past visits, upcoming appointments, follow-up actions and documents.' : 'Единый центр прошедших приёмов, будущих записей, повторных действий, документов и подготовки к следующему контакту с клиникой.'}</p>
         </div>
       </header>
 
@@ -97,10 +102,10 @@ export default function OwnerVisitCenterPage() {
           <Skeleton className="h-64 w-full" />
         </section>
       ) : !selectedPet ? (
-        <EmptyState title="Нет активного питомца" text="Добавьте питомца, чтобы Lapka собрала центр визитов и подготовки к ним." />
+        <EmptyState title={isEn ? 'No active pet' : 'Нет активного питомца'} text={isEn ? 'Add a pet to build visit and preparation center.' : 'Добавьте питомца, чтобы Lapka собрала центр визитов и подготовки к ним.'} />
       ) : (
         <>
-          <Card title="Для какого питомца открываем центр" subtitle="Визиты всегда показываются в контексте одного активного питомца.">
+          <Card title={isEn ? 'Pick pet for this center' : 'Для какого питомца открываем центр'} subtitle={isEn ? 'Visits are shown in context of one active pet.' : 'Визиты всегда показываются в контексте одного активного питомца.'}>
             <div className="flex flex-wrap gap-2">
               {pets.map((pet) => (
                 <button key={pet.id} type="button" className={selectedPetId === pet.id ? 'btn-primary !min-h-[42px] !px-4 !py-2 text-sm' : 'btn-secondary !min-h-[42px] !px-4 !py-2 text-sm'} onClick={() => setSelectedPetId(pet.id)}>
@@ -111,29 +116,29 @@ export default function OwnerVisitCenterPage() {
           </Card>
 
           <section className="kpi-grid">
-            <Card title="Будущие записи"><p className="text-4xl font-black text-lapka-900">{center.upcoming.length}</p></Card>
-            <Card title="История визитов"><p className="text-4xl font-black text-lapka-900">{center.recentVisits.length}</p></Card>
-            <Card title="Повторные действия"><p className="text-4xl font-black text-lapka-900">{center.followUp.length}</p></Card>
-            <Card title="Документы к визиту"><p className="text-4xl font-black text-lapka-900">{center.exportPack.documents.length}</p></Card>
+            <Card title={isEn ? 'Upcoming appointments' : 'Будущие записи'}><p className="text-4xl font-black text-lapka-900">{center.upcoming.length}</p></Card>
+            <Card title={isEn ? 'Visit history' : 'История визитов'}><p className="text-4xl font-black text-lapka-900">{center.recentVisits.length}</p></Card>
+            <Card title={isEn ? 'Follow-up actions' : 'Повторные действия'}><p className="text-4xl font-black text-lapka-900">{center.followUp.length}</p></Card>
+            <Card title={isEn ? 'Visit documents' : 'Документы к визиту'}><p className="text-4xl font-black text-lapka-900">{center.exportPack.documents.length}</p></Card>
           </section>
 
           <section className="grid items-start gap-5 2xl:grid-cols-[1.05fr_0.95fr]">
-            <Card title="Ближайшие записи" subtitle="Что уже запланировано и к чему стоит подготовиться">
+            <Card title={isEn ? 'Upcoming appointments' : 'Ближайшие записи'} subtitle={isEn ? 'What is already scheduled and what to prepare for' : 'Что уже запланировано и к чему стоит подготовиться'}>
               {center.upcoming.length ? (
                 <div className="space-y-3">
                   {center.upcoming.map((row) => (
                     <Link key={row.id} href={`/owner/appointment/${row.id}`} className="block rounded-[24px] border border-lapka-200 bg-white px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-soft">
-                      <p className="text-lg font-bold text-lapka-900">{row.service_type || 'Визит'}</p>
-                      <p className="mt-1 text-sm text-lapka-600">{formatDateTimeLabel(row.scheduled_at)} · {row.visit_type === 'video_consultation' ? 'онлайн' : 'в клинике'}</p>
+                      <p className="text-lg font-bold text-lapka-900">{row.service_type || (isEn ? 'Visit' : 'Визит')}</p>
+                      <p className="mt-1 text-sm text-lapka-600">{formatDateTimeLabel(row.scheduled_at, dtLocale)} · {row.visit_type === 'video_consultation' ? (isEn ? 'online' : 'онлайн') : (isEn ? 'in clinic' : 'в клинике')}</p>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <EmptyState title="Будущих записей пока нет" text="Откройте запись в клинику и выберите слот." />
+                <EmptyState title={isEn ? 'No upcoming appointments yet' : 'Будущих записей пока нет'} text={isEn ? 'Open booking and choose a slot.' : 'Откройте запись в клинику и выберите слот.'} />
               )}
             </Card>
 
-            <Card title="Как подготовиться" subtitle="Практичный чек-лист до следующего визита">
+            <Card title={isEn ? 'How to prepare' : 'Как подготовиться'} subtitle={isEn ? 'Practical checklist before next visit' : 'Практичный чек-лист до следующего визита'}>
               <div className="space-y-2">
                 {center.preparation.map((item) => (
                   <div key={item} className="rounded-xl border border-lapka-200 bg-white px-4 py-3 text-sm text-lapka-700">
@@ -145,29 +150,29 @@ export default function OwnerVisitCenterPage() {
           </section>
 
           <section className="grid items-start gap-5 2xl:grid-cols-[1.1fr_0.9fr]">
-            <Card title="Последние визиты" subtitle="История визитов и основные причины обращения">
+            <Card title={isEn ? 'Recent visits' : 'Последние визиты'} subtitle={isEn ? 'Visit history and main complaint reasons' : 'История визитов и основные причины обращения'}>
               {center.recentVisits.length ? (
                 <div className="space-y-3">
                   {center.recentVisits.map((visit) => (
                     <Link key={visit.id} href={`/owner/pet/${visit.pet_id}/records`} className="block rounded-[24px] border border-lapka-200 bg-white px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-soft">
-                      <p className="text-lg font-bold text-lapka-900">{visit.chief_complaint || 'Визит в клинику'}</p>
-                      <p className="mt-1 text-sm text-lapka-600">{visit.pet_name} · {formatDateTimeLabel(visit.finalized_at || visit.created_at)}</p>
+                      <p className="text-lg font-bold text-lapka-900">{visit.chief_complaint || (isEn ? 'Clinic visit' : 'Визит в клинику')}</p>
+                      <p className="mt-1 text-sm text-lapka-600">{visit.pet_name} · {formatDateTimeLabel(visit.finalized_at || visit.created_at, dtLocale)}</p>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <EmptyState title="История визитов пока пуста" text="После первого визита здесь появится короткая понятная лента." />
+                <EmptyState title={isEn ? 'Visit history is empty' : 'История визитов пока пуста'} text={isEn ? 'After the first visit, a short timeline will appear here.' : 'После первого визита здесь появится короткая понятная лента.'} />
               )}
             </Card>
 
-            <Card title="Повторные действия и вопросы врачу" subtitle="Что ещё может потребоваться после визита">
+            <Card title={isEn ? 'Follow-up actions and vet questions' : 'Повторные действия и вопросы врачу'} subtitle={isEn ? 'What may still be needed after the visit' : 'Что ещё может потребоваться после визита'}>
               <div className="space-y-3">
                 {center.followUp.length ? center.followUp.map((item) => (
                   <div key={item.id} className="rounded-[24px] border border-lapka-200 bg-white px-4 py-4">
-                    <p className="text-base font-bold text-lapka-900">{item.title || 'Следующее действие'}</p>
-                    <p className="mt-1 text-sm text-lapka-600">{formatDateTimeLabel(item.due_at)}</p>
+                    <p className="text-base font-bold text-lapka-900">{item.title || (isEn ? 'Next action' : 'Следующее действие')}</p>
+                    <p className="mt-1 text-sm text-lapka-600">{formatDateTimeLabel(item.due_at, dtLocale)}</p>
                   </div>
-                )) : <EmptyState title="Повторных действий пока нет" text="Напоминания по следующим шагам появятся автоматически." />}
+                )) : <EmptyState title={isEn ? 'No follow-up actions yet' : 'Повторных действий пока нет'} text={isEn ? 'Next-step reminders will appear automatically.' : 'Напоминания по следующим шагам появятся автоматически.'} />}
               </div>
             </Card>
           </section>

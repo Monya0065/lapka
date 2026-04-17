@@ -275,7 +275,7 @@ export default function OwnerKnowledgePage() {
                     <p className="mt-1 text-sm text-lapka-600">RED-сценарий. Откройте SOS-режим и готовьтесь ехать в клинику.</p>
                   </div>
                 ))}
-                <Link href="/owner/triage?mode=sos" className="btn-primary">Открыть SOS-сценарий</Link>
+                <Link href="/owner/quick-triage" className="btn-primary">Открыть SOS-сценарий</Link>
               </div>
             </Card>
           </div>
@@ -358,7 +358,7 @@ export default function OwnerKnowledgePage() {
           )}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <Link href="/owner/home-safety" className="btn-secondary">Открыть карту рисков</Link>
-            <Link href="/owner/triage?mode=sos" className="btn-secondary">Открыть SOS-сценарий</Link>
+            <Link href="/owner/quick-triage" className="btn-secondary">Открыть SOS-сценарий</Link>
           </div>
         </Card>
       )}

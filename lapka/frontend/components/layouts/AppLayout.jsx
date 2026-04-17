@@ -56,6 +56,7 @@ export default function AppLayout({
         primaryAction={headerAction}
         contextControls={headerContext}
         workspaceTitle={workspaceTitle}
+        showOwnerSos={roleLabel === 'owner'}
       />
 
       <main className="page-wrap py-5 pb-10 md:py-6">

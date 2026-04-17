@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from src.ai.providers.base import LLMProvider
 from src.ai.providers.noop import NoOpProvider
+from src.core.config import get_settings
 
 _provider: LLMProvider | None = None
 
@@ -18,16 +19,32 @@ def get_provider() -> LLMProvider:
 
 
 def _resolve_provider() -> LLMProvider:
-    import os
+    settings = get_settings()
+    primary = (settings.llm_provider or "noop").lower().strip()
+    fallback = (settings.llm_fallback_provider or "noop").lower().strip()
 
-    name = (os.environ.get("LLM_PROVIDER") or "noop").lower().strip()
+    resolved = _try_provider(primary)
+    if resolved is not None:
+        return resolved
+
+    resolved = _try_provider(fallback)
+    if resolved is not None:
+        return resolved
+
+    return NoOpProvider()
+
+
+def _try_provider(name: str) -> LLMProvider | None:
     if name == "openai":
         try:
             from src.ai.providers.openai_provider import OpenAIProvider
 
-            p = OpenAIProvider()
-            if p.is_available():
-                return p
+            provider = OpenAIProvider()
+            if provider.is_available():
+                return provider
+            return None
         except ImportError:
-            pass
-    return NoOpProvider()
+            return None
+    if name == "noop":
+        return NoOpProvider()
+    return None

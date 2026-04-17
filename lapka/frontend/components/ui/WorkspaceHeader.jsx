@@ -20,7 +20,14 @@ function normalizeLinks(links = [], t) {
   return Array.from(unique.values());
 }
 
-export default function WorkspaceHeader({ links = [], primaryAction = null, contextControls = null, workspaceTitle = '' }) {
+export default function WorkspaceHeader({
+  links = [],
+  primaryAction = null,
+  contextControls = null,
+  workspaceTitle = '',
+  /** When true, show owner SOS (uses layout role — same on server and client, avoids hydration break). */
+  showOwnerSos = false,
+}) {
   const { t } = useTranslation();
   const session = getStoredSession();
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -79,6 +86,16 @@ export default function WorkspaceHeader({ links = [], primaryAction = null, cont
 
           <div className="workspace-topbar-actions">
             {contextControls ? <div className="hidden xl:flex items-center gap-2">{contextControls}</div> : null}
+            {showOwnerSos ? (
+              <Link
+                href="/owner/quick-triage"
+                prefetch={false}
+                className="relative z-[60] inline-flex shrink-0 items-center justify-center rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800 shadow-sm transition hover:bg-rose-100 md:min-h-[54px] md:px-4"
+                title={t('nav.ownerSos', { defaultValue: 'Срочная помощь и triage' })}
+              >
+                SOS
+              </Link>
+            ) : null}
             <Link
               href={notificationsHref}
               prefetch={false}

@@ -23,6 +23,10 @@ settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.1.0")
 Path("storage").mkdir(parents=True, exist_ok=True)
 
+logger = logging.getLogger("lapka.api")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
 if settings.sentry_dsn:
     try:
         import sentry_sdk
@@ -38,9 +42,6 @@ if settings.sentry_dsn:
         logger.info("Sentry initialized")
     except ImportError:
         pass
-logger = logging.getLogger("lapka.api")
-if not logger.handlers:
-    logging.basicConfig(level=logging.INFO)
 
 def _allowed_origins() -> set[str]:
     base = {"http://localhost:3000", "http://127.0.0.1:3000"}

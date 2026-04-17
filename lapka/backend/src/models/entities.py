@@ -15,6 +15,7 @@ from sqlalchemy import (
     Index,
     Integer,
     JSON,
+    Numeric,
     String,
     Time,
     Text,
@@ -132,6 +133,13 @@ class LostPetStatus(str, enum.Enum):
     closed = "closed"
 
 
+class LostPetModerationStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    blocked = "blocked"
+
+
 class ReferralStatus(str, enum.Enum):
     sent = "sent"
     registered = "registered"
@@ -220,6 +228,23 @@ class User(Base):
     __table_args__ = (
         Index("idx_users_phone", "phone"),
         Index("idx_users_full_name", "full_name"),
+    )
+
+
+class LegalAcceptance(Base):
+    __tablename__ = "legal_acceptances"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    document_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    version: Mapped[str] = mapped_column(String(64), nullable=False)
+    accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "document_type", "version", name="uq_legal_acceptances_user_doc_version"),
+        Index("idx_legal_acceptances_user", "user_id"),
     )
 
 
@@ -513,6 +538,23 @@ class LostPetReport(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+    last_seen_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    last_seen_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    allow_phone_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    promotion_tier: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    promoted_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    moderation_status: Mapped[LostPetModerationStatus] = mapped_column(
+        Enum(LostPetModerationStatus, name="lost_pet_moderation_status_enum", native_enum=False),
+        nullable=False,
+        default=LostPetModerationStatus.approved,
+    )
+    moderation_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    risk_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    moderated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    moderated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         Index("idx_lost_pet_reports_city_status", "city", "status"),

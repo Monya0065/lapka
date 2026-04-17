@@ -107,11 +107,25 @@
       linear-gradient(180deg, #1d2b3d 0%, #203249 38%, #223754 100%);
     border-color: rgba(255, 255, 255, 0.08);
     box-shadow: 0 18px 40px rgba(10, 24, 44, 0.28);
-    min-height: calc(100vh - 136px);
+    /* Full-height rail only on xl+ where sidebar is a column; on mobile a hidden nav must not leave a tall empty slab */
+    min-height: 0;
+  }
+
+  @media (min-width: 1280px) {
+    .sidebar-shell-dark {
+      min-height: calc(100vh - 136px);
+    }
   }
 
   .sidebar-shell-compact {
     @apply px-0;
+  }
+
+  /* Sidebar footer (SOS, quick links): readable targets when nav is icon-only */
+  .sidebar-footer-compact .btn,
+  .sidebar-footer-compact .btn-danger,
+  .sidebar-footer-compact .btn-secondary {
+    @apply !min-h-[40px] !px-2 !py-2 !text-[11px] !leading-tight;
   }
 
   .sidebar-header-compact {

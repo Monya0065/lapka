@@ -368,7 +368,7 @@ export default function SmartCommandPalette({ open, onClose, links = [], role = 
               <p className="text-2xl font-black tracking-tight text-lapka-900">Ничего подходящего не найдено</p>
               <p className="mt-2 text-base text-lapka-600">Попробуйте симптом, название препарата, документ, клинику или запрос вроде «собака съела шоколад».</p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                <Link href="/owner/triage" className="btn-primary" onClick={onClose}>Открыть SOS</Link>
+                <Link href="/owner/quick-triage" className="btn-primary" onClick={onClose}>Открыть SOS</Link>
                 <Link href="/owner/knowledge" className="btn-secondary" onClick={onClose}>Открыть центр знаний</Link>
                 <Link href="/owner/care" className="btn-secondary" onClick={onClose}>Открыть уход и питание</Link>
               </div>

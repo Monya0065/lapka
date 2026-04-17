@@ -20,6 +20,7 @@ from src.api.routes import (
     inpatient,
     market,
     medical_engine,
+    mvp_boost,
     notifications,
     patient_search,
     pets,
@@ -53,6 +54,7 @@ api_router.include_router(drugs.router)
 api_router.include_router(inpatient.router)
 api_router.include_router(market.router)
 api_router.include_router(medical_engine.router)
+api_router.include_router(mvp_boost.router)
 api_router.include_router(notifications.router)
 api_router.include_router(patient_search.router)
 api_router.include_router(platform_ai.router)

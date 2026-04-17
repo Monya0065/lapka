@@ -34,7 +34,8 @@ function normalizePins(places) {
 
 export default function OwnerMapPage() {
   const { i18n } = useTranslation();
-  const lang = i18n.resolvedLanguage === 'en' ? 'en' : 'ru';
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const lang = langCode.startsWith('en') ? 'en' : 'ru';
   const copy = useMemo(() => (
     lang === 'en'
       ? {
@@ -372,13 +373,13 @@ export default function OwnerMapPage() {
               {selectedPlace.type === 'clinic' && selectedPlace.clinic_id ? (
                 <div className="flex flex-wrap gap-2">
                   <Link href={`/owner/clinic/${selectedPlace.clinic_id}`} className="btn-primary">
-                    Открыть профиль клиники
+                    {lang === 'en' ? 'Open clinic profile' : 'Открыть профиль клиники'}
                   </Link>
                   <Link href={`/public-booking/${selectedPlace.clinic_id}`} className="btn-secondary">
-                    Онлайн-запись 24/7
+                    {lang === 'en' ? 'Book online 24/7' : 'Онлайн-запись 24/7'}
                   </Link>
                   <Link href="/owner/appointments" className="btn-secondary">
-                    Перейти к записи
+                    {lang === 'en' ? 'Go to appointments' : 'Перейти к записи'}
                   </Link>
                 </div>
               ) : null}

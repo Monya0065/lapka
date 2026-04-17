@@ -51,9 +51,10 @@ export default function OwnerPetProfilePage() {
   const { i18n } = useTranslation();
   const params = useParams();
   const petId = useMemo(() => String(params?.id || ''), [params]);
-  const locale = i18n.language.startsWith('ru') ? 'ru-RU' : 'en-US';
-  const isRu = i18n.language.startsWith('ru');
-  const copy = i18n.language.startsWith('ru')
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const locale = langCode.startsWith('ru') ? 'ru-RU' : 'en-US';
+  const isRu = langCode.startsWith('ru');
+  const copy = isRu
     ? {
         title: 'Профиль питомца',
         subtitle: 'Полная карточка питомца: профиль, напоминания, вакцины, документы и история визитов.',
@@ -175,18 +176,18 @@ export default function OwnerPetProfilePage() {
         docsEmptyTitle: 'No documents yet',
         docsEmptyText: 'Upload lab results or discharge notes in documents.',
         visitHistoryTitle: 'Visit history',
-        visitHistorySubtitle: 'Последние визиты из общей базы.',
-        visitHistoryEmptyTitle: 'Нет визитов',
-        visitHistoryEmptyText: 'История приёмов появится после первого визита.',
-        metaSpecies: 'Вид',
-        metaBreed: 'Порода',
-        metaAge: 'Возраст',
-        metaWeight: 'Вес',
-        metaStatus: 'Статус',
+        visitHistorySubtitle: 'Recent visits from the shared clinic timeline.',
+        visitHistoryEmptyTitle: 'No visits',
+        visitHistoryEmptyText: 'Visit history appears after the first appointment.',
+        metaSpecies: 'Species',
+        metaBreed: 'Breed',
+        metaAge: 'Age',
+        metaWeight: 'Weight',
+        metaStatus: 'Status',
         docType: 'Тип',
         docDate: 'Дата',
         docFile: 'Файл',
-        visitDate: 'Дата',
+        visitDate: 'Date',
         visitComplaint: 'Chief complaint',
         visitStatus: 'Status',
         visitOwnerSummary: 'Owner summary',
@@ -300,14 +301,14 @@ export default function OwnerPetProfilePage() {
       { label: copy.metaBreed, value: localizePetBreed(pet.breed, i18n.language) },
       { label: copy.metaAge, value: formatPetAge(pet.birth_date, i18n.language) },
       { label: copy.sex, value: localizePetSex(pet.sex, i18n.language) },
-      { label: copy.metaWeight, value: pet.weight_kg ? `${pet.weight_kg} кг` : copy.noWeight },
+      { label: copy.metaWeight, value: pet.weight_kg ? `${pet.weight_kg} ${isRu ? 'кг' : 'kg'}` : copy.noWeight },
       { label: copy.metaStatus, value: statusLabel },
       { label: copy.chip, value: pet.chip_id || '—' },
       { label: copy.passport, value: pet.passport_id || '—' },
       { label: copy.lapkaId, value: pet.lapka_id || '—' },
       { label: copy.birthDate, value: formatDate(pet.birth_date, locale) },
     ];
-  }, [copy.birthDate, copy.chip, copy.lapkaId, copy.metaAge, copy.metaBreed, copy.metaSpecies, copy.metaStatus, copy.metaWeight, copy.noWeight, copy.passport, copy.sex, i18n.language, locale, pet, statusLabel]);
+  }, [copy.birthDate, copy.chip, copy.lapkaId, copy.metaAge, copy.metaBreed, copy.metaSpecies, copy.metaStatus, copy.metaWeight, copy.noWeight, copy.passport, copy.sex, i18n.language, isRu, locale, pet, statusLabel]);
 
   const timelineItems = useMemo(() => {
     const visitEvents = visits.slice(0, 4).map((visit) => ({

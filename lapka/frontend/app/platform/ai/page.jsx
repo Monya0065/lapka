@@ -167,6 +167,17 @@ export default function PlatformAiPage() {
     setSaving(true);
     setError('');
     setSaveNote('');
+    const g = guardrails || {};
+    if (
+      Number(g.monthlyBudget) < 0
+      || Number(g.hardLimit) < 0
+      || Number(g.maxOwnerRequestsPerHour) < 0
+      || Number(g.maxVetRequestsPerHour) < 0
+    ) {
+      setError('Лимиты guardrails не могут быть отрицательными.');
+      setSaving(false);
+      return;
+    }
     try {
       const payload = await apiRequest('/api/v1/platform/ai/control-plane', {
         method: 'PUT',

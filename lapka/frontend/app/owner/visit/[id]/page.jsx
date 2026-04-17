@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorBanner from '@/components/ui/ErrorBanner';
@@ -11,6 +12,10 @@ import { apiRequest } from '@/lib/api';
 import { formatDateTimeLabel } from '@/lib/owner-workspace';
 
 export default function OwnerVisitDetailPage() {
+  const { i18n } = useTranslation();
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const isEn = langCode.startsWith('en');
+  const dtLocale = isEn ? 'en' : 'ru';
   const params = useParams();
   const visitId = useMemo(() => String(params?.id || ''), [params]);
   const [visit, setVisit] = useState(null);
@@ -33,13 +38,13 @@ export default function OwnerVisitDetailPage() {
       const pet = pets.find((p) => p.id === pid);
       setPetName(pet?.name || '');
     } catch (e) {
-      setError(e.message || 'Не удалось загрузить визит');
+      setError(e.message || (isEn ? 'Failed to load visit' : 'Не удалось загрузить визит'));
       setVisit(null);
       setPetName('');
     } finally {
       setLoading(false);
     }
-  }, [visitId]);
+  }, [isEn, visitId]);
 
   useEffect(() => {
     load();
@@ -47,20 +52,20 @@ export default function OwnerVisitDetailPage() {
 
   const statusLabel = useMemo(() => {
     if (!visit) return '';
-    if (visit.finalized_flag || visit.status === 'completed') return 'Завершён';
-    return visit.status || 'В работе';
-  }, [visit]);
+    if (visit.finalized_flag || visit.status === 'completed') return isEn ? 'Completed' : 'Завершён';
+    return visit.status || (isEn ? 'In progress' : 'В работе');
+  }, [isEn, visit]);
 
   const nextSteps = useMemo(() => {
     if (!visit) return [];
     const steps = [];
     if (visit.follow_up_note) steps.push(visit.follow_up_note);
-    if (visit.owner_summary) steps.push('Сверяйтесь с кратким резюме и задайте вопросы врачу на контроле.');
+    if (visit.owner_summary) steps.push(isEn ? 'Use the short summary and prepare follow-up questions for your vet.' : 'Сверяйтесь с кратким резюме и задайте вопросы врачу на контроле.');
     if (!steps.length) {
-      steps.push('Если состояние ухудшается, свяжитесь с клиникой и не откладывайте повторный визит.');
+      steps.push(isEn ? 'If the condition worsens, contact the clinic and do not delay a follow-up visit.' : 'Если состояние ухудшается, свяжитесь с клиникой и не откладывайте повторный визит.');
     }
     return steps.slice(0, 3);
-  }, [visit]);
+  }, [isEn, visit]);
   const visitPressure = useMemo(() => {
     if (!visit) return 'LOW';
     if (['cancelled', 'no_show'].includes(String(visit.status || '').toLowerCase())) return 'HIGH';
@@ -92,22 +97,22 @@ export default function OwnerVisitDetailPage() {
         <div className="relative grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:items-start">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">
-              {loading ? 'Загрузка визита…' : 'Визит владельца'}
+              {loading ? (isEn ? 'Loading visit...' : 'Загрузка визита…') : (isEn ? 'Owner visit' : 'Визит владельца')}
             </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-theme md:text-4xl">Визит</h1>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-theme md:text-4xl">{isEn ? 'Visit' : 'Визит'}</h1>
             {!loading && visit ? (
               <p className="mt-2 text-xl font-black text-theme">{statusLabel}</p>
             ) : null}
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-theme-muted md:text-base">
-              Краткая информация для владельца. План лечения и дозировки — только у ветеринара.
+              {isEn ? 'Short owner summary. Treatment plans and dosages are provided by a veterinarian only.' : 'Краткая информация для владельца. План лечения и дозировки — только у ветеринара.'}
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Link href="/owner/visits" className="btn-secondary !min-h-[44px]">
-                Все визиты
+                {isEn ? 'All visits' : 'Все визиты'}
               </Link>
               {visit?.pet_id ? (
                 <Link href={`/owner/pet/${visit.pet_id}/documents`} className="btn-primary !min-h-[44px]">
-                  Документы питомца
+                  {isEn ? 'Pet documents' : 'Документы питомца'}
                 </Link>
               ) : null}
             </div>
@@ -121,18 +126,36 @@ export default function OwnerVisitDetailPage() {
           ) : visit ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
-                { label: 'Питомец', value: petName || '—', tone: '' },
-                { label: 'Дата', value: visit.created_at ? formatDateTimeLabel(visit.created_at) : '—', tone: 'text-sky-700 dark:text-sky-300' },
-                { label: 'Советы', value: nextSteps.length, tone: 'text-violet-700 dark:text-violet-300' },
+                { key: 'pet', label: isEn ? 'Pet' : 'Питомец', value: petName || '—', tone: '' },
                 {
-                  label: 'Выписка',
-                  value: visit.finalized_flag || visit.status === 'completed' ? 'Готово' : 'В работе',
+                  key: 'date',
+                  label: isEn ? 'Date' : 'Дата',
+                  value: visit.created_at ? formatDateTimeLabel(visit.created_at, dtLocale) : '—',
+                  tone: 'text-sky-700 dark:text-sky-300',
+                },
+                { key: 'tips', label: isEn ? 'Tips' : 'Советы', value: nextSteps.length, tone: 'text-violet-700 dark:text-violet-300' },
+                {
+                  key: 'summary',
+                  label: isEn ? 'Summary' : 'Выписка',
+                  value:
+                    visit.finalized_flag || visit.status === 'completed'
+                      ? isEn
+                        ? 'Ready'
+                        : 'Готово'
+                      : isEn
+                        ? 'In progress'
+                        : 'В работе',
                   tone: visit.finalized_flag || visit.status === 'completed' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300',
                 },
-                { label: 'Статус', value: statusLabel, tone: 'text-rose-700 dark:text-rose-300' },
-                { label: 'Запись', value: visit.appointment_id ? 'Привязана' : 'Без записи', tone: visit.appointment_id ? 'text-emerald-700 dark:text-emerald-300' : 'text-theme' },
+                { key: 'status', label: isEn ? 'Status' : 'Статус', value: statusLabel, tone: 'text-rose-700 dark:text-rose-300' },
+                {
+                  key: 'appt',
+                  label: isEn ? 'Appointment' : 'Запись',
+                  value: visit.appointment_id ? (isEn ? 'Linked' : 'Привязана') : isEn ? 'Not linked' : 'Без записи',
+                  tone: visit.appointment_id ? 'text-emerald-700 dark:text-emerald-300' : 'text-theme',
+                },
               ].map((cell) => (
-                <div key={cell.label} className="rounded-2xl border border-border bg-surface/90 px-3 py-4 shadow-sm">
+                <div key={cell.key} className="rounded-2xl border border-border bg-surface/90 px-3 py-4 shadow-sm">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-theme-muted">{cell.label}</p>
                   <p className={`mt-1 text-lg font-black leading-snug sm:text-xl ${cell.tone || 'text-theme'}`}>{cell.value}</p>
                 </div>
@@ -140,7 +163,7 @@ export default function OwnerVisitDetailPage() {
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-border bg-surface-muted/50 p-6 text-sm text-theme-muted">
-              Откройте визит из списка — здесь появятся цифры и контекст.
+              {isEn ? 'Open a visit from the list — numbers and context will appear here.' : 'Откройте визит из списка — здесь появятся цифры и контекст.'}
             </div>
           )}
         </div>
@@ -150,8 +173,12 @@ export default function OwnerVisitDetailPage() {
         <section className="rounded-3xl border border-border bg-surface-muted/65 p-4 md:p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">Операционный срез</p>
-              <h2 className="mt-1 text-xl font-black tracking-tight text-theme md:text-2xl">Сигналы визитного контура</h2>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">
+                {isEn ? 'Operational snapshot' : 'Операционный срез'}
+              </p>
+              <h2 className="mt-1 text-xl font-black tracking-tight text-theme md:text-2xl">
+                {isEn ? 'Visit workflow signals' : 'Сигналы визитного контура'}
+              </h2>
             </div>
             <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-theme-muted">
               owner visit ops
@@ -160,9 +187,12 @@ export default function OwnerVisitDetailPage() {
           <div className="grid gap-4 md:grid-cols-3">
             {[
               {
-                title: 'Давление визита',
+                key: 'pressure',
+                title: isEn ? 'Visit pressure' : 'Давление визита',
                 value: visitPressure,
-                text: 'Сигнал по статусу визита, полноте выписки и готовности владельческого контекста.',
+                text: isEn
+                  ? 'Signal from visit status, discharge completeness and owner-facing context.'
+                  : 'Сигнал по статусу визита, полноте выписки и готовности владельческого контекста.',
                 href: '/owner/visits',
                 tone: visitPressure === 'HIGH'
                   ? 'text-rose-700 dark:text-rose-300'
@@ -173,29 +203,37 @@ export default function OwnerVisitDetailPage() {
                       : 'text-sky-700 dark:text-sky-300',
               },
               {
-                title: 'Готовность сводки',
+                key: 'readiness',
+                title: isEn ? 'Summary readiness' : 'Готовность сводки',
                 value: `${summaryReadiness}%`,
-                text: 'Покрытие карточки ключевыми блоками: summary, follow-up, осмотр и диагностика.',
+                text: isEn
+                  ? 'How much of the card is filled: summary, follow-up, exam and diagnostics.'
+                  : 'Покрытие карточки ключевыми блоками: summary, follow-up, осмотр и диагностика.',
                 href: '/owner/documents',
                 tone: 'text-violet-700 dark:text-violet-300',
               },
               {
-                title: 'Покрытие follow-up',
+                key: 'followup',
+                title: isEn ? 'Follow-up coverage' : 'Покрытие follow-up',
                 value: `${followUpCoverage}%`,
-                text: 'Насколько текущая карточка уже переводит в понятные последующие шаги владельца.',
+                text: isEn
+                  ? 'How well the card already translates into clear next steps for the owner.'
+                  : 'Насколько текущая карточка уже переводит в понятные последующие шаги владельца.',
                 href: '/owner/appointments',
                 tone: 'text-sky-700 dark:text-sky-300',
               },
             ].map((item) => (
               <Link
-                key={item.title}
+                key={item.key}
                 href={item.href}
                 className="rounded-2xl border border-border bg-surface/85 px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-soft"
               >
                 <p className={`text-base font-black ${item.tone}`}>{item.title}</p>
                 <p className="mt-2 text-3xl font-black tabular-nums text-theme">{item.value}</p>
                 <p className="mt-2 text-sm leading-relaxed text-theme">{item.text}</p>
-                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-theme-muted">Открыть контур</p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-theme-muted">
+                  {isEn ? 'Open workflow' : 'Открыть контур'}
+                </p>
               </Link>
             ))}
           </div>
@@ -205,32 +243,35 @@ export default function OwnerVisitDetailPage() {
       {loading ? (
         <Skeleton className="h-64 w-full rounded-2xl" />
       ) : !visit ? (
-        <EmptyState title="Визит не найден" text="Проверьте ссылку или откройте визит из списка." />
+        <EmptyState
+          title={isEn ? 'Visit not found' : 'Визит не найден'}
+          text={isEn ? 'Check the link or open the visit from the list.' : 'Проверьте ссылку или откройте визит из списка.'}
+        />
       ) : (
         <div className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
-          <Card title="Общее" subtitle={petName ? `Питомец: ${petName}` : undefined}>
+          <Card title={isEn ? 'Overview' : 'Общее'} subtitle={petName ? (isEn ? `Pet: ${petName}` : `Питомец: ${petName}`) : undefined}>
             <dl className="space-y-2 text-sm">
               <div>
-                <dt className="text-theme-muted">Статус</dt>
+                <dt className="text-theme-muted">{isEn ? 'Status' : 'Статус'}</dt>
                 <dd className="font-medium text-theme">{statusLabel}</dd>
               </div>
               <div>
-                <dt className="text-theme-muted">Создан</dt>
-                <dd>{formatDateTimeLabel(visit.created_at)}</dd>
+                <dt className="text-theme-muted">{isEn ? 'Created' : 'Создан'}</dt>
+                <dd>{formatDateTimeLabel(visit.created_at, dtLocale)}</dd>
               </div>
               {visit.finalized_at ? (
                 <div>
-                  <dt className="text-theme-muted">Завершён</dt>
-                  <dd>{formatDateTimeLabel(visit.finalized_at)}</dd>
+                  <dt className="text-theme-muted">{isEn ? 'Completed' : 'Завершён'}</dt>
+                  <dd>{formatDateTimeLabel(visit.finalized_at, dtLocale)}</dd>
                 </div>
               ) : null}
               {visit.appointment_id ? (
                 <div>
-                  <dt className="text-theme-muted">Запись</dt>
+                  <dt className="text-theme-muted">{isEn ? 'Appointment' : 'Запись'}</dt>
                   <dd>
                     <Link className="link-accent" href={`/owner/appointment/${visit.appointment_id}`}>
-                      Открыть запись
+                      {isEn ? 'Open appointment' : 'Открыть запись'}
                     </Link>
                   </dd>
                 </div>
@@ -238,34 +279,47 @@ export default function OwnerVisitDetailPage() {
             </dl>
           </Card>
 
-          <Card title="Резюме для вас" subtitle={visit.owner_summary ? undefined : 'Врач может добавить краткое резюме после приёма'}>
+          <Card
+            title={isEn ? 'Summary for you' : 'Резюме для вас'}
+            subtitle={
+              visit.owner_summary
+                ? undefined
+                : isEn
+                  ? 'Your vet can add a short summary after the visit'
+                  : 'Врач может добавить краткое резюме после приёма'
+            }
+          >
             <p className="text-sm text-text whitespace-pre-wrap">{visit.owner_summary || '—'}</p>
           </Card>
 
-          <Card title="Жалобы на приёме">
+          <Card title={isEn ? 'Complaints at visit' : 'Жалобы на приёме'}>
             <p className="text-sm text-text whitespace-pre-wrap">{visit.complaints || '—'}</p>
           </Card>
 
-          <Card title="Осмотр и диагностика">
+          <Card title={isEn ? 'Exam and diagnostics' : 'Осмотр и диагностика'}>
             <div className="space-y-3 text-sm text-text">
               <div>
-                <p className="font-semibold text-theme">Осмотр</p>
+                <p className="font-semibold text-theme">{isEn ? 'Physical exam' : 'Осмотр'}</p>
                 <p className="whitespace-pre-wrap">{visit.physical_exam || '—'}</p>
               </div>
               <div>
-                <p className="font-semibold text-theme">Диагностика</p>
+                <p className="font-semibold text-theme">{isEn ? 'Diagnostics' : 'Диагностика'}</p>
                 <p className="whitespace-pre-wrap">{visit.diagnostics || '—'}</p>
               </div>
             </div>
           </Card>
 
           {visit.follow_up_note ? (
-            <Card title="Рекомендации по наблюдению" className="lg:col-span-2">
+            <Card title={isEn ? 'Monitoring recommendations' : 'Рекомендации по наблюдению'} className="lg:col-span-2">
               <p className="text-sm text-text whitespace-pre-wrap">{visit.follow_up_note}</p>
             </Card>
           ) : null}
 
-          <Card title="Что дальше" subtitle="План последующих действий после визита" className="lg:col-span-2">
+          <Card
+            title={isEn ? 'Next steps' : 'Что дальше'}
+            subtitle={isEn ? 'Follow-up plan after the visit' : 'План последующих действий после визита'}
+            className="lg:col-span-2"
+          >
             <ul className="space-y-2">
               {nextSteps.map((step, idx) => (
                 <li key={`${idx}-${step.slice(0, 12)}`} className="rounded-xl border border-border bg-surface-muted/70 px-3 py-2 text-sm text-text">
@@ -275,11 +329,11 @@ export default function OwnerVisitDetailPage() {
             </ul>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link href="/owner/appointments" className="btn-primary !min-h-[40px] !px-3 !py-1.5 text-sm">
-                Запланировать контроль
+                {isEn ? 'Schedule follow-up' : 'Запланировать контроль'}
               </Link>
               {visit.pet_id ? (
                 <Link href={`/owner/pet/${visit.pet_id}/consents`} className="btn-secondary !min-h-[40px] !px-3 !py-1.5 text-sm">
-                  Проверить доступы
+                  {isEn ? 'Check sharing' : 'Проверить доступы'}
                 </Link>
               ) : null}
             </div>

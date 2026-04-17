@@ -1,7 +1,7 @@
 """lost pet hotspot notification preferences
 
-Revision ID: 039_lost_pet_hotspot_notification_preferences
-Revises: 038_lost_pet_hotspot_subscriptions
+Revision ID: 039_lp_hotspot_notif
+Revises: 038_lp_hotspot_subs
 Create Date: 2026-04-15 17:40:00
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision: str = "039_lost_pet_hotspot_notification_preferences"
-down_revision: Union[str, None] = "038_lost_pet_hotspot_subscriptions"
+revision: str = "039_lp_hotspot_notif"
+down_revision: Union[str, None] = "038_lp_hotspot_subs"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

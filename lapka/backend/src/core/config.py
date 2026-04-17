@@ -42,6 +42,28 @@ class Settings(BaseSettings):
     sentry_dsn: str | None = None
     sentry_environment: str = "development"
 
+    # AI provider routing
+    llm_provider: str = "noop"
+    llm_fallback_provider: str = "noop"
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4o-mini"
+
+    legal_privacy_policy_version: str = "2024-01-01"
+    legal_terms_version: str = "2024-01-01"
+    legal_consent_version: str = "2024-01-01"
+    legal_dpa_version: str = "2024-01-01"
+    legal_contact_email: str = "privacy@lapka.local"
+
+    # MVP: lost-pet boost (Stripe Checkout)
+    app_public_url: str = "http://localhost:3000"
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    stripe_price_lost_pet_boost_id: str | None = None
+    mvp_admin_notify_email: str | None = None
+    mvp_telegram_bot_token: str | None = None
+    mvp_telegram_chat_id: str | None = None
+    mvp_invite_code: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

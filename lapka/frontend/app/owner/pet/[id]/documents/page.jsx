@@ -28,7 +28,9 @@ const DOC_TYPES = [
 ];
 
 export default function OwnerPetDocumentsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const isEn = langCode.startsWith('en');
   const params = useParams();
   const petId = useMemo(() => params?.id || '', [params]);
   const { clinicId, selectedClinic } = useClinicScope();
@@ -210,16 +212,18 @@ export default function OwnerPetDocumentsPage() {
         <div className="relative grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:items-start">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">
-              {loading ? t('documents.title') : 'Архив'}
+              {loading ? t('documents.title') : (isEn ? 'Archive' : 'Архив')}
             </p>
             <h1 className="mt-2 text-3xl font-black tracking-tight text-theme md:text-4xl">{t('documents.title')}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-theme-muted md:text-base">
               {t('documents.subtitle')}
-              {selectedClinic?.name ? ` Клиника: ${selectedClinic.name}.` : ''}
+              {selectedClinic?.name ? (isEn ? ` Clinic: ${selectedClinic.name}.` : ` Клиника: ${selectedClinic.name}.`) : ''}
             </p>
             {!loading ? (
               <p className="mt-2 text-xs text-theme-muted">
-                Загрузки привязаны к выбранной клинике; AI — только безопасное объяснение без дозировок.
+                {isEn
+                  ? 'Uploads are linked to the selected clinic; AI provides safe explanations only, without dosages.'
+                  : 'Загрузки привязаны к выбранной клинике; AI — только безопасное объяснение без дозировок.'}
               </p>
             ) : null}
           </div>
@@ -233,11 +237,11 @@ export default function OwnerPetDocumentsPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
                 { label: t('documents.title'), value: documents.length, tone: '' },
-                { label: 'Типов', value: docTypeVariety, tone: 'text-violet-700 dark:text-violet-300' },
+                { label: isEn ? 'Types' : 'Типов', value: docTypeVariety, tone: 'text-violet-700 dark:text-violet-300' },
                 { label: 'AI-ready', value: explainReadyCount, tone: 'text-sky-700 dark:text-sky-300' },
-                { label: 'За 48ч', value: recent48hCount, tone: 'text-emerald-700 dark:text-emerald-300' },
+                { label: isEn ? 'In 48h' : 'За 48ч', value: recent48hCount, tone: 'text-emerald-700 dark:text-emerald-300' },
                 { label: 'AI', value: aiSummary ? '✓' : '—', tone: aiSummary ? 'text-emerald-700 dark:text-emerald-300' : 'text-theme-muted' },
-                { label: 'Клиника', value: clinicId ? '✓' : '—', tone: clinicId ? 'text-cyan-700 dark:text-cyan-300' : 'text-theme-muted' },
+                { label: isEn ? 'Clinic' : 'Клиника', value: clinicId ? '✓' : '—', tone: clinicId ? 'text-cyan-700 dark:text-cyan-300' : 'text-theme-muted' },
               ].map((cell) => (
                 <div key={cell.label} className="rounded-2xl border border-border bg-surface/90 px-3 py-4 shadow-sm">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-theme-muted">{cell.label}</p>
@@ -251,10 +255,12 @@ export default function OwnerPetDocumentsPage() {
 
       <ShowcasePanel
         eyebrow={t('documents.title')}
-        title="Документы и анализы питомца"
-        description="Загружайте результаты, открывайте их в архиве и получайте безопасное AI-объяснение без назначения лечения владельцу."
+        title={isEn ? 'Pet documents and lab results' : 'Документы и анализы питомца'}
+        description={isEn
+          ? 'Upload results, review them in the archive and get a safe AI explanation without treatment instructions for owners.'
+          : 'Загружайте результаты, открывайте их в архиве и получайте безопасное AI-объяснение без назначения лечения владельцу.'}
         imageSrc="/assets/img/card-labs.svg"
-        imageAlt="Документы и анализы питомца"
+        imageAlt={isEn ? 'Pet documents and lab results' : 'Документы и анализы питомца'}
         compact
       />
 

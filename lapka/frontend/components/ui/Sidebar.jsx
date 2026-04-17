@@ -206,9 +206,18 @@ export default function Sidebar({
               </div>
             </section>
           )})}
-
-          {footer && !compact ? <div className="border-t border-white/10 pt-4">{footer}</div> : null}
         </nav>
+
+        {/* Footer outside collapsible nav: SOS must work on mobile and in compact sidebar */}
+        {footer ? (
+          <div
+            className={`relative z-20 border-t px-3 pb-5 pt-4 md:px-4 ${
+              isDark ? 'border-white/10' : 'border-lapka-200/80'
+            } ${compact ? 'sidebar-footer-compact' : ''}`}
+          >
+            {footer}
+          </div>
+        ) : null}
       </div>
     </aside>
   );

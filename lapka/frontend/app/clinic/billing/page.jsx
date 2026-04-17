@@ -10,6 +10,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import StatsCard from '@/components/ui/StatsCard';
 import Badge from '@/components/ui/Badge';
 import { apiRequest } from '@/lib/api';
+import { getApiBase } from '@/lib/auth';
 
 const INITIAL_FORM = {
   owner_id: '',
@@ -272,7 +273,7 @@ export default function ClinicBillingPage() {
                         ) : null}
                         <a
                           className="btn-secondary !py-1 !px-3 text-xs"
-                          href={`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/api/v1/clinic/invoices/${row.id}/export/pdf`}
+                          href={`${getApiBase()}/api/v1/clinic/invoices/${row.id}/export/pdf`}
                           target="_blank"
                           rel="noreferrer"
                         >

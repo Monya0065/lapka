@@ -27,7 +27,9 @@ function toDateTimeLocal(date) {
 
 export default function OwnerCalendarPage() {
   const { t, i18n } = useTranslation();
-  const locale = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const isRu = langCode.startsWith('ru');
+  const locale = isRu ? 'ru-RU' : 'en-US';
 
   const [pets, setPets] = useState([]);
   const [reminders, setReminders] = useState([]);
@@ -220,10 +222,12 @@ export default function OwnerCalendarPage() {
 
       <ShowcasePanel
         eyebrow={t('calendar.title')}
-        title="Напоминания, вакцинации и важные даты в одном календаре"
-        description="Следите за профилактикой, повторными визитами и собственными напоминаниями по каждому питомцу без перегруженного интерфейса."
+        title={isRu ? 'Напоминания, вакцинации и важные даты в одном календаре' : 'Reminders, vaccines and key dates in one calendar'}
+        description={isRu
+          ? 'Следите за профилактикой, повторными визитами и собственными напоминаниями по каждому питомцу без перегруженного интерфейса.'
+          : 'Track prevention, follow-up visits and your own reminders for each pet in one clear interface.'}
         imageSrc="/assets/img/owner-banner.svg"
-        imageAlt="Календарь владельца"
+        imageAlt={isRu ? 'Календарь владельца' : 'Owner calendar'}
       />
 
       {error ? (

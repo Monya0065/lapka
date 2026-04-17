@@ -10,6 +10,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import Badge from '@/components/ui/Badge';
 import ShowcasePanel from '@/components/ui/ShowcasePanel';
 import { apiRequest } from '@/lib/api';
+import { getApiBase } from '@/lib/auth';
 
 function money(cents, currency = 'RUB') {
   return `${(Number(cents || 0) / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
@@ -89,8 +90,7 @@ export default function ClinicInvoiceDetailsPage() {
 
   const publicPaymentUrl = useMemo(() => {
     if (!invoice?.public_token) return '';
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
-    return `${apiBase}/api/v1/public/pay/${invoice.public_token}`;
+    return `${getApiBase()}/api/v1/public/pay/${invoice.public_token}`;
   }, [invoice]);
 
   useEffect(() => {
@@ -241,7 +241,7 @@ export default function ClinicInvoiceDetailsPage() {
               ) : null}
               <a
                 className="btn-secondary"
-                href={`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/api/v1/clinic/invoices/${invoice.id}/export/pdf`}
+                href={`${getApiBase()}/api/v1/clinic/invoices/${invoice.id}/export/pdf`}
                 target="_blank"
                 rel="noreferrer"
               >

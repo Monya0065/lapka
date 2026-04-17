@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorBanner from '@/components/ui/ErrorBanner';
@@ -11,6 +12,11 @@ import { apiRequest } from '@/lib/api';
 import { formatDateTimeLabel } from '@/lib/owner-workspace';
 
 export default function OwnerNotificationsPage() {
+  const { i18n } = useTranslation();
+  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
+  const isEn = langCode.startsWith('en');
+  const dtLocale = isEn ? 'en' : 'ru';
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const [rows, setRows] = useState([]);
@@ -29,12 +35,12 @@ export default function OwnerNotificationsPage() {
       const payload = await apiRequest(`/api/v1/notifications${q}`);
       setRows(Array.isArray(payload) ? payload : []);
     } catch (e) {
-      setError(e.message || 'Не удалось загрузить уведомления');
+      setError(e.message || (isEn ? 'Failed to load notifications' : 'Не удалось загрузить уведомления'));
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [unreadOnly]);
+  }, [isEn, unreadOnly]);
 
   useEffect(() => {
     load();
@@ -52,7 +58,7 @@ export default function OwnerNotificationsPage() {
       });
       await load();
     } catch (e) {
-      setError(e.message || 'Не удалось отметить прочитанным');
+      setError(e.message || (isEn ? 'Failed to mark as read' : 'Не удалось отметить прочитанным'));
     } finally {
       setBusy(false);
     }
@@ -90,7 +96,7 @@ export default function OwnerNotificationsPage() {
       });
       await load();
     } catch (e) {
-      setError(e.message || 'Не удалось отметить все');
+      setError(e.message || (isEn ? 'Failed to mark all as read' : 'Не удалось отметить все'));
     } finally {
       setBusy(false);
     }
@@ -113,28 +119,28 @@ export default function OwnerNotificationsPage() {
     return '/owner/inbox';
   }
 
-  function resolveTypeBadge(n) {
+  function resolveTypeBadge(n, en) {
     const kind = n?.metadata?.kind;
     if (kind === 'consent_expiry') {
       return { label: 'Consent', cls: 'bg-amber-100 text-amber-800' };
     }
     if (kind === 'inpatient_digest') {
-      return { label: 'Digest', cls: 'bg-teal-100 text-teal-800' };
+      return { label: en ? 'Digest' : 'Дайджест', cls: 'bg-teal-100 text-teal-800' };
     }
     if (n?.visit_id || n?.notification_type === 'visit_ready') {
-      return { label: 'Визит', cls: 'bg-cyan-100 text-cyan-800' };
+      return { label: en ? 'Visit' : 'Визит', cls: 'bg-cyan-100 text-cyan-800' };
     }
     if (
       n?.appointment_id ||
       n?.notification_type === 'appointment_confirmed' ||
       n?.notification_type === 'appointment_reminder'
     ) {
-      return { label: 'Запись', cls: 'bg-violet-100 text-violet-800' };
+      return { label: en ? 'Appointment' : 'Запись', cls: 'bg-violet-100 text-violet-800' };
     }
     if (n?.notification_type === 'inpatient_update') {
-      return { label: 'Стационар', cls: 'bg-emerald-100 text-emerald-800' };
+      return { label: en ? 'Inpatient' : 'Стационар', cls: 'bg-emerald-100 text-emerald-800' };
     }
-    return { label: 'Система', cls: 'bg-slate-100 text-slate-700' };
+    return { label: en ? 'System' : 'Система', cls: 'bg-slate-100 text-slate-700' };
   }
 
   function resolveTypeKey(n) {
@@ -217,17 +223,19 @@ export default function OwnerNotificationsPage() {
     <div className="space-y-6">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Уведомления</h1>
+          <h1 className="page-title">{isEn ? 'Notifications' : 'Уведомления'}</h1>
           <p className="page-subtitle">
-            Сообщения от клиники и напоминания Lapka. Подробные диалоги — в разделе «Входящие».
+            {isEn
+              ? 'Clinic messages and Lapka reminders. Longer conversations live in Inbox.'
+              : 'Сообщения от клиники и напоминания Lapka. Подробные диалоги — в разделе «Входящие».'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/owner/inbox" className="btn-secondary !min-h-[44px]">
-            Входящие
+            {isEn ? 'Inbox' : 'Входящие'}
           </Link>
           <button type="button" className="btn-primary !min-h-[44px]" disabled={busy || !unreadCount} onClick={markAll}>
-            Прочитать все
+            {isEn ? 'Mark all read' : 'Прочитать все'}
           </button>
         </div>
       </header>
@@ -235,24 +243,32 @@ export default function OwnerNotificationsPage() {
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
       <Card
-        title="Лента"
-        subtitle={unreadCount ? `Непрочитанных: ${unreadCount}` : 'Все прочитаны'}
+        title={isEn ? 'Feed' : 'Лента'}
+        subtitle={
+          unreadCount
+            ? isEn
+              ? `Unread: ${unreadCount}`
+              : `Непрочитанных: ${unreadCount}`
+            : isEn
+              ? 'All read'
+              : 'Все прочитаны'
+        }
         action={
           <label className="flex cursor-pointer items-center gap-2 text-sm text-lapka-700">
             <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
-            Только непрочитанные
+            {isEn ? 'Unread only' : 'Только непрочитанные'}
           </label>
         }
       >
         <div className="mb-3 flex flex-wrap gap-2">
           {[
-            ['all', 'Все'],
+            ['all', isEn ? 'All' : 'Все'],
             ['consent', 'Consent'],
-            ['visit', 'Визиты'],
-            ['appointment', 'Записи'],
-            ['inpatient_digest', 'Digest'],
-            ['inpatient', 'Стационар'],
-            ['system', 'Система'],
+            ['visit', isEn ? 'Visits' : 'Визиты'],
+            ['appointment', isEn ? 'Appointments' : 'Записи'],
+            ['inpatient_digest', isEn ? 'Digest' : 'Дайджест'],
+            ['inpatient', isEn ? 'Inpatient' : 'Стационар'],
+            ['system', isEn ? 'System' : 'Система'],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -269,7 +285,7 @@ export default function OwnerNotificationsPage() {
           ))}
         </div>
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-lapka-600">Сортировка:</span>
+          <span className="text-xs font-semibold text-lapka-600">{isEn ? 'Sort:' : 'Сортировка:'}</span>
           <button
             type="button"
             onClick={() => setSortOrder('latest')}
@@ -279,7 +295,7 @@ export default function OwnerNotificationsPage() {
                 : 'border-lapka-200 bg-white text-lapka-700 hover:bg-lapka-50'
             }`}
           >
-            Сначала новые
+            {isEn ? 'Newest first' : 'Сначала новые'}
           </button>
           <button
             type="button"
@@ -290,7 +306,7 @@ export default function OwnerNotificationsPage() {
                 : 'border-lapka-200 bg-white text-lapka-700 hover:bg-lapka-50'
             }`}
           >
-            Сначала старые
+            {isEn ? 'Oldest first' : 'Сначала старые'}
           </button>
         </div>
         {loading ? (
@@ -301,7 +317,7 @@ export default function OwnerNotificationsPage() {
         ) : filteredRows.length ? (
           <ul className="space-y-3">
             {filteredRows.map((n) => {
-              const badge = resolveTypeBadge(n);
+              const badge = resolveTypeBadge(n, isEn);
               return (
                 <li
                   key={n.id}
@@ -313,17 +329,17 @@ export default function OwnerNotificationsPage() {
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${badge.cls}`}>
                           {badge.label}
                         </span>
-                        <p className="font-semibold text-lapka-900">{n.title || 'Уведомление'}</p>
+                        <p className="font-semibold text-lapka-900">{n.title || (isEn ? 'Notification' : 'Уведомление')}</p>
                       </div>
                       {n.body ? <p className="mt-1 text-sm text-lapka-700 whitespace-pre-wrap">{n.body}</p> : null}
                       <p className="mt-2 text-xs text-lapka-500">
-                        {formatDateTimeLabel(n.created_at)} · {n.notification_type || 'system'}
+                        {formatDateTimeLabel(n.created_at, dtLocale)} · {n.notification_type || 'system'}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col gap-2">
                       {!n.is_read ? (
                         <button type="button" className="btn-secondary !px-3 !py-1.5 text-xs" disabled={busy} onClick={() => markOne(n.id)}>
-                          Прочитано
+                          {isEn ? 'Mark read' : 'Прочитано'}
                         </button>
                       ) : null}
                       <button
@@ -331,7 +347,7 @@ export default function OwnerNotificationsPage() {
                         className="btn-primary !px-3 !py-1.5 text-center text-xs"
                         onClick={() => openNotification(n)}
                       >
-                        Открыть
+                        {isEn ? 'Open' : 'Открыть'}
                       </button>
                     </div>
                   </div>
@@ -341,11 +357,15 @@ export default function OwnerNotificationsPage() {
           </ul>
         ) : (
           <EmptyState
-            title="Пока пусто"
+            title={isEn ? 'Nothing here yet' : 'Пока пусто'}
             text={
               typeFilter === 'all'
-                ? 'Когда клиника отправит напоминание или обновление, оно появится здесь.'
-                : 'Для выбранного типа уведомлений пока нет.'
+                ? isEn
+                  ? 'When the clinic sends a reminder or update, it will show up here.'
+                  : 'Когда клиника отправит напоминание или обновление, оно появится здесь.'
+                : isEn
+                  ? 'No notifications for the selected type yet.'
+                  : 'Для выбранного типа уведомлений пока нет.'
             }
           />
         )}

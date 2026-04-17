@@ -27,6 +27,7 @@ export const OWNER_SIDEBAR_GROUPS = [
       { href: '/owner/visits', label: 'Визиты', icon: 'appointments' },
       { href: '/owner/medications', label: 'Лекарства', icon: 'pharmacy' },
       { href: '/owner/prevention', label: 'Профилактика', icon: 'timeline' },
+      { href: '/owner/quick-triage', label: 'Срочность 1 мин', icon: 'health' },
       { href: '/owner/triage', label: 'Симптомы · SOS', icon: 'health' },
       { href: '/owner/inpatient', label: 'Стационар', icon: 'inpatient' },
     ],
@@ -41,17 +42,29 @@ export const OWNER_SIDEBAR_GROUPS = [
   },
 ];
 
-export function formatDateTimeLabel(dateStr) {
+/** Backend reminders use `due_at`; older UI code used `remind_at`. */
+function reminderDueAt(row) {
+  if (!row || typeof row !== 'object') return null;
+  return row.due_at || row.remind_at || row.dueAt || null;
+}
+
+/** @param {'en' | 'ru'} [locale] — relative labels and date formatting */
+export function formatDateTimeLabel(dateStr, locale = 'ru') {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return String(dateStr);
+  const isEn = locale === 'en';
   const now = new Date();
   const diffMs = now - date;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays < 1) return 'сегодня';
-  if (diffDays < 2) return 'вчера';
-  if (diffDays < 7) return `${diffDays} дн. назад`;
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+  if (diffDays < 1) return isEn ? 'today' : 'сегодня';
+  if (diffDays < 2) return isEn ? 'yesterday' : 'вчера';
+  if (diffDays < 7) return isEn ? `${diffDays} days ago` : `${diffDays} дн. назад`;
+  return date.toLocaleDateString(isEn ? 'en-US' : 'ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
 }
 
 export function buildHealthTimeline({ petId, visits, documents, reminders, appointments, vaccines, prescriptionsByVisit }) {
@@ -105,15 +118,16 @@ export function buildHealthTimeline({ petId, visits, documents, reminders, appoi
 
   if (reminders) {
     reminders.forEach((r) => {
+      const when = reminderDueAt(r);
       items.push({
         id: `rem-${r.id}`,
         title: r.title || 'Напоминание',
-        subtitle: r.description || '',
-        when: r.remind_at,
-        href: `/owner/reminders`,
+        subtitle: r.notes || r.description || '',
+        when,
+        href: `/owner/calendar`,
         type: 'reminder',
         petId: r.pet_id,
-        tone: r.remind_at && new Date(r.remind_at) < now ? 'critical' : 'neutral',
+        tone: when && new Date(when) < now ? 'critical' : 'neutral',
       });
     });
   }
@@ -159,11 +173,13 @@ export function buildMedicationCenter({ pet, reminders, prescriptions, visits })
 
   if (reminders) {
     reminders.forEach((r) => {
-      if (r.type === 'medication' || r.category === 'medication') {
+      const isMed =
+        r.reminder_type === 'medication' || r.type === 'medication' || r.category === 'medication';
+      if (isMed) {
         meds.push({
           id: `rem-${r.id}`,
           title: r.title || 'Напоминание о лекарстве',
-          due_at: r.remind_at,
+          due_at: reminderDueAt(r),
           pet_id: r.pet_id,
         });
       }
@@ -195,8 +211,9 @@ export function buildPersonalCarePlan({ pet, reminders, timeline }) {
   const todayItems = [];
   if (reminders) {
     reminders.forEach((r) => {
-      if (r.remind_at) {
-        const d = new Date(r.remind_at);
+      const raw = reminderDueAt(r);
+      if (raw) {
+        const d = new Date(raw);
         if (d >= today && d < tomorrow) {
           todayItems.push(r.title || 'Задача');
         }
@@ -206,7 +223,12 @@ export function buildPersonalCarePlan({ pet, reminders, timeline }) {
 
   return {
     today: todayItems,
-    upcoming: reminders ? reminders.filter((r) => r.remind_at && new Date(r.remind_at) >= tomorrow).slice(0, 5) : [],
+    upcoming: reminders
+      ? reminders.filter((r) => {
+          const raw = reminderDueAt(r);
+          return raw && new Date(raw) >= tomorrow;
+        }).slice(0, 5)
+      : [],
   };
 }
 
@@ -216,7 +238,9 @@ export function buildServiceOverview({ clinics, appointments, invoices }) {
     .filter((a) => a.scheduled_at && new Date(a.scheduled_at) >= now)
     .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
 
-  const pendingInvoices = invoices ? invoices.filter((i) => i.status === 'pending' || i.status === 'unpaid') : [];
+  const pendingInvoices = invoices
+    ? invoices.filter((i) => i.status === 'issued' || i.status === 'draft')
+    : [];
 
   return {
     clinics: clinics || [],
@@ -239,17 +263,21 @@ export function groupTimelineItems(items) {
 }
 
 export function buildExpenseCenter({ invoices }) {
+  const rows = invoices || [];
   return {
-    invoices: invoices || [],
-    total: (invoices || []).reduce((s, i) => s + (i.amount || 0), 0),
-    pending: (invoices || []).filter((i) => i.status === 'pending' || i.status === 'unpaid'),
+    invoices: rows,
+    total: rows.reduce((s, i) => s + Number(i.total_cents || i.amount || 0), 0),
+    pending: rows.filter((i) => i.status === 'issued' || i.status === 'draft'),
   };
 }
 
 export function buildBehaviorCenter({ reminders }) {
   return {
     reminders: reminders || [],
-    tasks: (reminders || []).filter((r) => r.category === 'behavior' || r.type === 'behavior'),
+    tasks: (reminders || []).filter(
+      (r) =>
+        r.reminder_type === 'behavior' || r.category === 'behavior' || r.type === 'behavior'
+    ),
   };
 }
 
@@ -264,10 +292,33 @@ export function buildPassportCenter({ pet }) {
   return { pet: pet || null };
 }
 
-export function buildPreventionCenter({ pet, reminders, vaccines }) {
+export function buildPreventionCenter({ pet, reminders, vaccines, locale = 'ru' }) {
+  const isEn = locale === 'en';
+  const preventionReminders = reminders || [];
+  const vacList = vaccines || [];
+  const lastVaccine =
+    [...vacList].sort(
+      (a, b) =>
+        new Date(b.administered_at || b.created_at || 0) - new Date(a.administered_at || a.created_at || 0)
+    )[0] || null;
+  const seasonal = isEn
+    ? [
+        'Keep flea, tick and deworming schedules aligned with your vet’s plan.',
+        'Note vaccine due dates on the calendar before travel or kennel stays.',
+        'Annual wellness visits catch issues early — book the next slot after a visit.',
+      ]
+    : [
+        'Держите график от блох, клещей и гельминтов в согласовании с врачом.',
+        'Зафиксируйте даты ревакцинации до поездок и перед передержками.',
+        'Ежегодные осмотры помогают заметить проблемы раньше — запланируйте следующий визит сразу после приёма.',
+      ];
   return {
-    vaccines: vaccines || [],
-    reminders: reminders || [],
+    pet: pet || null,
+    vaccines: vacList,
+    reminders: preventionReminders,
+    preventionReminders,
+    lastVaccine,
+    seasonal,
   };
 }
 
@@ -320,11 +371,63 @@ export const CALCULATOR_STRIP = [
   { id: 'medication', label: 'Лекарства' },
 ];
 
+/**
+ * Owner SOS / triage scenarios — shapes consumed by `app/owner/triage/page.jsx`.
+ * Keep steps informational (when to call clinic, what to bring); no drug doses.
+ */
 export const EMERGENCY_SCENARIOS = [
-  { id: 'poisoning', label: 'Отравление', severity: 'critical' },
-  { id: 'trauma', label: 'Травма', severity: 'critical' },
-  { id: 'allergy', label: 'Аллергия', severity: 'warning' },
-  { id: 'breathing', label: 'Проблемы с дыханием', severity: 'critical' },
+  {
+    id: 'poisoning',
+    title: 'Отравление или подозрение на яд',
+    level: 'RED',
+    immediate: [
+      'Сразу позвоните в ближайшую ветклинику и коротко опишите, что питомец мог съесть, лизнуть или укусить.',
+      'Сохраните упаковку, остаток вещества или фото растения — это ускорит ориентацию врача.',
+      'Не давайте питомцу лекарств, молока, масла и других «советов из интернета» без указания врача.',
+    ],
+    avoid: [
+      'Не пытайтесь вызвать рвоту и не кормите насильно без рекомендации врача.',
+      'Не откладывайте вызов при судорогах, потере сознания, сильной слабости или крови в рвоте/кале.',
+    ],
+    pack: ['Паспорт питомца или данные чипа', 'Список недавних лекарств', 'Телефон постоянного врача'],
+  },
+  {
+    id: 'trauma',
+    title: 'Травма после удара или падения',
+    level: 'RED',
+    immediate: [
+      'Ограничьте движение: переносите питомца бережно, без рывков.',
+      'Свяжитесь с клиникой и уточните приём при острой травме.',
+      'При кровотечении накройте рану чистой тканью и едьте в клинику без задержек.',
+    ],
+    avoid: [
+      'Не давайте человеческие обезболивающие без назначения врача.',
+      'Не выпускайте на улицу при подозрении на перелом или сильной боли при шаге.',
+    ],
+    pack: ['Плед или твёрдая переноска', 'Документы и сведения о вакцинациях', 'Контакты клиники'],
+  },
+  {
+    id: 'allergy',
+    title: 'Сильная аллергическая реакция',
+    level: 'YELLOW',
+    immediate: [
+      'Оцените дыхание и слизистые: сильный отёк морды, волдыри, зуд по всему телу — звоните в клинику.',
+      'Уберите вероятный аллерген (корм, новое лакомство, укус насекомого), если это безопасно.',
+    ],
+    avoid: ['Не игнорируйте быстрое ухудшение — при вовлечении дыхания это срочный случай.'],
+    pack: ['Корм и лакомства за сегодня', 'Фото сыпи, если есть'],
+  },
+  {
+    id: 'breathing',
+    title: 'Тяжёлое или шумное дыхание',
+    level: 'RED',
+    immediate: [
+      'Уберите стрессоры, дайте спокойную обстановку и доступ к прохладному воздуху без переохлаждения.',
+      'Немедленно свяжитесь с клиникой при вытягивании шеи, «хрипах», синюшности слизистых или вялости.',
+    ],
+    avoid: ['Не нагружайте физически; не оставляйте в закрытой тёплой машине.'],
+    pack: ['Краткая история сердца/аллергии, если известна'],
+  },
 ];
 
 export function buildSmartIntentSuggestions() {

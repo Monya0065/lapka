@@ -1,6 +1,6 @@
 """lost pet moderation and abuse reports
 
-Revision ID: 037_lost_pet_moderation_and_abuse_reports
+Revision ID: 037_lp_mod_reports
 Revises: 036_lost_pet_ad_budget_entries
 Create Date: 2026-04-15 16:10:00
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision: str = "037_lost_pet_moderation_and_abuse_reports"
+revision: str = "037_lp_mod_reports"
 down_revision: Union[str, None] = "036_lost_pet_ad_budget_entries"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

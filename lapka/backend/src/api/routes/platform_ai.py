@@ -641,6 +641,24 @@ async def update_control_plane(
     current_user=Depends(require_roles(RoleEnum.network_admin)),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
+    guardrails = payload.guardrails
+    if any(
+        value < 0
+        for value in (
+            guardrails.monthlyBudget,
+            guardrails.hardLimit,
+            guardrails.maxOwnerRequestsPerHour,
+            guardrails.maxVetRequestsPerHour,
+        )
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "BAD_REQUEST",
+                "message": "Guardrail limits must be non-negative.",
+            },
+        )
+
     clinic_rows = (await db.scalars(select(Clinic).order_by(Clinic.name.asc()))).all()
     clinics_by_id = {str(row.id): row for row in clinic_rows}
     clinics_by_name = {row.name.lower(): row for row in clinic_rows}
