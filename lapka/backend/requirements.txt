@@ -21,3 +21,6 @@ stripe>=11.0.0
 qrcode[pil]==7.4.2
 weasyprint>=62.0
 aiohttp>=3.9.0
+celery[redis]>=5.3.0
+kombu>=5.3.0
+Pillow>=10.0.0

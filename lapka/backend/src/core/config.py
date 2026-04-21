@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     payments_provider: str = "demo"
     labs_provider: str = "demo"
     redis_url: str | None = None
+    celery_broker_url: str | None = None
+    celery_result_backend: str | None = None
 
     # Notifications delivery (optional MVP integration)
     # If not configured, delivery falls back to a safe audit-only behavior.

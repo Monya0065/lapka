@@ -43,6 +43,34 @@ services:
       - lapka-redis-cache-data:/data
     command: redis-server --maxmemory 1gb --maxmemory-policy allkeys-lru
 
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lapka-celery-worker
+    command: celery -A src.core.celery_app worker --loglevel=info --concurrency=2
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      - redis
+    profiles:
+      - worker
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lapka-celery-beat
+    command: celery -A src.core.celery_app beat --loglevel=info
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      - redis
+    profiles:
+      - worker
+
   api:
     build:
       context: ./backend
