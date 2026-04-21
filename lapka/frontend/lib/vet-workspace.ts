@@ -1,4 +1,15 @@
-export const VET_SIDEBAR_GROUPS = [
+interface SidebarLink {
+  href: string;
+  labelKey: string;
+  icon: string;
+}
+
+interface SidebarGroup {
+  titleKey: string;
+  links: SidebarLink[];
+}
+
+export const VET_SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     titleKey: 'vet.workspaceUi.sidebarGroupToday',
     links: [
@@ -32,16 +43,21 @@ export const VET_SIDEBAR_GROUPS = [
   },
 ];
 
-/** Keys under `vet.workspaceUi` for the shift checklist in `VetLayout`. */
 export const VET_SHIFT_TASK_KEYS = [
   'vet.workspaceUi.shiftTask1',
   'vet.workspaceUi.shiftTask2',
   'vet.workspaceUi.shiftTask3',
 ];
 
-export function summarizeVetFlow(appointments = []) {
+export function summarizeVetFlow(appointments?: Record<string, unknown>[]): {
+  total: number;
+  waiting: number;
+  active: number;
+  done: number;
+  telemedicine: number;
+} {
   const rows = Array.isArray(appointments) ? appointments : [];
-  const waiting = rows.filter((item) => ['new', 'waiting', 'scheduled', 'confirmed'].includes(item.status)).length;
+  const waiting = rows.filter((item) => ['new', 'waiting', 'scheduled', 'confirmed'].includes(item.status as string)).length;
   const active = rows.filter((item) => item.status === 'in_progress').length;
   const done = rows.filter((item) => item.status === 'completed').length;
   const telemedicine = rows.filter((item) => item.visit_type === 'video_consultation').length;
