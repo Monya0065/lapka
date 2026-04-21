@@ -1,23 +1,28 @@
-/**
- * Yandex Maps JS API 2.1 loader (browser only).
- * Set NEXT_PUBLIC_YANDEX_MAPS_API_KEY for production quotas (https://developer.tech.yandex.ru/).
- */
+declare global {
+  interface Window {
+    ymaps?: {
+      ready: (callback: () => void) => void;
+      [key: string]: unknown;
+    };
+  }
+}
 
-let loadPromise = null;
+let loadPromise: Promise<unknown> | null = null;
 
-export function getYandexMapsApiKey() {
+export function getYandexMapsApiKey(): string {
   return typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY || '' : '';
 }
 
-export function loadYandexMaps() {
+export function loadYandexMaps(): Promise<unknown> {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('Yandex Maps: window is undefined'));
   }
 
   if (window.ymaps) {
+    const ymapsRef = window.ymaps;
     return new Promise((resolve, reject) => {
       try {
-        window.ymaps.ready(() => resolve(window.ymaps));
+        ymapsRef.ready(() => resolve(ymapsRef));
       } catch (e) {
         reject(e);
       }
@@ -31,7 +36,7 @@ export function loadYandexMaps() {
     if (existing) {
       const done = () => {
         try {
-          window.ymaps.ready(() => resolve(window.ymaps));
+          window.ymaps?.ready(() => resolve(window.ymaps));
         } catch (e) {
           reject(e);
         }
@@ -54,7 +59,7 @@ export function loadYandexMaps() {
       : 'https://api-maps.yandex.ru/2.1/?lang=ru_RU';
     script.onload = () => {
       try {
-        window.ymaps.ready(() => resolve(window.ymaps));
+        window.ymaps?.ready(() => resolve(window.ymaps));
       } catch (e) {
         reject(e);
       }
@@ -66,5 +71,4 @@ export function loadYandexMaps() {
   return loadPromise;
 }
 
-/** Санкт-Петербург — центр демо-данных */
-export const DEFAULT_MAP_CENTER = [59.93428, 30.3351];
+export const DEFAULT_MAP_CENTER: [number, number] = [59.93428, 30.3351];

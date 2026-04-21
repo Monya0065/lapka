@@ -8,17 +8,35 @@ const STORAGE_KEY = 'lapka.selected_clinic_id';
 const BRANCH_STORAGE_PREFIX = 'lapka.selected_branch_id.';
 const LOCATION_EVENT = 'lapka-location-change';
 
-export function getStoredClinicId() {
+declare global {
+  interface Window {
+    __lapkaLocationEventsPatched?: boolean;
+  }
+}
+
+interface Clinic {
+  id: string;
+  locations?: Branch[];
+  [key: string]: unknown;
+}
+
+interface Branch {
+  id: string;
+  is_primary?: boolean;
+  [key: string]: unknown;
+}
+
+export function getStoredClinicId(): string {
   if (typeof window === 'undefined') return '';
   return window.localStorage.getItem(STORAGE_KEY) || '';
 }
 
-export function getStoredBranchId(clinicId) {
+export function getStoredBranchId(clinicId: string): string {
   if (typeof window === 'undefined' || !clinicId) return '';
   return window.localStorage.getItem(`${BRANCH_STORAGE_PREFIX}${clinicId}`) || '';
 }
 
-export function saveStoredBranchId(clinicId, branchId) {
+export function saveStoredBranchId(clinicId: string, branchId: string): void {
   if (typeof window === 'undefined' || !clinicId) return;
   const key = `${BRANCH_STORAGE_PREFIX}${clinicId}`;
   if (branchId) {
@@ -29,7 +47,7 @@ export function saveStoredBranchId(clinicId, branchId) {
   window.dispatchEvent(new CustomEvent('lapka-clinic-branch-change', { detail: { clinicId, branchId: branchId || '' } }));
 }
 
-export function saveStoredClinicId(clinicId) {
+export function saveStoredClinicId(clinicId: string): void {
   if (typeof window === 'undefined') return;
   if (clinicId) {
     window.localStorage.setItem(STORAGE_KEY, clinicId);
@@ -39,7 +57,7 @@ export function saveStoredClinicId(clinicId) {
   window.dispatchEvent(new CustomEvent('lapka-clinic-scope-change', { detail: clinicId || '' }));
 }
 
-function readScopeFromLocation() {
+function readScopeFromLocation(): { clinicId: string; branchId: string } {
   if (typeof window === 'undefined') return { clinicId: '', branchId: '' };
   const params = new URLSearchParams(window.location.search);
   return {
@@ -48,22 +66,22 @@ function readScopeFromLocation() {
   };
 }
 
-function ensureLocationEvents() {
+function ensureLocationEvents(): void {
   if (typeof window === 'undefined' || window.__lapkaLocationEventsPatched) return;
-  const originalPushState = window.history.pushState.bind(window.history);
-  const originalReplaceState = window.history.replaceState.bind(window.history);
+  const originalPushState = window.history.pushState.bind(window.history) as (...args: unknown[]) => unknown;
+  const originalReplaceState = window.history.replaceState.bind(window.history) as (...args: unknown[]) => unknown;
 
   function notifyLocationChange() {
     window.dispatchEvent(new CustomEvent(LOCATION_EVENT));
   }
 
-  window.history.pushState = function pushStatePatched(...args) {
+  window.history.pushState = function pushStatePatched(...args: unknown[]) {
     const result = originalPushState(...args);
     notifyLocationChange();
     return result;
   };
 
-  window.history.replaceState = function replaceStatePatched(...args) {
+  window.history.replaceState = function replaceStatePatched(...args: unknown[]) {
     const result = originalReplaceState(...args);
     notifyLocationChange();
     return result;
@@ -73,7 +91,17 @@ function ensureLocationEvents() {
   window.__lapkaLocationEventsPatched = true;
 }
 
-function resolveScopeIds({ rows, defaultClinicId, requestedClinicId, requestedBranchId }) {
+function resolveScopeIds({
+  rows,
+  defaultClinicId,
+  requestedClinicId,
+  requestedBranchId,
+}: {
+  rows: Clinic[];
+  defaultClinicId: string;
+  requestedClinicId: string;
+  requestedBranchId: string;
+}): { clinicId: string; branchId: string } {
   const storedClinicId = getStoredClinicId();
   const clinicFromRequest = requestedClinicId && rows.some((row) => row.id === requestedClinicId) ? requestedClinicId : '';
   const clinicFromStorage = storedClinicId && rows.some((row) => row.id === storedClinicId) ? storedClinicId : '';
@@ -97,10 +125,10 @@ function resolveScopeIds({ rows, defaultClinicId, requestedClinicId, requestedBr
 }
 
 export function useClinicScope() {
-  const [requestedScope, setRequestedScope] = useState(readScopeFromLocation());
-  const [clinicId, setClinicId] = useState(getStoredClinicId());
+  const [requestedScope, setRequestedScope] = useState(readScopeFromLocation);
+  const [clinicId, setClinicId] = useState(getStoredClinicId);
   const [branchId, setBranchIdState] = useState('');
-  const [clinics, setClinics] = useState([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
   const [scopeMode, setScopeMode] = useState('public');
   const requestedClinicId = requestedScope.clinicId || '';
   const requestedBranchId = requestedScope.branchId || '';
@@ -133,13 +161,13 @@ export function useClinicScope() {
         if (cancelled) return;
         const rows = Array.isArray(payload)
           ? payload
-          : Array.isArray(payload?.clinics)
-            ? payload.clinics
+          : Array.isArray((payload as { clinics?: Clinic[] })?.clinics)
+            ? (payload as { clinics: Clinic[] }).clinics
             : [];
         const defaultClinicId = Array.isArray(payload)
           ? ''
-          : payload?.default_clinic_id || '';
-        setScopeMode(Array.isArray(payload) ? 'public' : (payload?.scope_mode || 'public'));
+          : (payload as { default_clinic_id?: string })?.default_clinic_id || '';
+        setScopeMode(Array.isArray(payload) ? 'public' : ((payload as { scope_mode?: string })?.scope_mode || 'public'));
         setClinics(rows);
         const resolvedScope = resolveScopeIds({
           rows,
@@ -167,14 +195,16 @@ export function useClinicScope() {
 
     loadClinics();
 
-    function onScopeChange(event) {
-      const nextClinicId = event?.detail || getStoredClinicId();
+    function onScopeChange(event: Event) {
+      const customEvent = event as CustomEvent;
+      const nextClinicId = customEvent?.detail || getStoredClinicId();
       setClinicId(nextClinicId);
       setBranchIdState(getStoredBranchId(nextClinicId));
     }
 
-    function onBranchChange(event) {
-      const detail = event?.detail || {};
+    function onBranchChange(event: Event) {
+      const customEvent = event as CustomEvent;
+      const detail = customEvent?.detail || {};
       if (!detail.clinicId || detail.clinicId === getStoredClinicId()) {
         setBranchIdState(detail.branchId || getStoredBranchId(getStoredClinicId()));
       }
@@ -190,7 +220,7 @@ export function useClinicScope() {
   }, [requestedBranchId, requestedClinicId]);
 
   useEffect(() => {
-    if (!clinics.length || (!requestedClinicId && !requestedBranchId)) return;
+    if (!clinics.length && !requestedClinicId && !requestedBranchId) return;
     const resolvedScope = resolveScopeIds({
       rows: clinics,
       defaultClinicId: '',
@@ -232,6 +262,6 @@ export function useClinicScope() {
     selectedClinic,
     selectedBranch,
     setClinicId: saveStoredClinicId,
-    setBranchId: (nextBranchId) => saveStoredBranchId(resolvedClinicId, nextBranchId),
+    setBranchId: (nextBranchId: string) => saveStoredBranchId(resolvedClinicId, nextBranchId),
   };
 }
