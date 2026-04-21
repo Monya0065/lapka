@@ -15,6 +15,26 @@ from src.repositories import (
 )
 
 
+def _enqueue_for_channel(notification: Notification) -> None:
+    """Dispatch notification to async queue based on channel. Non-blocking."""
+    if notification.channel == NotificationChannel.in_app:
+        return
+    try:
+        from src.services.notification_queue import enqueue_notification
+        enqueue_notification(
+            user_id=str(notification.user_id),
+            notification_id=str(notification.id),
+            channel=notification.channel.value,
+            title=notification.title or "",
+            body=notification.body or "",
+            action_url=notification.action_url,
+            metadata=notification.metadata_json,
+            priority=1,
+        )
+    except Exception:
+        pass
+
+
 class NotificationService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -64,7 +84,9 @@ class NotificationService:
             visit_id=visit_id,
             appointment_id=appointment_id,
         )
-        return await repo_create_notification(self.db, notification)
+        result = await repo_create_notification(self.db, notification)
+        _enqueue_for_channel(result)
+        return result
 
     async def mark_read(self, notification_id: uuid.UUID) -> Notification:
         notification = await repo_get_notification(self.db, notification_id)
@@ -149,7 +171,9 @@ async def create_notification(
         visit_id=visit_id,
         appointment_id=appointment_id,
     )
-    return await repo_create_notification(db, notification)
+    result = await repo_create_notification(db, notification)
+    _enqueue_for_channel(result)
+    return result
 
 
 async def list_user_notifications(
