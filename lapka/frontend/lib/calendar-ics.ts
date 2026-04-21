@@ -1,8 +1,12 @@
-/**
- * Minimal iCalendar (RFC 5545) export for owner reminders / appointments / vaccine due dates.
- */
+interface IcsEvent {
+  id: string;
+  start: Date | string;
+  summary: string;
+  minutes?: number;
+  description?: string;
+}
 
-function escapeIcsText(value) {
+function escapeIcsText(value: unknown): string {
   return String(value || '')
     .replace(/\\/g, '\\\\')
     .replace(/\n/g, '\\n')
@@ -10,17 +14,13 @@ function escapeIcsText(value) {
     .replace(/,/g, '\\,');
 }
 
-function formatUtc(date) {
-  const d = date instanceof Date ? date : new Date(date);
+function formatUtc(date: Date | string | unknown): string | null {
+  const d = date instanceof Date ? date : new Date(String(date));
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
-/**
- * @param {Array<{ id: string, start: Date|string, summary: string, minutes?: number }>} events
- * @param {string} [calendarName]
- */
-export function buildIcsCalendar(events, calendarName = 'Lapka') {
+export function buildIcsCalendar(events?: IcsEvent[], calendarName = 'Lapka'): string {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Lapka//Owner calendar//RU', `X-WR-CALNAME:${escapeIcsText(calendarName)}`];
   const stamp = formatUtc(new Date());
   const defaultMins = 60;
@@ -48,7 +48,7 @@ export function buildIcsCalendar(events, calendarName = 'Lapka') {
   return lines.join('\r\n');
 }
 
-export function downloadIcsFile(filename, icsBody) {
+export function downloadIcsFile(filename: string, icsBody: string): void {
   const blob = new Blob([icsBody], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
