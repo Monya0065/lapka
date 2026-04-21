@@ -28,7 +28,6 @@ async def get_diseases(
     category: str | None = Query(default=None),
     species: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
-    current_user=Depends(require_roles(RoleEnum.vet)),
 ) -> list[dict]:
     return search_diseases(q=q, category=category, species=species, limit=limit)
 
