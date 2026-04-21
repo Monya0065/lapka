@@ -1,54 +1,129 @@
-.PHONY: monitoring-up monitoring-down monitoring-status monitoring-reload monitoring-rules monitoring-metrics monitoring-dashboards monitoring-snapshot monitoring-snapshot-json monitoring-verify stack-verify-all lost-pets-verify lost-pets-verify-report
+.PHONY: help dev build up down logs status psql redis-cli test lint init-db partition migrate clean health scale ssl
 
-monitoring-up:
-	docker compose --profile monitoring up -d redis api prometheus grafana
+help:
+	@echo "Lapka - Veterinary Platform Commands"
+	@echo ""
+	@echo "Development:"
+	@echo "  make dev          - Start development environment"
+	@echo "  make build        - Build all containers"
+	@echo "  make up          - Start all services"
+	@echo "  make down        - Stop all services"
+	@echo "  make logs        - View logs (all containers)"
+	@echo "  make status      - Show container status"
+	@echo ""
+	@echo "Database:"
+	@echo "  make psql       - Connect to database"
+	@echo "  make redis-cli  - Connect to Redis"
+	@echo "  make init-db    - Initialize database"
+	@echo "  make partition  - Setup partitioning"
+	@echo "  make migrate    - Run migrations"
+	@echo ""
+	@echo "Production:"
+	@echo "  make scale      - Scale API replicas"
+	@echo "  make ssl       - Generate SSL certificates"
+	@echo "  make health    - Check health endpoints"
+	@echo ""
+	@echo "Testing:"
+	@echo "  make test       - Run tests"
+	@echo "  make lint       - Run linting"
 
-monitoring-down:
-	docker compose --profile monitoring stop redis api prometheus grafana
+dev:
+	docker compose up -d
+	@echo "Running at http://localhost:3000"
 
-monitoring-status:
-	docker compose --profile monitoring ps redis api prometheus grafana
+build:
+	docker compose build --no-cache
 
-monitoring-reload:
-	curl -fsS -X POST http://localhost:9090/-/reload >/dev/null && echo "Prometheus config reloaded"
+up:
+	docker compose up -d
 
-monitoring-rules:
-	curl -fsS http://localhost:9090/api/v1/rules | jq -r '.data.groups[] | "GROUP: \(.name)" , (.rules[]?.name | "  - " + .)'
+down:
+	docker compose down
 
-monitoring-metrics:
-	@echo "== Prometheus instant queries (key Lapka metrics) =="
-	@echo "- security blocks 5m (cooldown + rate_limited)"; curl -fsS --get --data-urlencode 'query=sum(increase(lapka_security_events_total{event=~"messages\\.(cooldown_active|rate_limited)"}[5m])) or vector(0)' "http://localhost:9090/api/v1/query" | jq -r '.data.result[0].value[1]'
-	@echo "- no-show stale clinics"; curl -fsS --get --data-urlencode 'query=lapka_no_show_auto_runner_stale_clinics or vector(0)' "http://localhost:9090/api/v1/query" | jq -r '.data.result[0].value[1]'
-	@echo "- no-show max missed days"; curl -fsS --get --data-urlencode 'query=max(lapka_no_show_auto_runner_consecutive_missed_days) or vector(0)' "http://localhost:9090/api/v1/query" | jq -r '.data.result[0].value[1]'
+logs:
+	docker compose logs -f
 
-monitoring-dashboards:
-	@echo "== Grafana provisioned Lapka dashboards =="
-	@curl -fsS -u admin:admin "http://localhost:3001/api/search?query=Lapka" | jq -r '.[] | select(.uid=="lapka-security-messaging" or .uid=="lapka-no-show-auto-runner") | "\(.uid) :: \(.title)"'
+status:
+	docker compose ps
 
-monitoring-snapshot:
-	@echo "== Monitoring snapshot =="
-	@$(MAKE) monitoring-status
-	@echo
-	@$(MAKE) monitoring-rules
-	@echo
-	@$(MAKE) monitoring-metrics
-	@echo
-	@$(MAKE) monitoring-dashboards
+psql:
+	docker exec -it lapka-db psql -U lapka -d lapka
 
-monitoring-snapshot-json:
-	@bash ./scripts/monitoring_snapshot.sh
+redis-cli:
+	docker exec -it lapka-redis redis-cli
 
-monitoring-verify:
-	./scripts/verify-monitoring.sh
+init-db:
+	docker exec -i lapka-db psql -U lapka -d lapka < database/init/01-init.sql
 
-stack-verify-all:
-	./scripts/verify-stack-all.sh
+partition:
+	docker exec -i lapka-db psql -U lapka -d lapka < database/partitioning.sql
 
-lost-pets-verify:
-	./scripts/verify-lost-pets-stack.sh
+migrate:
+	docker exec lapka-api alembic upgrade head
 
-lost-pets-verify-report:
-	mkdir -p artifacts
-	REPORT_PATH=artifacts/lost-pets-smoke-report.json SUMMARY_PATH=artifacts/lost-pets-smoke-summary.md ./scripts/verify-lost-pets-stack.sh
-	@echo "Report: artifacts/lost-pets-smoke-report.json"
-	@echo "Summary: artifacts/lost-pets-smoke-summary.md"
+clean:
+	docker compose down -v --rmi local
+
+health:
+	@echo "API Health: $$(curl -s http://localhost:8000/health | jq -r '.status')"
+	@echo "DB Health: $$(curl -s http://localhost:8000/health/ready | jq -r '.checks.database')"
+	@echo "Redis Health: $$(curl -s http://localhost:8000/health/ready | jq -r '.checks.redis')"
+
+test:
+	cd backend && .venv/bin/python -m pytest tests/ -v
+
+lint:
+	cd frontend && npm run lint
+
+scale:
+	docker compose up -d --scale api=3 --scale api-replica-1=2
+
+ssl:
+	mkdir -p infrastructure/nginx/ssl
+	openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+		-keyout infrastructure/nginx/ssl/key.pem \
+		-out infrastructure/nginx/ssl/cert.pem \
+		-subj "/C=RU/ST=SPB/L=St. Petersburg/O=Lapka/CN=lapka.example.com"
+
+start-production:
+	docker compose -f docker-compose.yml up -d db pgbouncer redis redis-cache
+	sleep 10
+	docker compose -f docker-compose.yml up -d api
+	docker compose -f docker-compose.yml up -d frontend nginx
+
+monitoring:
+	docker compose -f docker-compose.yml --profile monitoring up -d prometheus grafana loki
+	@echo "Grafana: http://localhost:3001 (admin/lapka2024)"
+	@echo "Prometheus: http://localhost:9090"
+	@echo "Loki: http://localhost:3100"
+
+backup:
+	docker compose -f docker-compose.yml --profile backup up -d lapka-backup
+
+deploy-k8s:
+	kubectl apply -f infrastructure/kubernetes/
+	kubectl apply -f infrastructure/kubernetes/backend-deployment.yaml
+	kubectl apply -f infrastructure/kubernetes/frontend-deployment.yaml
+	kubectl apply -f infrastructure/kubernetes/ingress.yaml
+
+restart-api:
+	docker compose restart api
+
+restart-frontend:
+	docker compose restart frontend
+
+shell-api:
+	docker exec -it lapka-api /bin/bash
+
+shell-frontend:
+	docker exec -it lapka-frontend /bin/sh
+
+# Secrets management (production)
+rotate-secrets:
+	@echo "Generating new JWT secret..."
+	@openssl rand -base64 32
+
+# Cleanup old images
+prune:
+	docker system prune -af --volumes
+	docker image prune -f

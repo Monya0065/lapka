@@ -36,6 +36,7 @@ function isOfflineNetworkError(error) {
 function resolveDefaultTtl(path) {
   const endpoint = String(path || '');
   const rules = [
+    { pattern: /^\/api\/v1\/vpn\//i, ttl: 0 },
     { pattern: /^\/api\/v1\/(pets|clinics|clinic\/services|diseases|drugs|catalog|symptoms)/i, ttl: 60_000 },
     { pattern: /^\/api\/v1\/(appointments|visits|documents|owner\/invoices|clinic\/invoices|notifications)/i, ttl: 20_000 },
     { pattern: /^\/api\/v1\/(inpatient|clinic\/analytics|clinic\/search\/patients|owner\/search\/pets)/i, ttl: 12_000 },

@@ -1,0 +1,52 @@
+# Database read replica for analytics/queries
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.replica.yml up -d db-replica
+
+services:
+  db-replica:
+    image: postgres:16
+    container_name: lapka-db-replica
+    environment:
+      POSTGRES_DB: lapka
+      POSTGRES_USER: lapka
+      POSTGRES_PASSWORD: lapka
+    ports:
+      - "5433:5432"
+    volumes:
+      - lapka-db-replica:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c work_mem=16MB
+      -c hot_standby=on
+      -c max_standby_streaming_delay=10s
+      -c max_standby_archive_delay=10s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lapka -d lapka"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgpool:
+    image: pgpool/pgpool-16
+    container_name: lapka-pgpool
+    environment:
+      PGPOOL_DB_HOST: db
+      PGPOOL_DB_PORT: 5432
+      PGPOOL_DB_NAME: lapka
+      PGPOOL_USERNAME: lapka
+      PGPOOL_PASSWORD: lapka
+      PGPOOL_BACKEND_NODES: 0:db:5432
+      PGPOOL_SQL_MODE: DISABLE_LEAST_PRICIPILE_CONNECTION
+    ports:
+      - "9999:5432"
+    depends_on:
+      - db
+      - db-replica
+
+volumes:
+  lapka-db-replica:

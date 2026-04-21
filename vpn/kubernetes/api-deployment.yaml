@@ -1,0 +1,205 @@
+# Kubernetes Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vpn-production
+  labels:
+    name: vpn-production
+---
+# Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vpn-secrets
+  namespace: vpn-production
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql://vpn:password@postgres-cluster:5432/vpn"
+  REDIS_URL: "redis://redis-cluster:6379"
+  JWT_SECRET: "your-super-secret-jwt-key-change-in-production"
+  TELEGRAM_BOT_TOKEN: "your-telegram-token"
+  YOOKASSA_SHOP_ID: "your-shop-id"
+  YOOKASSA_SECRET_KEY: "your-secret-key"
+---
+# ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vpn-config
+  namespace: vpn-production
+data:
+  API_URL: "https://api.lapka.ru"
+  FRONTEND_URL: "https://lapka.ru"
+  REDIS_CACHE_TTL: "300"
+  RATE_LIMIT_PER_MINUTE: "100"
+---
+# API Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpn-api
+  namespace: vpn-production
+spec:
+  replicas: 20
+  selector:
+    matchLabels:
+      app: vpn-api
+  template:
+    metadata:
+      labels:
+        app: vpn-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      containers:
+      - name: api
+        image: lapka/vpn-api:v1.0.0
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: vpn-secrets
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: vpn-secrets
+              key: REDIS_URL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: vpn-secrets
+              key: JWT_SECRET
+        envFrom:
+        - configMapRef:
+            name: vpn-config
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]
+      terminationGracePeriodSeconds: 30
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vpn-api-hpa
+  namespace: vpn-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vpn-api
+  minReplicas: 10
+  maxReplicas: 200
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 10
+        periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: vpn-api
+  namespace: vpn-production
+  annotations:
+    prometheus.io/scrape: "true"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: vpn-api
+---
+# Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vpn-api-ingress
+  namespace: vpn-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  tls:
+  - hosts:
+    - api.lapka.ru
+    secretName: vpn-api-tls
+  rules:
+  - host: api.lapka.ru
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vpn-api
+            port:
+              number: 80
+---
+# PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vpn-api-pdb
+  namespace: vpn-production
+spec:
+  minAvailable: 15
+  selector:
+    matchLabels:
+      app: vpn-api

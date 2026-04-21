@@ -1,0 +1,168 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lapka-api
+  namespace: lapka
+  labels:
+    app: lapka-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: lapka-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: lapka-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: lapka-api
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: api
+          image: lapka/backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: APP_NAME
+              value: "Lapka API"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: lapka-secrets
+                  key: database_url
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: lapka-config
+                  key: redis_url
+            - name: REDIS_CACHE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: lapka-config
+                  key: redis_cache_url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: lapka-secrets
+                  key: jwt_secret
+            - name: LLM_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: lapka-config
+                  key: llm_provider
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+      serviceAccountName: lapka-api
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lapka-api
+  namespace: lapka
+  labels:
+    app: lapka-api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: lapka-api
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: lapka-api-hpa
+  namespace: lapka
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: lapka-api
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 120
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: lapka-api-pdb
+  namespace: lapka
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: lapka-api

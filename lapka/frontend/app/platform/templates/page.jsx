@@ -8,42 +8,41 @@ import ErrorBanner from '@/components/ui/ErrorBanner';
 import ShowcasePanel from '@/components/ui/ShowcasePanel';
 import Skeleton from '@/components/ui/Skeleton';
 import Table from '@/components/ui/Table';
+import { useTranslation } from 'react-i18next';
 import { apiRequest } from '@/lib/api';
 
-function localizeScope(scope) {
-  const map = {
-    system: 'Платформа',
-    clinic: 'Клиника',
-    branch: 'Филиал',
-    personal: 'Личный врач',
-  };
-  return map[scope] || scope || '—';
-}
-
-function localizeStatus(value) {
-  const map = {
-    draft: 'Черновик',
-    published: 'Опубликован',
-    archived: 'Архив',
-  };
-  return map[value] || value || '—';
-}
-
-function localizeSpecialty(value) {
-  const map = {
-    general: 'Общая практика',
-    therapy: 'Терапия',
-    surgery: 'Хирургия',
-    dermatology: 'Дерматология',
-    cardiology: 'Кардиология',
-    neurology: 'Неврология',
-    anesthesia: 'Анестезиология',
-    inpatient: 'Стационар',
-  };
-  return map[value] || value || '—';
-}
-
 export default function PlatformTemplatesPage() {
+  const { t } = useTranslation('common');
+  const localizeScope = (scope) => {
+    const map = {
+      system: t('platform.templatesPage.scopeSystem'),
+      clinic: t('platform.templatesPage.scopeClinic'),
+      branch: t('platform.templatesPage.scopeBranch'),
+      personal: t('platform.templatesPage.scopePersonal'),
+    };
+    return map[scope] || scope || '—';
+  };
+  const localizeStatus = (value) => {
+    const map = {
+      draft: t('platform.templatesPage.statusDraft'),
+      published: t('platform.templatesPage.statusPublished'),
+      archived: t('platform.templatesPage.statusArchived'),
+    };
+    return map[value] || value || '—';
+  };
+  const localizeSpecialty = (value) => {
+    const map = {
+      general: t('platform.templatesPage.specialtyGeneral'),
+      therapy: t('platform.templatesPage.specialtyTherapy'),
+      surgery: t('platform.templatesPage.specialtySurgery'),
+      dermatology: t('platform.templatesPage.specialtyDermatology'),
+      cardiology: t('platform.templatesPage.specialtyCardiology'),
+      neurology: t('platform.templatesPage.specialtyNeurology'),
+      anesthesia: t('platform.templatesPage.specialtyAnesthesia'),
+      inpatient: t('platform.templatesPage.specialtyInpatient'),
+    };
+    return map[value] || value || '—';
+  };
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -57,7 +56,7 @@ export default function PlatformTemplatesPage() {
         const payload = await apiRequest('/api/v1/platform/templates/overview');
         if (!cancelled) setData(payload);
       } catch (requestError) {
-        if (!cancelled) setError(requestError.message || 'Не удалось загрузить контур шаблонов');
+        if (!cancelled) setError(requestError.message || t('platform.templatesPage.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -66,7 +65,7 @@ export default function PlatformTemplatesPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   if (loading) {
     return <Skeleton className="h-[520px] w-full" />;
@@ -86,74 +85,74 @@ export default function PlatformTemplatesPage() {
     <div className="space-y-6">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Шаблоны и контент</h1>
+          <h1 className="page-title">{t('platform.templatesPage.headerTitle')}</h1>
           <p className="page-subtitle">
-            Платформенный контур шаблонов, личных протоколов врача и аналитики использования по клиникам.
+            {t('platform.templatesPage.headerSubtitle')}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link className="btn-secondary" href="/platform/ai">Центр AI</Link>
-          <Link className="btn-primary" href="/platform/clinics">Клиники и филиалы</Link>
+          <Link className="btn-secondary" href="/platform/ai">{t('platform.templatesPage.linkAiCenter')}</Link>
+          <Link className="btn-primary" href="/platform/clinics">{t('platform.templatesPage.linkClinics')}</Link>
         </div>
       </header>
 
       <ShowcasePanel
-        eyebrow="Контентный слой"
-        title="Шаблоны, которые реально живут в клиниках и у врачей"
-        description="Платформа видит, какие шаблоны опубликованы, какие используются чаще всего и где контент распадается по филиалам и личным наборам врачей."
+        eyebrow={t('platform.templatesPage.showcaseEyebrow')}
+        title={t('platform.templatesPage.showcaseTitle')}
+        description={t('platform.templatesPage.showcaseDescription')}
         imageSrc="/assets/img/admin-side.svg"
-        imageAlt="Контентный контур"
+        imageAlt={t('platform.templatesPage.showcaseImageAlt')}
         badges={[
-          `${summary.templates || 0} шаблонов`,
-          `${summary.clinics || 0} клиник`,
-          `${summary.published || 0} опубликовано`,
-          `${summary.usage_total || 0} использований`,
+          t('platform.templatesPage.badgeTemplates', { count: summary.templates || 0 }),
+          t('platform.templatesPage.badgeClinics', { count: summary.clinics || 0 }),
+          t('platform.templatesPage.badgePublished', { count: summary.published || 0 }),
+          t('platform.templatesPage.badgeUsages', { count: summary.usage_total || 0 }),
         ]}
       />
 
       <section className="kpi-grid">
-        <Card title="Всего шаблонов"><p className="text-4xl font-semibold text-lapka-900">{summary.templates || 0}</p></Card>
-        <Card title="Клиник в контуре"><p className="text-4xl font-semibold text-lapka-900">{summary.clinics || 0}</p></Card>
-        <Card title="Шаблонов по умолчанию"><p className="text-4xl font-semibold text-lapka-900">{summary.defaults || 0}</p></Card>
-        <Card title="Всего использований"><p className="text-4xl font-semibold text-lapka-900">{summary.usage_total || 0}</p></Card>
-        <Card title="Врачей используют"><p className="text-4xl font-semibold text-lapka-900">{summary.doctors_using || 0}</p></Card>
-        <Card title="Нужно обновить"><p className="text-4xl font-semibold text-lapka-900">{summary.recommended_updates || 0}</p></Card>
+        <Card title={t('platform.templatesPage.kpiTemplates')}><p className="text-4xl font-semibold text-lapka-900">{summary.templates || 0}</p></Card>
+        <Card title={t('platform.templatesPage.kpiClinics')}><p className="text-4xl font-semibold text-lapka-900">{summary.clinics || 0}</p></Card>
+        <Card title={t('platform.templatesPage.kpiDefaults')}><p className="text-4xl font-semibold text-lapka-900">{summary.defaults || 0}</p></Card>
+        <Card title={t('platform.templatesPage.kpiUsages')}><p className="text-4xl font-semibold text-lapka-900">{summary.usage_total || 0}</p></Card>
+        <Card title={t('platform.templatesPage.kpiDoctorsUsing')}><p className="text-4xl font-semibold text-lapka-900">{summary.doctors_using || 0}</p></Card>
+        <Card title={t('platform.templatesPage.kpiNeedUpdate')}><p className="text-4xl font-semibold text-lapka-900">{summary.recommended_updates || 0}</p></Card>
       </section>
 
       <section className="grid-soft-3 items-start">
-        <Card title="Уровни шаблонов" subtitle="Где живёт контент и как он распределён по слоям">
+        <Card title={t('platform.templatesPage.scopeLevelsTitle')} subtitle={t('platform.templatesPage.scopeLevelsSubtitle')}>
           <div className="space-y-3">
             {Object.entries(data?.scope_counts || {}).map(([scope, count]) => (
               <div key={scope} className="flex items-center justify-between rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
                 <div>
                   <p className="text-base font-semibold text-lapka-900">{localizeScope(scope)}</p>
-                  <p className="text-sm text-lapka-500">Уровень контента</p>
+                  <p className="text-sm text-lapka-500">{t('platform.templatesPage.contentLevelLabel')}</p>
                 </div>
                 <span className="text-2xl font-semibold text-lapka-900">{count || 0}</span>
               </div>
             ))}
           </div>
         </Card>
-        <Card title="Статус шаблонов" subtitle="Черновики, публикации и архив">
+        <Card title={t('platform.templatesPage.statusesTitle')} subtitle={t('platform.templatesPage.statusesSubtitle')}>
           <div className="space-y-3">
             {Object.entries(data?.status_counts || {}).map(([statusKey, count]) => (
               <div key={statusKey} className="flex items-center justify-between rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
                 <div>
                   <p className="text-base font-semibold text-lapka-900">{localizeStatus(statusKey)}</p>
-                  <p className="text-sm text-lapka-500">Состояние контента</p>
+                  <p className="text-sm text-lapka-500">{t('platform.templatesPage.contentStateLabel')}</p>
                 </div>
                 <span className="text-2xl font-semibold text-lapka-900">{count || 0}</span>
               </div>
             ))}
           </div>
         </Card>
-        <Card title="Типы контента" subtitle="Что доминирует в базе знаний и протоколах">
+        <Card title={t('platform.templatesPage.typesTitle')} subtitle={t('platform.templatesPage.typesSubtitle')}>
           <div className="space-y-3">
             {Object.entries(data?.type_counts || {}).map(([type, count]) => (
               <div key={type} className="flex items-center justify-between rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
                 <div>
                   <p className="text-base font-semibold text-lapka-900">{type}</p>
-                  <p className="text-sm text-lapka-500">Тип шаблона</p>
+                  <p className="text-sm text-lapka-500">{t('platform.templatesPage.templateTypeLabel')}</p>
                 </div>
                 <span className="text-2xl font-semibold text-lapka-900">{count || 0}</span>
               </div>
@@ -163,18 +162,18 @@ export default function PlatformTemplatesPage() {
       </section>
 
       <section className="grid gap-6 2xl:grid-cols-2">
-        <Card title="Клиники и adoption" subtitle="Где контент реально работает и используется">
+        <Card title={t('platform.templatesPage.clinicsAdoptionTitle')} subtitle={t('platform.templatesPage.clinicsAdoptionSubtitle')}>
           {clinicUsage.length ? (
             <Table
               columns={[
-                { id: 'clinic_name', label: 'Клиника' },
-                { id: 'templates', label: 'Шаблоны' },
-                { id: 'published', label: 'Опубликовано' },
-                { id: 'defaults', label: 'По умолчанию' },
-                { id: 'personal', label: 'Личные' },
-                { id: 'branch', label: 'Филиал' },
-                { id: 'doctors_using', label: 'Врачей' },
-                { id: 'usage_count', label: 'Использований' },
+                { id: 'clinic_name', label: t('platform.templatesPage.colClinic') },
+                { id: 'templates', label: t('platform.templatesPage.colTemplates') },
+                { id: 'published', label: t('platform.templatesPage.colPublished') },
+                { id: 'defaults', label: t('platform.templatesPage.colDefaults') },
+                { id: 'personal', label: t('platform.templatesPage.colPersonal') },
+                { id: 'branch', label: t('platform.templatesPage.colBranch') },
+                { id: 'doctors_using', label: t('platform.templatesPage.colDoctors') },
+                { id: 'usage_count', label: t('platform.templatesPage.colUsages') },
               ]}
               rows={clinicUsage.map((row) => ({
                 id: row.clinic_id,
@@ -189,25 +188,25 @@ export default function PlatformTemplatesPage() {
                 usage_count: String(row.usage_count || 0),
               }))}
               rowActions={(row) => [
-                { label: 'Карточка клиники', href: `/platform/clinics/${row.clinic_id}` },
+                { label: t('platform.templatesPage.actionClinicCard'), href: `/platform/clinics/${row.clinic_id}` },
               ]}
             />
           ) : (
-            <EmptyState title="Пока нет контента" text="После публикации шаблонов клиниками здесь появится аналитика adoption." />
+            <EmptyState title={t('platform.templatesPage.emptyNoContentTitle')} text={t('platform.templatesPage.emptyNoContentText')} />
           )}
         </Card>
 
-        <Card title="Топ шаблонов" subtitle="Чаще всего используемые шаблоны в сети">
+        <Card title={t('platform.templatesPage.topTemplatesTitle')} subtitle={t('platform.templatesPage.topTemplatesSubtitle')}>
           {topTemplates.length ? (
             <Table
               columns={[
-                { id: 'name', label: 'Шаблон' },
-                { id: 'clinic_name', label: 'Клиника' },
-                { id: 'scope_label', label: 'Уровень' },
-                { id: 'specialty_label', label: 'Специализация' },
-                { id: 'status_label', label: 'Статус' },
-                { id: 'usage_count', label: 'Использований' },
-                { id: 'recommended_updates', label: 'Обновить' },
+                { id: 'name', label: t('platform.templatesPage.colTemplate') },
+                { id: 'clinic_name', label: t('platform.templatesPage.colClinic') },
+                { id: 'scope_label', label: t('platform.templatesPage.colLevel') },
+                { id: 'specialty_label', label: t('platform.templatesPage.colSpecialty') },
+                { id: 'status_label', label: t('platform.templatesPage.colStatus') },
+                { id: 'usage_count', label: t('platform.templatesPage.colUsages') },
+                { id: 'recommended_updates', label: t('platform.templatesPage.colNeedUpdate') },
               ]}
               rows={topTemplates.map((row) => ({
                 id: row.id,
@@ -217,24 +216,24 @@ export default function PlatformTemplatesPage() {
                 specialty_label: localizeSpecialty(row.specialty),
                 status_label: localizeStatus(row.status),
                 usage_count: String(row.usage_count || 0),
-                recommended_updates: row.recommended_updates || 'Нет',
+                recommended_updates: row.recommended_updates || t('platform.templatesPage.noValue'),
               }))}
             />
           ) : (
-            <EmptyState title="Пока нет активности" text="Использование шаблонов появится после первых визитов и протоколов." />
+            <EmptyState title={t('platform.templatesPage.emptyNoActivityTitle')} text={t('platform.templatesPage.emptyNoActivityText')} />
           )}
         </Card>
       </section>
 
-      <Card title="Последние обновления" subtitle="Кто и где менял шаблоны в платформенном контуре">
+      <Card title={t('platform.templatesPage.recentUpdatesTitle')} subtitle={t('platform.templatesPage.recentUpdatesSubtitle')}>
         {recentUpdates.length ? (
           <Table
             columns={[
-              { id: 'name', label: 'Шаблон' },
-              { id: 'clinic_name', label: 'Клиника' },
-              { id: 'scope_label', label: 'Уровень' },
-              { id: 'status_label', label: 'Статус' },
-              { id: 'author_name', label: 'Автор' },
+              { id: 'name', label: t('platform.templatesPage.colTemplate') },
+              { id: 'clinic_name', label: t('platform.templatesPage.colClinic') },
+              { id: 'scope_label', label: t('platform.templatesPage.colLevel') },
+              { id: 'status_label', label: t('platform.templatesPage.colStatus') },
+              { id: 'author_name', label: t('platform.templatesPage.colAuthor') },
             ]}
             rows={recentUpdates.map((row) => ({
               id: row.id,
@@ -246,19 +245,19 @@ export default function PlatformTemplatesPage() {
             }))}
           />
         ) : (
-          <EmptyState title="Пока нет обновлений" text="История появится после правок и публикаций шаблонов." />
+          <EmptyState title={t('platform.templatesPage.emptyNoUpdatesTitle')} text={t('platform.templatesPage.emptyNoUpdatesText')} />
         )}
       </Card>
 
-      <Card title="Рекомендованные обновления" subtitle="Шаблоны с высоким использованием или устаревшим содержимым">
+      <Card title={t('platform.templatesPage.recommendedUpdatesTitle')} subtitle={t('platform.templatesPage.recommendedUpdatesSubtitle')}>
         {recommendedUpdates.length ? (
           <Table
             columns={[
-              { id: 'name', label: 'Шаблон' },
-              { id: 'clinic_name', label: 'Клиника' },
-              { id: 'scope_label', label: 'Уровень' },
-              { id: 'usage_count', label: 'Использований' },
-              { id: 'reason', label: 'Причина' },
+              { id: 'name', label: t('platform.templatesPage.colTemplate') },
+              { id: 'clinic_name', label: t('platform.templatesPage.colClinic') },
+              { id: 'scope_label', label: t('platform.templatesPage.colLevel') },
+              { id: 'usage_count', label: t('platform.templatesPage.colUsages') },
+              { id: 'reason', label: t('platform.templatesPage.colReason') },
             ]}
             rows={recommendedUpdates.map((row) => ({
               id: row.id,
@@ -270,7 +269,7 @@ export default function PlatformTemplatesPage() {
             }))}
           />
         ) : (
-          <EmptyState title="Пока нет рекомендаций" text="Когда шаблоны накопят использование или устареют, здесь появятся подсказки на обновление." />
+          <EmptyState title={t('platform.templatesPage.emptyNoRecommendationsTitle')} text={t('platform.templatesPage.emptyNoRecommendationsText')} />
         )}
       </Card>
     </div>

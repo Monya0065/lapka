@@ -10,6 +10,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import Skeleton from '@/components/ui/Skeleton';
 import ShowcasePanel from '@/components/ui/ShowcasePanel';
 import { apiRequest } from '@/lib/api';
+import { trackOwnerFunnelStep } from '@/lib/owner-funnel';
 import { resolveClinicPhoto } from '@/lib/pets';
 
 function normalizePins(places) {
@@ -114,6 +115,10 @@ export default function OwnerMapPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    trackOwnerFunnelStep('map_open', { source: 'owner_map' });
+  }, []);
 
   const loadPlaces = useCallback(async (type) => {
     setLoading(true);
@@ -372,13 +377,21 @@ export default function OwnerMapPage() {
               </div>
               {selectedPlace.type === 'clinic' && selectedPlace.clinic_id ? (
                 <div className="flex flex-wrap gap-2">
-                  <Link href={`/owner/clinic/${selectedPlace.clinic_id}`} className="btn-primary">
+                  <Link
+                    href={`/owner/clinic/${selectedPlace.clinic_id}`}
+                    className="btn-primary"
+                    onClick={() => trackOwnerFunnelStep('clinic_open', { source: 'map_drawer_clinic', clinicId: selectedPlace.clinic_id })}
+                  >
                     {lang === 'en' ? 'Open clinic profile' : 'Открыть профиль клиники'}
                   </Link>
                   <Link href={`/public-booking/${selectedPlace.clinic_id}`} className="btn-secondary">
                     {lang === 'en' ? 'Book online 24/7' : 'Онлайн-запись 24/7'}
                   </Link>
-                  <Link href="/owner/appointments" className="btn-secondary">
+                  <Link
+                    href="/owner/appointments"
+                    className="btn-secondary"
+                    onClick={() => trackOwnerFunnelStep('booking_open', { source: 'map_drawer_booking', clinicId: selectedPlace.clinic_id })}
+                  >
                     {lang === 'en' ? 'Go to appointments' : 'Перейти к записи'}
                   </Link>
                 </div>

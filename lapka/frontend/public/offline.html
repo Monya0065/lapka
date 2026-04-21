@@ -1,58 +1,107 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Лапка — офлайн</title>
-    <style>
-      body {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: linear-gradient(180deg, #f7fbff, #eaf2ff);
-        color: #1b2f52;
-      }
-      .wrap {
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 24px;
-      }
-      .card {
-        width: min(560px, 100%);
-        border: 1px solid #bfd3ed;
-        border-radius: 24px;
-        background: #ffffff;
-        box-shadow: 0 18px 42px rgba(23, 51, 93, 0.12);
-        padding: 24px;
-      }
-      h1 {
-        margin: 0;
-        font-size: 30px;
-      }
-      p {
-        color: #47638f;
-        line-height: 1.5;
-      }
-      a {
-        display: inline-block;
-        margin-top: 12px;
-        padding: 10px 16px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #2ea4df, #40c392);
-        color: #fff;
-        text-decoration: none;
-        font-weight: 700;
-      }
-    </style>
-  </head>
-  <body>
-    <main class="wrap">
-      <section class="card">
-        <h1>Офлайн-режим Лапки</h1>
-        <p>Сеть временно недоступна. Вы можете продолжить работу с последними сохранёнными данными и черновиками.</p>
-        <p>После восстановления соединения локальные изменения будут синхронизированы автоматически.</p>
-        <a href="/login">Вернуться в приложение</a>
-      </section>
-    </main>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title> Лапка — офлайн</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #4f95d1 0%, #37be93 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container {
+      max-width: 360px;
+      text-align: center;
+      color: white;
+    }
+    .logo {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 32px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+    p {
+      font-size: 16px;
+      opacity: 0.9;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+    .retry-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 56px;
+      padding: 0 32px;
+      background: white;
+      color: #235c8e;
+      font-size: 18px;
+      font-weight: 600;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .retry-btn:active {
+      transform: scale(0.96);
+    }
+    .cached-links {
+      margin-top: 48px;
+      text-align: left;
+    }
+    .cached-links h2 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.7;
+      margin-bottom: 16px;
+    }
+    .cached-links a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      font-size: 15px;
+    }
+    .cached-links a:active {
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🐾</div>
+    <h1>Нет подключения</h1>
+    <p>Интернет временно недоступен. Ваши данные сохранены и синхронизируются автоматически.</p>
+    <button class="retry-btn" onclick="location.reload()">Попробовать снова</button>
+    <div class="cached-links">
+      <h2>Быстрый доступ</h2>
+      <a href="/owner/pets">Мои питомцы</a>
+      <a href="/owner/appointments">Записи</a>
+      <a href="/owner/inbox">Уведомления</a>
+    </div>
+  </div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+  </script>
+</body>
 </html>

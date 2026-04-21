@@ -2,36 +2,62 @@
 
 import Card from '@/components/ui/Card';
 import ShowcasePanel from '@/components/ui/ShowcasePanel';
+import { useTranslation } from 'react-i18next';
 
 export default function PlatformUsersPage() {
+  const { t } = useTranslation('common');
+
+  const accessRoles = [
+    {
+      id: 'owner',
+      title: t('platform.usersPage.roleOwnerTitle'),
+      label: t('platform.usersPage.roleOwnerLabel'),
+    },
+    {
+      id: 'vet',
+      title: t('platform.usersPage.roleVetTitle'),
+      label: t('platform.usersPage.roleVetLabel'),
+    },
+    {
+      id: 'clinic',
+      title: t('platform.usersPage.roleClinicTitle'),
+      label: t('platform.usersPage.roleClinicLabel'),
+    },
+    {
+      id: 'network',
+      title: t('platform.usersPage.roleNetworkTitle'),
+      label: t('platform.usersPage.roleNetworkLabel'),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Пользователи и роли</h1>
-          <p className="page-subtitle">Платформенный контур ролей, доступа, тарифов и включения модулей по клиникам и сетям.</p>
+          <h1 className="page-title">{t('platform.usersPage.headerTitle')}</h1>
+          <p className="page-subtitle">{t('platform.usersPage.headerSubtitle')}</p>
         </div>
       </header>
       <ShowcasePanel
-        eyebrow="Контроль ролей"
-        title="Роли платформы: владелец, врач, администратор клиники и суперпользователь"
-        description="Этот слой нужен для управления доступами всей платформы, а не только одной демо-клиники. Здесь живут правила по ролям, доступу к модулям и запуску контуров по организациям."
+        eyebrow={t('platform.usersPage.showcaseEyebrow')}
+        title={t('platform.usersPage.showcaseTitle')}
+        description={t('platform.usersPage.showcaseDescription')}
         imageSrc="/assets/img/admin-side.svg"
-        imageAlt="Роли платформы"
-        badges={['RBAC', 'Организации', 'Активация', 'Аудит']}
+        imageAlt={t('platform.usersPage.showcaseImageAlt')}
+        badges={[
+          t('platform.usersPage.badgeRbac'),
+          t('platform.usersPage.badgeOrganizations'),
+          t('platform.usersPage.badgeActivation'),
+          t('platform.usersPage.badgeAudit'),
+        ]}
         compact
       />
-      <Card title="Глобальная модель доступа" subtitle="Следующий слой после владельца, врача и администратора клиники — это централизованное управление ролями всей платформы.">
+      <Card title={t('platform.usersPage.accessModelTitle')} subtitle={t('platform.usersPage.accessModelSubtitle')}>
         <div className="grid gap-3 md:grid-cols-2">
-          {[
-            ['Роль владельца', 'Владельцы и семьи'],
-            ['Роль врача', 'Врачи и специалисты'],
-            ['Роль клиники', 'Администраторы клиник'],
-            ['Роль сети', 'Суперпользователь / управляющая компания'],
-          ].map(([title, label]) => (
-            <div key={title} className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">{title}</p>
-              <p className="mt-2 text-lg font-bold text-lapka-900">{label}</p>
+          {accessRoles.map((role) => (
+            <div key={role.id} className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">{role.title}</p>
+              <p className="mt-2 text-lg font-bold text-lapka-900">{role.label}</p>
             </div>
           ))}
         </div>

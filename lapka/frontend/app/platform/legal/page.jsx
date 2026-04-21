@@ -1,30 +1,35 @@
+'use client';
+
 import LegalCenterPage from '@/components/legal/LegalCenterPage';
+import { useTranslation } from 'react-i18next';
 
 export default function PlatformLegalCenterPage() {
+  const { t } = useTranslation('common');
+
   return (
     <LegalCenterPage
-      title="Юридический центр платформы"
-      subtitle="Контур платформы требует подтверждения актуальных версий privacy/terms/consent/DPA."
-      operationalTitle="Критичные юридические потоки платформы"
+      title={t('platform.legalPage.title')}
+      subtitle={t('platform.legalPage.subtitle')}
+      operationalTitle={t('platform.legalPage.operationalTitle')}
       operationalCards={[
         {
-          title: 'Неподтверждённые версии',
+          title: t('platform.legalPage.cardUnconfirmedTitle'),
           value: 'LEGAL',
-          text: 'Контроль обязательных документов до входа в защищённые контуры системы.',
+          text: t('platform.legalPage.cardUnconfirmedText'),
           href: '/platform/security',
           tone: 'text-amber-700 dark:text-amber-300',
         },
         {
-          title: 'События аудита',
+          title: t('platform.legalPage.cardAuditTitle'),
           value: 'AUDIT',
-          text: 'Проверка событий по доступам и подтверждениям в масштабах всей платформы.',
+          text: t('platform.legalPage.cardAuditText'),
           href: '/platform/inbox',
           tone: 'text-rose-700 dark:text-rose-300',
         },
         {
-          title: 'Политики и AI',
+          title: t('platform.legalPage.cardPoliciesAiTitle'),
           value: 'SAFE',
-          text: 'Синхронизация legal-контуров с AI-политиками и системными ограничениями.',
+          text: t('platform.legalPage.cardPoliciesAiText'),
           href: '/platform/ai',
           tone: 'text-violet-700 dark:text-violet-300',
         },

@@ -1,6 +1,8 @@
 export default function Button({
   variant = 'primary',
   size = 'md',
+  fullWidth = false,
+  loading = false,
   className = '',
   type = 'button',
   children,
@@ -21,8 +23,15 @@ export default function Button({
   };
 
   return (
-    <button type={type} className={`${map[variant] || map.primary} ${sizeMap[size] || ''} ${className}`} {...props}>
-      {children}
+    <button
+      type={type}
+      className={`${map[variant] || map.primary} ${sizeMap[size] || ''} ${fullWidth ? 'w-full' : ''} ${className}`}
+      {...props}
+      aria-busy={loading ? 'true' : undefined}
+      disabled={loading || props.disabled}
+    >
+      {loading ? <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden /> : null}
+      <span>{children}</span>
     </button>
   );
 }

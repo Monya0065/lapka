@@ -8,12 +8,39 @@
   "background_color": "#eef5ff",
   "theme_color": "#2f9ce0",
   "lang": "ru",
+  "orientation": "portrait-primary",
+  "categories": ["medical", "productivity"],
+  "screenshots": [],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/assets/img/logo-paw.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Мои питомцы",
+      "short_name": "Питомцы",
+      "description": "Список питомцев",
+      "url": "/owner/pets",
+      "icons": [{ "src": "/assets/img/logo-paw.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Записаться",
+      "short_name": "Запись",
+      "description": "Записаться на прием",
+      "url": "/owner/appointments/new",
+      "icons": [{ "src": "/assets/img/logo-paw.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Документы",
+      "short_name": "Документы",
+      "description": "Медицинские документы",
+      "url": "/owner/documents",
+      "icons": [{ "src": "/assets/img/logo-paw.svg", "sizes": "96x96" }]
     }
   ]
 }

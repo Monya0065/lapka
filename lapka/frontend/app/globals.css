@@ -8,15 +8,18 @@
   --space-3: 24px;
   --space-4: 32px;
   --space-5: 48px;
-  --radius-card: 24px;
+  --radius-card: 26px;
   --radius-control: 14px;
-  --bg-main: #edf4ff;
-  --bg-main-deep: #e8f1ff;
-  --bg-topbar: rgba(255, 255, 255, 0.86);
-  --surface-plain: rgba(255, 255, 255, 0.92);
-  --surface-soft: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 252, 255, 0.9));
-  --shadow-soft: 0 12px 30px rgba(21, 52, 88, 0.1);
-  --shadow-float: 0 20px 42px rgba(24, 58, 97, 0.16);
+  --bg-main: #eef6ff;
+  --bg-main-deep: #e4f0ff;
+  --bg-topbar: rgba(255, 255, 255, 0.78);
+  --surface-plain: rgba(255, 255, 255, 0.94);
+  --surface-soft: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 251, 255, 0.92));
+  --shadow-soft: 0 14px 36px rgba(22, 58, 96, 0.09);
+  --shadow-float: 0 24px 56px rgba(24, 58, 97, 0.14);
+  --app-mesh: radial-gradient(1200px 600px at 12% -10%, rgba(79, 149, 209, 0.11), transparent 55%),
+    radial-gradient(900px 500px at 88% 0%, rgba(55, 190, 147, 0.1), transparent 50%),
+    radial-gradient(800px 400px at 50% 100%, rgba(255, 255, 255, 0.5), transparent 45%);
 }
 
 @layer base {
@@ -37,7 +40,15 @@
     @apply min-h-screen text-slate-800 antialiased;
     font-size: 16px;
     line-height: 1.6;
-    background: #fafbfc;
+    background-color: #f3f7fb;
+    background-image: var(--app-mesh);
+    background-attachment: scroll;
+  }
+
+  @media (min-width: 768px) {
+    body {
+      background-attachment: fixed;
+    }
   }
 
   h1,
@@ -72,8 +83,10 @@
 @layer base {
   .dark html,
   .dark body {
-    @apply bg-gray-900 text-gray-100;
-    background: #121212;
+    @apply text-gray-100;
+    background-color: #121212;
+    background-image: none;
+    background-attachment: scroll;
   }
   .dark ::selection {
     @apply bg-lapka-200 text-lapka-900;
@@ -93,7 +106,7 @@
   }
 
   .surface-card {
-    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+    @apply rounded-3xl border border-slate-200/90 bg-white/95 shadow-soft backdrop-blur-sm;
   }
 
   .sidebar-shell {
@@ -103,10 +116,11 @@
 
   .sidebar-shell-dark {
     background:
-      radial-gradient(circle at 0% 0%, rgba(43, 91, 138, 0.38), transparent 28%),
-      linear-gradient(180deg, #1d2b3d 0%, #203249 38%, #223754 100%);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 18px 40px rgba(10, 24, 44, 0.28);
+      radial-gradient(ellipse 120% 80% at 0% 0%, rgba(94, 168, 255, 0.22), transparent 42%),
+      radial-gradient(ellipse 90% 60% at 100% 20%, rgba(55, 190, 147, 0.12), transparent 40%),
+      linear-gradient(165deg, #152535 0%, #1a3048 42%, #1e3a52 100%);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 24px 48px rgba(8, 20, 36, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     /* Full-height rail only on xl+ where sidebar is a column; on mobile a hidden nav must not leave a tall empty slab */
     min-height: 0;
   }
@@ -218,11 +232,30 @@
   }
 
   .workspace-topbar {
-    @apply sticky top-0 z-50 border-b border-lapka-200/80 bg-white/80 backdrop-blur-xl;
+    @apply sticky top-0 z-50 border-b border-lapka-200/60 backdrop-blur-2xl;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 252, 255, 0.86) 100%);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset, 0 8px 28px rgba(22, 58, 96, 0.06);
   }
 
   .workspace-topbar-inner {
     @apply page-wrap grid min-h-[74px] grid-cols-1 gap-3 py-2.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center;
+  }
+
+  .workspace-main-shell {
+    @apply relative;
+  }
+
+  .workspace-layout-grid {
+    @apply items-start;
+  }
+
+  .workspace-main-column {
+    @apply pb-2;
+  }
+
+  .workspace-inline-rail,
+  .workspace-side-rail {
+    @apply mt-1;
   }
 
   .workspace-search-icon {
@@ -230,7 +263,7 @@
   }
 
   .workspace-search-trigger {
-    @apply flex min-h-[62px] items-center gap-4 rounded-[26px] border border-lapka-200 bg-white px-4 py-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-lapka-300 hover:shadow-card;
+    @apply flex min-h-[62px] items-center gap-4 rounded-[28px] border border-lapka-200/90 bg-white/95 px-4 py-3 text-left shadow-soft backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-lapka-300/90 hover:shadow-card;
   }
 
   .workspace-search-copy {
@@ -396,7 +429,29 @@
   }
 
   .page-title {
-    @apply text-2xl font-extrabold tracking-tight text-lapka-900 md:text-3xl;
+    @apply text-3xl font-black tracking-tight text-lapka-900 md:text-[2.1rem];
+  }
+
+  /* Owner dashboard hero — distinct from generic slate cards */
+  .owner-dashboard-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: calc(var(--radius-card) + 6px);
+    border: 1px solid rgba(207, 225, 244, 0.95);
+    background:
+      radial-gradient(ellipse 80% 60% at 0% 0%, rgba(255, 255, 255, 0.95), transparent 50%),
+      radial-gradient(ellipse 70% 50% at 100% 100%, rgba(55, 190, 147, 0.1), transparent 45%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.99) 0%, rgba(240, 248, 255, 0.97) 55%, rgba(236, 252, 247, 0.94) 100%);
+    box-shadow: var(--shadow-float), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+
+  .owner-dashboard-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    pointer-events: none;
   }
 
   .page-subtitle {
@@ -404,15 +459,38 @@
   }
 
   .kpi-grid {
-    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4;
+    @apply grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  .kpi-grid > article {
+    @apply min-h-[100px];
   }
 
   .grid-soft-2 {
-    @apply grid items-start gap-4 lg:grid-cols-2;
+    @apply grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-2;
   }
 
   .grid-soft-3 {
-    @apply grid items-start gap-4 xl:grid-cols-2 2xl:grid-cols-3;
+    @apply grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .surface-card {
+    @apply rounded-xl sm:rounded-2xl;
+    overflow-wrap: break-word;
+  }
+
+  @media (max-width: 639px) {
+    .page-header {
+      padding: 1rem;
+    }
+    .kpi-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+    .kpi-grid > article {
+      padding: 0.75rem;
+      min-h: 80px;
+    }
   }
 
   .dense-meta {
@@ -637,4 +715,61 @@
   to {
     transform: rotateX(72deg) rotateZ(360deg);
   }
+}
+
+.lapka-calendar {
+  --fc-border-color: theme('colors.lapka.200');
+  --fc-button-bg-color: theme('colors.slate.900');
+  --fc-button-border-color: theme('colors.slate.900');
+  --fc-button-hover-bg-color: theme('colors.slate.800');
+  --fc-button-hover-border-color: theme('colors.slate.800');
+  --fc-button-active-bg-color: theme('colors.slate.700');
+  --fc-button-active-border-color: theme('colors.slate.700');
+  --fc-today-bg-color: theme('colors.emerald.50');
+  --fc-event-bg-color: theme('colors.lapka.600');
+  --fc-event-border-color: theme('colors.lapka.600');
+  --fc-page-bg-color: white;
+  --fc-neutral-bg-color: theme('colors.slate.50');
+}
+
+.lapka-calendar .fc {
+  font-family: inherit;
+}
+
+.lapka-calendar .fc-toolbar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.lapka-calendar .fc-button {
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.lapka-calendar .fc-daygrid-event {
+  border-radius: 0.375rem;
+  padding: 2px 6px;
+}
+
+.lapka-calendar .fc-timegrid-event {
+  border-radius: 0.375rem;
+}
+
+.lapka-calendar .fc-col-header-cell-cushion {
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.lapka-calendar .fc-daygrid-day-number {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.lapka-calendar .fc-scrollgrid {
+  border-radius: 0.75rem;
+  overflow: hidden;
 }

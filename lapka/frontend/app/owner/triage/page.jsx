@@ -13,6 +13,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import Skeleton from '@/components/ui/Skeleton';
 import { loadOwnerBaseData, loadOwnerServicesData, loadPetHealthBundle } from '@/lib/owner-data';
 import { DANGEROUS_PRODUCTS } from '@/lib/owner-experience';
+import { trackOwnerFunnelStep } from '@/lib/owner-funnel';
 import { EMERGENCY_SCENARIOS, formatDateTimeLabel } from '@/lib/owner-workspace';
 import { localizeDocumentType, localizePetBreed, localizePetSpecies, resolvePetPhoto } from '@/lib/pets';
 
@@ -62,6 +63,10 @@ export default function OwnerEmergencyFlowPage() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [vaccines, setVaccines] = useState([]);
   const [dangerQuery, setDangerQuery] = useState('');
+
+  useEffect(() => {
+    trackOwnerFunnelStep('triage_open', { source: mode === 'sos' ? 'sos_button' : 'triage_page' });
+  }, [mode]);
 
   const loadBase = useCallback(async () => {
     setLoading(true);
@@ -284,7 +289,7 @@ export default function OwnerEmergencyFlowPage() {
                   >
                     {isEn ? 'Medications' : 'Лекарства'}
                   </Link>
-                  <Link href="/owner/services" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  <Link href="/owner/map" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                     {isEn ? 'Clinics & map' : 'Клиники и карта'}
                   </Link>
                 </div>
@@ -566,7 +571,7 @@ export default function OwnerEmergencyFlowPage() {
                   <p className="mt-1 text-xs text-slate-500">{isEn ? 'Labs and images' : 'Анализы и снимки'}</p>
                 </Link>
                 <Link
-                  href="/owner/services"
+                  href="/owner/map"
                   className="flex min-h-[72px] flex-col justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
                 >
                   <p className="text-sm font-semibold text-slate-900">{isEn ? 'Clinics' : 'Клиники'}</p>

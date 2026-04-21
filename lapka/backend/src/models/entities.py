@@ -1308,6 +1308,7 @@ class Notification(Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    action_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

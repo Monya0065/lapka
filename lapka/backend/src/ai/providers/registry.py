@@ -35,6 +35,36 @@ def _resolve_provider() -> LLMProvider:
 
 
 def _try_provider(name: str) -> LLMProvider | None:
+    if name in ("yandexgpt", "yandex"):
+        try:
+            from src.ai.providers.yandexgpt_provider import YandexGPTProvider
+
+            provider = YandexGPTProvider()
+            if provider.is_available():
+                return provider
+            return None
+        except ImportError:
+            return None
+    if name == "groq":
+        try:
+            from src.ai.providers.groq_provider import GroqProvider
+
+            provider = GroqProvider()
+            if provider.is_available():
+                return provider
+            return None
+        except ImportError:
+            return None
+    if name == "ollama":
+        try:
+            from src.ai.providers.ollama_provider import OllamaProvider
+
+            provider = OllamaProvider()
+            if provider.is_available():
+                return provider
+            return None
+        except ImportError:
+            return None
     if name == "openai":
         try:
             from src.ai.providers.openai_provider import OpenAIProvider

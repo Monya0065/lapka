@@ -21,6 +21,12 @@ const nextConfig = {
         source: '/offline.html',
         headers: [{ key: 'Cache-Control', value: 'no-cache' }],
       },
+      {
+        source: '/owner/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        ],
+      },
     ];
   },
 };

@@ -5,39 +5,38 @@
  */
 export const OWNER_SIDEBAR_GROUPS = [
   {
-    title: 'Главная',
+    titleKey: 'owner.workspaceUi.sidebarGroupHome',
     links: [
-      { href: '/owner/dashboard', label: 'Дашборд', icon: 'home' },
-      { href: '/owner/inbox', label: 'Входящие', icon: 'notifications' },
-      { href: '/owner/calendar', label: 'Календарь', icon: 'notifications' },
+      { href: '/owner/dashboard', labelKey: 'nav.dashboard', icon: 'home' },
+      { href: '/owner/inbox', labelKey: 'owner.workspaceUi.sidebarInbox', icon: 'notifications' },
+      { href: '/owner/calendar', labelKey: 'pet.calendar', icon: 'calendar' },
     ],
   },
   {
-    title: 'Питомцы',
+    titleKey: 'owner.workspaceUi.sidebarGroupPets',
     links: [
-      { href: '/owner/pets', label: 'Все питомцы', icon: 'pets' },
-      { href: '/owner/records', label: 'Медкарта', icon: 'records' },
-      { href: '/owner/documents', label: 'Документы', icon: 'documents' },
-      { href: '/owner/passport-center', label: 'Паспорт', icon: 'profile' },
+      { href: '/owner/pets', labelKey: 'owner.workspaceUi.sidebarAllPets', icon: 'pets' },
+      { href: '/owner/records', labelKey: 'nav.medicalRecords', icon: 'records' },
+      { href: '/owner/documents', labelKey: 'nav.documents', icon: 'documents' },
+      { href: '/owner/passport-center', labelKey: 'owner.workspaceUi.sidebarPassport', icon: 'profile' },
     ],
   },
   {
-    title: 'Здоровье',
+    titleKey: 'owner.workspaceUi.sidebarGroupHealth',
     links: [
-      { href: '/owner/visits', label: 'Визиты', icon: 'appointments' },
-      { href: '/owner/medications', label: 'Лекарства', icon: 'pharmacy' },
-      { href: '/owner/prevention', label: 'Профилактика', icon: 'timeline' },
-      { href: '/owner/quick-triage', label: 'Срочность 1 мин', icon: 'health' },
-      { href: '/owner/triage', label: 'Симптомы · SOS', icon: 'health' },
-      { href: '/owner/inpatient', label: 'Стационар', icon: 'inpatient' },
+      { href: '/owner/visits', labelKey: 'owner.workspaceUi.sidebarVisits', icon: 'appointments' },
+      { href: '/owner/medications', labelKey: 'owner.workspaceUi.sidebarMedications', icon: 'pharmacy' },
+      { href: '/owner/prevention', labelKey: 'owner.workspaceUi.sidebarPrevention', icon: 'timeline' },
+      { href: '/owner/quick-triage', labelKey: 'owner.workspaceUi.sidebarUrgencySos', icon: 'sos' },
+      { href: '/owner/inpatient', labelKey: 'nav.inpatient', icon: 'inpatient' },
     ],
   },
   {
-    title: 'Сервисы',
+    titleKey: 'owner.workspaceUi.sidebarGroupServices',
     links: [
-      { href: '/owner/appointments', label: 'Записи', icon: 'appointments' },
-      { href: '/owner/services', label: 'Клиники и карта', icon: 'map' },
-      { href: '/owner/billing', label: 'Счета', icon: 'finance' },
+      { href: '/owner/appointments', labelKey: 'nav.appointments', icon: 'appointments' },
+      { href: '/owner/map', labelKey: 'owner.workspaceUi.sidebarClinicsMap', icon: 'map' },
+      { href: '/owner/billing', labelKey: 'nav.billing', icon: 'finance' },
     ],
   },
 ];

@@ -1,9 +1,21 @@
 from __future__ import annotations
 
+import re
 from collections import deque
 from dataclasses import dataclass, field
 from threading import Lock
 from time import time
+
+
+# Path segment that looks like a UUID (lowers Prometheus / in-process route cardinality).
+_UUID_SEGMENT = re.compile(
+    r"/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=/|$)",
+    re.IGNORECASE,
+)
+
+
+def _collapse_uuid_path_segments(path: str) -> str:
+    return _UUID_SEGMENT.sub("/{id}", path)
 
 
 @dataclass
@@ -20,8 +32,16 @@ _state = MetricsState()
 _lock = Lock()
 
 
+def metrics_endpoint_label(path: str) -> str:
+    """Normalize URL paths for Prometheus labels and in-process route aggregates."""
+    if path.startswith("/api/v1/"):
+        return _collapse_uuid_path_segments(path)
+    return path
+
+
 def record_request(method: str, path: str, status_code: int, duration_ms: float) -> None:
     status_key = str(status_code)
+    path = metrics_endpoint_label(path)
     route_key = f"{method.upper()} {path}"
     with _lock:
         _state.total_requests += 1

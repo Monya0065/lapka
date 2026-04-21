@@ -1,8 +1,8 @@
-import { test } from '@playwright/test';
+import { test, type Page } from '@playwright/test';
 
 const base = process.env.E2E_BASE_URL || 'http://localhost:3000';
 
-async function login(page, role: string, email: string, password: string) {
+async function login(page: Page, role: string, email: string, password: string) {
   await page.goto(`${base}/login?role=${role}`);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Пароль').fill(password);
@@ -10,7 +10,7 @@ async function login(page, role: string, email: string, password: string) {
   await page.waitForTimeout(500);
 }
 
-async function clickAudit(page, route: string) {
+async function clickAudit(page: Page, route: string) {
   try {
     await page.goto(`${base}${route}`, { timeout: 15000 });
     await page.waitForTimeout(500);

@@ -5,9 +5,11 @@ import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/Skeleton';
 import ErrorBanner from '@/components/ui/ErrorBanner';
+import { useTranslation } from 'react-i18next';
 import { apiRequest } from '@/lib/api';
 
 export default function PlatformLostPetsModerationPage() {
+  const { t } = useTranslation('common');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -28,11 +30,11 @@ export default function PlatformLostPetsModerationPage() {
       setQueue(Array.isArray(queuePayload) ? queuePayload : []);
       setAbuseReports(Array.isArray(abusePayload) ? abusePayload : []);
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось загрузить модерацию потеряшек');
+      setError(requestError.message || t('platform.lostPetsModerationPage.errorLoad'));
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, t]);
 
   useEffect(() => {
     loadData();
@@ -50,10 +52,10 @@ export default function PlatformLostPetsModerationPage() {
           moderation_reason: moderationReason || null,
         },
       });
-      setSuccess(`Объявление ${moderationStatus}.`);
+      setSuccess(t('platform.lostPetsModerationPage.successModeration', { status: moderationStatus }));
       await loadData();
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось обновить статус модерации');
+      setError(requestError.message || t('platform.lostPetsModerationPage.errorModeration'));
     } finally {
       setSaving(false);
     }
@@ -71,10 +73,10 @@ export default function PlatformLostPetsModerationPage() {
           resolution_note: moderationReason || null,
         },
       });
-      setSuccess(`Жалоба ${status}.`);
+      setSuccess(t('platform.lostPetsModerationPage.successAbuse', { status }));
       await loadData();
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось обновить жалобу');
+      setError(requestError.message || t('platform.lostPetsModerationPage.errorAbuse'));
     } finally {
       setSaving(false);
     }
@@ -85,14 +87,14 @@ export default function PlatformLostPetsModerationPage() {
       <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-rose-500/14 via-surface-muted to-red-500/12 p-5 shadow-card md:p-8">
         <div className="relative grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:items-start">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">Trust & Safety</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-theme md:text-4xl">Модерация потеряшек</h1>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">{t('platform.lostPetsModerationPage.eyebrow')}</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-theme md:text-4xl">{t('platform.lostPetsModerationPage.title')}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-theme-muted md:text-base">
-              Очередь рискованных объявлений, жалобы пользователей и быстрые решения модератора в одном операционном контуре.
+              {t('platform.lostPetsModerationPage.subtitle')}
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Link href="/platform/dashboard" className="btn-secondary">Назад в обзор</Link>
-              <Link href="/platform/lost-pets-ads" className="btn-secondary">Бюджет рекламы</Link>
+              <Link href="/platform/dashboard" className="btn-secondary">{t('platform.lostPetsModerationPage.linkBack')}</Link>
+              <Link href="/platform/lost-pets-ads" className="btn-secondary">{t('platform.lostPetsModerationPage.linkAdsBudget')}</Link>
             </div>
           </div>
           {loading ? (
@@ -104,9 +106,9 @@ export default function PlatformLostPetsModerationPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
-                { label: 'В очереди', value: queue.length },
-                { label: 'Открытых жалоб', value: abuseReports.length, tone: 'text-rose-700 dark:text-rose-300' },
-                { label: 'Фильтр', value: statusFilter, tone: 'text-sky-700 dark:text-sky-300' },
+                { label: t('platform.lostPetsModerationPage.kpiQueue'), value: queue.length },
+                { label: t('platform.lostPetsModerationPage.kpiAbuseOpen'), value: abuseReports.length, tone: 'text-rose-700 dark:text-rose-300' },
+                { label: t('platform.lostPetsModerationPage.kpiFilter'), value: statusFilter, tone: 'text-sky-700 dark:text-sky-300' },
               ].map((cell) => (
                 <div key={cell.label} className="rounded-2xl border border-border bg-surface/90 px-3 py-4 shadow-sm">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-theme-muted">{cell.label}</p>
@@ -121,10 +123,10 @@ export default function PlatformLostPetsModerationPage() {
       {error ? <ErrorBanner message={error} onRetry={loadData} /> : null}
       {success ? <div className="callout-success">{success}</div> : null}
 
-      <Card title="Управление очередью" subtitle="Фильтр и единый комментарий для решений">
+      <Card title={t('platform.lostPetsModerationPage.controlTitle')} subtitle={t('platform.lostPetsModerationPage.controlSubtitle')}>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="block">
-            <span className="label">Статус очереди</span>
+            <span className="label">{t('platform.lostPetsModerationPage.queueStatusLabel')}</span>
             <select className="input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="pending">pending</option>
               <option value="approved">approved</option>
@@ -133,14 +135,14 @@ export default function PlatformLostPetsModerationPage() {
             </select>
           </label>
           <label className="block">
-            <span className="label">Комментарий модератора</span>
+            <span className="label">{t('platform.lostPetsModerationPage.moderatorCommentLabel')}</span>
             <input className="input" value={moderationReason} onChange={(event) => setModerationReason(event.target.value)} />
           </label>
         </div>
       </Card>
 
       <section className="grid gap-4 xl:grid-cols-2">
-        <Card title="Очередь объявлений" subtitle="Рискованные и спорные карточки">
+        <Card title={t('platform.lostPetsModerationPage.queueTitle')} subtitle={t('platform.lostPetsModerationPage.queueSubtitle')}>
           {loading ? (
             <div className="space-y-2">
               <Skeleton className="h-16 w-full" />
@@ -152,22 +154,22 @@ export default function PlatformLostPetsModerationPage() {
               {queue.map((item) => (
                 <div key={item.id} className="rounded-2xl border border-border bg-surface-muted/70 px-3 py-2 text-sm">
                   <p className="font-semibold text-theme">{item.pet_name} · {item.city}</p>
-                  <p className="mt-1 text-xs text-theme-muted">risk: {item.risk_score || 0} · moderation: {item.moderation_status}</p>
+                  <p className="mt-1 text-xs text-theme-muted">{t('platform.lostPetsModerationPage.queueMeta', { risk: item.risk_score || 0, status: item.moderation_status })}</p>
                   <p className="mt-1 text-xs text-theme">{item.description}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => moderateReport(item.id, 'approved')}>approve</button>
-                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => moderateReport(item.id, 'rejected')}>reject</button>
-                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => moderateReport(item.id, 'blocked')}>block</button>
+                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => moderateReport(item.id, 'approved')}>{t('platform.lostPetsModerationPage.actionApprove')}</button>
+                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => moderateReport(item.id, 'rejected')}>{t('platform.lostPetsModerationPage.actionReject')}</button>
+                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => moderateReport(item.id, 'blocked')}>{t('platform.lostPetsModerationPage.actionBlock')}</button>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-theme-muted">Очередь пуста.</p>
+            <p className="text-sm text-theme-muted">{t('platform.lostPetsModerationPage.queueEmpty')}</p>
           )}
         </Card>
 
-        <Card title="Жалобы пользователей" subtitle="Открытые abuse reports по объявлениям">
+        <Card title={t('platform.lostPetsModerationPage.abuseTitle')} subtitle={t('platform.lostPetsModerationPage.abuseSubtitle')}>
           {loading ? (
             <div className="space-y-2">
               <Skeleton className="h-16 w-full" />
@@ -177,17 +179,17 @@ export default function PlatformLostPetsModerationPage() {
             <div className="max-h-[420px] space-y-2 overflow-auto">
               {abuseReports.map((row) => (
                 <div key={row.id} className="rounded-2xl border border-border bg-surface-muted/70 px-3 py-2 text-sm">
-                  <p className="font-semibold text-theme">{row.reason} · report {row.report_id}</p>
-                  <p className="mt-1 text-xs text-theme-muted">{row.message || 'Без комментария'}</p>
+                  <p className="font-semibold text-theme">{row.reason} · {t('platform.lostPetsModerationPage.reportLabel', { id: row.report_id })}</p>
+                  <p className="mt-1 text-xs text-theme-muted">{row.message || t('platform.lostPetsModerationPage.noComment')}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => resolveAbuseReport(row.id, 'resolved')}>resolve</button>
-                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => resolveAbuseReport(row.id, 'rejected')}>reject complaint</button>
+                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => resolveAbuseReport(row.id, 'resolved')}>{t('platform.lostPetsModerationPage.actionResolve')}</button>
+                    <button className="btn-secondary !px-2 !py-1 text-xs" disabled={saving} onClick={() => resolveAbuseReport(row.id, 'rejected')}>{t('platform.lostPetsModerationPage.actionRejectComplaint')}</button>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-theme-muted">Открытых жалоб нет.</p>
+            <p className="text-sm text-theme-muted">{t('platform.lostPetsModerationPage.abuseEmpty')}</p>
           )}
         </Card>
       </section>

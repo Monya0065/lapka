@@ -1,0 +1,133 @@
+# VPN Node DaemonSet - runs WireGuard on each node
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vpn-node
+  namespace: vpn-production
+  labels:
+    app: vpn-node
+    component: wireguard
+spec:
+  selector:
+    matchLabels:
+      app: vpn-node
+  template:
+    metadata:
+      labels:
+        app: vpn-node
+        component: wireguard
+    spec:
+      hostNetwork: true
+      hostPID: true
+      containers:
+      - name: wireguard
+        image: linuxserver/wireguard:1.0.0
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - SYS_MODULE
+          privileged: true
+        env:
+        - name: PEERS
+          value: "100"
+        - name: INTERNAL_SUBNET
+          value: "10.0.0.0/24"
+        - name: ALLOWEDIPS
+          value: "0.0.0.0/0"
+        - name: PEERDNS
+          value: "1.1.1.1"
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: modules
+          mountPath: /lib/modules
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+      volumes:
+      - name: config
+        emptyDir: {}
+      - name: modules
+        hostPath:
+          path: /lib/modules
+      tolerations:
+      - effect: NoSchedule
+        key: node-role
+        operator: Equal
+        value: vpn
+      - effect: NoExecute
+        operator: Exists
+---
+# VPN Node Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: vpn-node
+  namespace: vpn-production
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "51820"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 51820
+    targetPort: 51820
+    protocol: UDP
+    name: wireguard
+  selector:
+    app: vpn-node
+---
+# VPN Node Metrics Exporter
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpn-node-exporter
+  namespace: vpn-production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vpn-node-exporter
+  template:
+    metadata:
+      labels:
+        app: vpn-node-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9586"
+    spec:
+      containers:
+      - name: exporter
+        image: prometheus/wireguard_exporter:v0.5.0
+        args:
+        - --wireguard.device=wg0
+        ports:
+        - containerPort: 9586
+          name: metrics
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+      nodeSelector:
+        node-role: vpn
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vpn-node-exporter
+  namespace: vpn-production
+spec:
+  ports:
+  - port: 9586
+    targetPort: 9586
+    name: metrics
+  selector:
+    app: vpn-node-exporter

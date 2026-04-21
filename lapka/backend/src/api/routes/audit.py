@@ -17,9 +17,13 @@ async def list_audit(
     current_user=Depends(require_roles(RoleEnum.clinic_admin, RoleEnum.network_admin)),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[dict]:
-    rows = (
-        await db.scalars(select(AuditEvent).order_by(AuditEvent.created_at.desc()).limit(min(limit, 200)))
-    ).all()
+    stmt = select(AuditEvent).order_by(AuditEvent.created_at.desc()).limit(min(limit, 200))
+    if current_user.role == RoleEnum.clinic_admin:
+        clinic_id = getattr(current_user, "clinic_id", None)
+        if clinic_id is None:
+            return []
+        stmt = stmt.where(AuditEvent.clinic_id == clinic_id)
+    rows = (await db.scalars(stmt)).all()
     return [
         {
             "id": str(row.id),

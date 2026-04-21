@@ -1,0 +1,50 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deployment.yaml
+- service.yaml
+- hpa.yaml
+- pdb.yaml
+
+commonLabels:
+  app: vpn-api
+  managed-by: kustomize
+
+namespace: vpn-production
+
+configMapGenerator:
+- name: vpn-config
+  literals:
+  - API_URL=https://api.lapka.ru
+  - LOG_LEVEL=INFO
+
+secretGenerator:
+- name: vpn-secrets
+  envs:
+  - .env.encrypted
+  type: Opaque
+
+patches:
+- patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 3
+  target:
+    kind: Deployment
+    name: vpn-api
+- patch: |-
+    - op: add
+      path: /spec/template/spec/affinity
+      value:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: vpn-api
+              topologyKey: kubernetes.io/hostname
+  target:
+    kind: Deployment
+    name: vpn-api

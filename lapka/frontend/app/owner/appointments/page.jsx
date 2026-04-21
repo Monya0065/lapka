@@ -12,6 +12,7 @@ import Table from '@/components/ui/Table';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import ShowcasePanel from '@/components/ui/ShowcasePanel';
 import { apiRequest } from '@/lib/api';
+import { trackOwnerFunnelStep } from '@/lib/owner-funnel';
 import { localizeResourceType } from '@/lib/clinic-operations';
 import { localizeServiceType, localizeVisitType } from '@/lib/pets';
 
@@ -276,6 +277,12 @@ export default function OwnerAppointmentsPage() {
   }, [loadBaseData]);
 
   useEffect(() => {
+    trackOwnerFunnelStep('booking_open', { source: 'appointments_page', clinicId, petId });
+    // track on first render and when deep-links preselect clinic/pet
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (clinicId) {
       loadClinicContext(clinicId);
     }
@@ -332,6 +339,7 @@ export default function OwnerAppointmentsPage() {
           status: 'scheduled',
         },
       });
+      trackOwnerFunnelStep('booking_submit', { source: 'appointments_submit', clinicId, petId });
 
       setSuccess(isEn ? 'Appointment created. 24h and 2h reminders were added automatically.' : 'Запись создана. Напоминания на 24 часа и 2 часа добавлены автоматически.');
       setStep(1);

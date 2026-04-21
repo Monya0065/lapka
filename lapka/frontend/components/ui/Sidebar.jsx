@@ -68,22 +68,6 @@ export default function Sidebar({
     }
   }, [expandedGroups, storageKey]);
 
-  useEffect(() => {
-    setExpandedGroups((current) => {
-      const next = { ...current };
-      let changed = false;
-      normalizedGroups.forEach((group, index) => {
-        const key = groupKey(group, index);
-        const hasActiveLink = (group.links || []).some((link) => isActive(link.href));
-        if (hasActiveLink && !next[key]) {
-          next[key] = true;
-          changed = true;
-        }
-      });
-      return changed ? next : current;
-    });
-  }, [isActive, normalizedGroups]);
-
   function toggleGroup(key) {
     setExpandedGroups((current) => ({ ...current, [key]: !current[key] }));
   }
@@ -124,19 +108,29 @@ export default function Sidebar({
           </div>
 
           <div className={`mt-4 hidden gap-2 md:flex ${compact ? 'justify-center' : 'justify-between'}`}>
-            <button type="button" className={isDark ? 'sidebar-mini-action sidebar-mini-action-dark' : 'sidebar-mini-action'} onClick={() => expandAll(true)} title="Раскрыть всё">
-              + Все
+            <button
+              type="button"
+              className={isDark ? 'sidebar-mini-action sidebar-mini-action-dark' : 'sidebar-mini-action'}
+              onClick={() => expandAll(true)}
+              title={t('sidebar.expandAllTitle')}
+            >
+              {t('sidebar.expandAllLabel')}
             </button>
             {!compact ? (
-              <button type="button" className={isDark ? 'sidebar-mini-action sidebar-mini-action-dark' : 'sidebar-mini-action'} onClick={() => expandAll(false)} title="Свернуть всё">
-                – Все
+              <button
+                type="button"
+                className={isDark ? 'sidebar-mini-action sidebar-mini-action-dark' : 'sidebar-mini-action'}
+                onClick={() => expandAll(false)}
+                title={t('sidebar.collapseAllTitle')}
+              >
+                {t('sidebar.collapseAllLabel')}
               </button>
             ) : null}
             <button
               type="button"
               className={isDark ? 'sidebar-mini-action sidebar-mini-action-dark' : 'sidebar-mini-action'}
               onClick={() => onCompactChange(!compact)}
-              title={compact ? 'Развернуть меню' : 'Компактный режим'}
+              title={compact ? t('sidebar.expandMenuTitle') : t('sidebar.compactModeTitle')}
             >
               {compact ? '→' : '⇤'}
             </button>

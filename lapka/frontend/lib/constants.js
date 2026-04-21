@@ -1,3 +1,13 @@
+/** Internal path only (open-redirect safe) for post-login navigation. */
+export function safePostLoginPath(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const s = raw.trim();
+  if (!s.startsWith('/')) return null;
+  if (s.startsWith('//')) return null;
+  if (s.includes('://')) return null;
+  return s;
+}
+
 export const DEFAULT_CLINIC_ID = process.env.NEXT_PUBLIC_DEMO_CLINIC_ID || '11111111-1111-1111-1111-111111111111';
 export const BARSIK_PET_ID = process.env.NEXT_PUBLIC_DEMO_BARSIK_PET_ID || '55555555-5555-5555-5555-555555555555';
 export const BARSIK_VISIT_ID = process.env.NEXT_PUBLIC_DEMO_BARSIK_VISIT_ID || '66666666-6666-6666-6666-666666666666';

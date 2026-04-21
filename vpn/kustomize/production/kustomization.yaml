@@ -1,0 +1,46 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+namespace: vpn-production
+
+replicas:
+- name: vpn-api
+  replicas: 10
+
+patches:
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/image
+      value: ghcr.io/lapka/vpn-api:v1.0.0
+  target:
+    kind: Deployment
+- patch: |-
+    - op: replace
+      path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      value: letsencrypt-prod
+  target:
+    kind: Ingress
+    annotationSelector: cert-manager.io/cluster-issuer
+
+replicas:
+- name: vpn-api
+  count: 10
+
+vars:
+- name: API_URL
+  objref:
+    kind: ConfigMap
+    name: vpn-config
+    fieldpath: data.API_URL
+
+patchesStrategicMerge:
+- patches/Autoscaling.yaml
+- patches/Resources.yaml
+
+configMapGenerator:
+- name: vpn-config
+  literals:
+  - LOG_LEVEL=INFO

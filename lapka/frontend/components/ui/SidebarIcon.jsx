@@ -4,6 +4,7 @@ const PATHS = {
   home: 'M4 10.5 12 4l8 6.5v8a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z',
   pets: 'M7.5 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm9 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM12 9a2.25 2.25 0 1 0 0-4.5A2.25 2.25 0 0 0 12 9Zm0 2c-3.6 0-6.5 1.94-6.5 4.33C5.5 17.36 7.3 19 9.54 19h4.92C16.7 19 18.5 17.36 18.5 15.33 18.5 12.94 15.6 11 12 11Z',
   appointments: 'M7 3v2M17 3v2M4 8h16M6 5h12a2 2 0 0 1 2 2v11H4V7a2 2 0 0 1 2-2Zm2 6h3v3H8zm5 0h3v3h-3z',
+  calendar: 'M8 2v3M16 2v3M5 9h14M7 5h10a2 2 0 0 1 2 2v11H5V7a2 2 0 0 1 2-2Zm2 4h2v2H9zm4 0h2v2h-2zm4 0h2v2h-2z',
   records: 'M7 4h7l4 4v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm7 1.5V9h3.5',
   documents: 'M7 4h10a2 2 0 0 1 2 2v12H5V6a2 2 0 0 1 2-2Zm1.5 4h7m-7 3h7m-7 3h4',
   inpatient: 'M4 9h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm4-5h8v3H8zm3 6v2H9v2h2v2h2v-2h2v-2h-2v-2z',
@@ -19,6 +20,7 @@ const PATHS = {
   tools: 'M14.7 5.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4l-7.9 7.9-3.6.9.9-3.6 7.9-7.9ZM5 19h14',
   services: 'M6 6h12v5H6zm-1 7h14v5H5z',
   notifications: 'M12 4a4 4 0 0 0-4 4v1.2c0 .78-.2 1.55-.58 2.24L6 14.5V16h12v-1.5l-1.42-3.06A5.2 5.2 0 0 1 16 9.2V8a4 4 0 0 0-4-4Zm0 16a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 20Z',
+  shield: 'M12 2 4 5v6c0 5.2 3.5 9.9 8 11 4.5-1.1 8-5.8 8-11V5l-8-3Z',
 };
 
 export default function SidebarIcon({ name, dark = false }) {

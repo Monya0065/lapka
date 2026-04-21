@@ -59,7 +59,7 @@ export default function LoginPageClient({ role = 'owner', nextUrl = '' }) {
             </div>
           </article>
 
-          <AuthDropdown mode="card" initialRole={role} />
+          <AuthDropdown mode="card" initialRole={role} postLoginRedirect={nextUrl} />
         </section>
       </main>
     </>

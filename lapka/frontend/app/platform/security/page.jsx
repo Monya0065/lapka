@@ -2,56 +2,64 @@
 
 import Card from '@/components/ui/Card';
 import ShowcasePanel from '@/components/ui/ShowcasePanel';
+import { useTranslation } from 'react-i18next';
 
 export default function PlatformSecurityPage() {
+  const { t } = useTranslation('common');
+
   return (
     <div className="space-y-6">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Аудит и безопасность</h1>
-          <p className="page-subtitle">Платформенный контур контроля прав, публичных ссылок, AI-политик, использования моделей и системного аудита.</p>
+          <h1 className="page-title">{t('platform.securityPage.headerTitle')}</h1>
+          <p className="page-subtitle">{t('platform.securityPage.headerSubtitle')}</p>
         </div>
       </header>
 
       <ShowcasePanel
-        eyebrow="Контроль платформы"
-        title="Единый центр политик доступа, AI-ограничений и системного аудита"
-        description="Здесь собираются правила платформы: кто что видит, как работают публичные ссылки, какие модели доступны клиникам и как фиксируются чувствительные действия. Экран нужен для сети клиник, а не для одной демо-инсталляции."
+        eyebrow={t('platform.securityPage.showcaseEyebrow')}
+        title={t('platform.securityPage.showcaseTitle')}
+        description={t('platform.securityPage.showcaseDescription')}
         imageSrc="/assets/img/admin-side.svg"
-        imageAlt="Аудит и безопасность платформы"
-        badges={['RBAC и согласия', 'Политики AI', 'Публичные ссылки', 'Системный аудит']}
+        imageAlt={t('platform.securityPage.showcaseImageAlt')}
+        badges={[
+          t('platform.securityPage.badgeRbac'),
+          t('platform.securityPage.badgeAiPolicies'),
+          t('platform.securityPage.badgePublicLinks'),
+          t('platform.securityPage.badgeSystemAudit'),
+        ]}
       />
 
       <section className="grid gap-4 2xl:grid-cols-3">
-        <Card title="Что контролируется">
+        <Card title={t('platform.securityPage.cardControlledTitle')}>
           <ul className="space-y-2 text-sm text-lapka-700">
-            <li>• доступ к картам питомцев по ролям и согласию владельца</li>
-            <li>• срок жизни публичных ссылок и отзыв токенов</li>
-            <li>• правила использования AI по ролям и сценариям</li>
+            <li>{t('platform.securityPage.controlledItem1')}</li>
+            <li>{t('platform.securityPage.controlledItem2')}</li>
+            <li>{t('platform.securityPage.controlledItem3')}</li>
           </ul>
         </Card>
-        <Card title="Что видно платформе">
+        <Card title={t('platform.securityPage.cardVisibleTitle')}>
           <ul className="space-y-2 text-sm text-lapka-700">
-            <li>• общий журнал чувствительных действий по клиникам</li>
-            <li>• использование провайдеров и моделей по сети</li>
-            <li>• отклонённые запросы доступа и нарушения политик</li>
+            <li>{t('platform.securityPage.visibleItem1')}</li>
+            <li>{t('platform.securityPage.visibleItem2')}</li>
+            <li>{t('platform.securityPage.visibleItem3')}</li>
           </ul>
         </Card>
-        <Card title="Следующий слой">
+        <Card title={t('platform.securityPage.cardNextLayerTitle')}>
           <ul className="space-y-2 text-sm text-lapka-700">
-            <li>• политика по организациям и филиалам</li>
-            <li>• сроки хранения и экспорт системного аудита</li>
-            <li>• сценарии инцидентов и проверка нарушений</li>
+            <li>{t('platform.securityPage.nextLayerItem1')}</li>
+            <li>{t('platform.securityPage.nextLayerItem2')}</li>
+            <li>{t('platform.securityPage.nextLayerItem3')}</li>
           </ul>
         </Card>
       </section>
 
-      <Card title="Контур управления безопасностью" subtitle="Ключевые элементы зрелого системного слоя для сети клиник">
+      <Card title={t('platform.securityPage.securityControlTitle')} subtitle={t('platform.securityPage.securityControlSubtitle')}>
         <ul className="space-y-3 text-sm text-lapka-700">
-          <li>• централизованная лента аудита по клиникам, ролям и публичным просмотрам</li>
-          <li>• единый центр политик для документов, камер, QR-ссылок и согласий владельца</li>
-          <li>• ограничения AI: какие модели доступны, какие сценарии разрешены и как работают резервные цепочки</li>
-          <li>• лимиты и стоимость по клинике, роли и провайдеру, чтобы сетью можно было управлять централизованно</li>
+          <li>{t('platform.securityPage.securityControlItem1')}</li>
+          <li>{t('platform.securityPage.securityControlItem2')}</li>
+          <li>{t('platform.securityPage.securityControlItem3')}</li>
+          <li>{t('platform.securityPage.securityControlItem4')}</li>
         </ul>
       </Card>
     </div>

@@ -26,24 +26,24 @@ export default function ClinicLayout({ children }) {
       <AppLayout
         roleLabel="clinic_admin"
         roleTone="clinic"
-        workspaceTitle="Операционный центр"
-        sidebarTitle="Клиника"
-        sidebarSubtitle="Расписание, команда, стационар и финансы."
+        workspaceTitle={t('clinic.workspaceUi.workspaceTitle')}
+        sidebarTitle={t('clinic.workspaceUi.sidebarRoleTitle')}
+        sidebarSubtitle={t('clinic.workspaceUi.sidebarSubtitle')}
         sidebarVariant="workspace-dark"
         sidebarGroups={CLINIC_SIDEBAR_GROUPS}
         headerContext={<ClinicScopeSwitcher showBranchHint />}
         headerAction={
           <Link href="/clinic/schedule" prefetch={false} className="btn-primary workspace-header-cta">
-            + Новая запись
+            {t('clinic.workspaceUi.newBooking')}
           </Link>
         }
         sidebarFooter={
           <div className="grid gap-2">
             <Link href="/clinic/checkin" prefetch={false} className="btn-primary w-full !justify-start">
-              Ресепшн и регистрация
+              {t('clinic.workspaceUi.sidebarReceptionRegistration')}
             </Link>
             <Link href="/clinic/inpatient" prefetch={false} className="btn-secondary w-full !justify-start">
-              Стационар
+              {t('nav.inpatient')}
             </Link>
           </div>
         }
@@ -51,23 +51,35 @@ export default function ClinicLayout({ children }) {
           <>
             <Card className="overflow-hidden p-0">
               <div className="relative h-40 w-full">
-                <Image src="/assets/img/admin-side.svg" alt="Центр управления клиникой" fill sizes="360px" className="object-cover" />
+                <Image src="/assets/img/admin-side.svg" alt={t('clinic.workspaceUi.sideImageAlt')} fill sizes="360px" className="object-cover" />
               </div>
               <div className="p-4">
-                <h3 className="text-2xl font-black tracking-tight text-lapka-900">{selectedClinic?.name || 'Клиника Санкт-Петербурга'}</h3>
-                <p className="mt-1 text-sm text-lapka-600">Центральный филиал, операционный контроль, загрузка, команда и качество.</p>
-                {selectedBranch ? <p className="mt-2 text-xs text-lapka-500">Активный филиал: {selectedBranch.address}</p> : null}
+                <h3 className="text-2xl font-black tracking-tight text-lapka-900">{selectedClinic?.name || t('clinic.demoClinic')}</h3>
+                <p className="mt-1 text-sm text-lapka-600">{t('clinic.workspaceUi.opsCardSubtitle')}</p>
+                {selectedBranch ? (
+                  <p className="mt-2 text-xs text-lapka-500">
+                    {t('clinic.workspaceUi.activeBranch', { address: selectedBranch.address })}
+                  </p>
+                ) : null}
               </div>
             </Card>
-            <Card title="Быстрые действия">
+            <Card title={t('clinic.quickActions')}>
               <div className="grid gap-2">
-                <Link href="/clinic/schedule" prefetch={false} className="btn-secondary justify-start">Создать запись</Link>
-                <Link href="/clinic/doctors" prefetch={false} className="btn-secondary justify-start">Открыть команду</Link>
-                <Link href="/clinic/services" prefetch={false} className="btn-secondary justify-start">Услуги</Link>
-                <Link href="/clinic/templates" prefetch={false} className="btn-secondary justify-start">Шаблоны</Link>
+                <Link href="/clinic/schedule" prefetch={false} className="btn-secondary justify-start">
+                  {t('nav.createAppointment')}
+                </Link>
+                <Link href="/clinic/doctors" prefetch={false} className="btn-secondary justify-start">
+                  {t('clinic.workspaceUi.openTeam')}
+                </Link>
+                <Link href="/clinic/services" prefetch={false} className="btn-secondary justify-start">
+                  {t('nav.services')}
+                </Link>
+                <Link href="/clinic/templates" prefetch={false} className="btn-secondary justify-start">
+                  {t('nav.templates')}
+                </Link>
               </div>
             </Card>
-            <Alert tone="info">Медицинские разделы для администратора остаются только для чтения и зависят от действующего согласия владельца.</Alert>
+            <Alert tone="info">{t('clinic.workspaceUi.adminReadOnlyAlert')}</Alert>
           </>
         ) : null}
       >

@@ -6,6 +6,7 @@ export default function ConfirmDialog({
   message = 'Подтвердите действие.',
   confirmLabel = 'Подтвердить',
   cancelLabel = 'Отмена',
+  loadingLabel = 'Выполняем...',
   danger = false,
   loading = false,
   onCancel,
@@ -29,7 +30,7 @@ export default function ConfirmDialog({
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? 'Выполняем...' : confirmLabel}
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </div>

@@ -1,26 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Card from '@/components/ui/Card';
 import ErrorBanner from '@/components/ui/ErrorBanner';
 import Skeleton from '@/components/ui/Skeleton';
 import StatsCard from '@/components/ui/StatsCard';
 import ShowcasePanel from '@/components/ui/ShowcasePanel';
+import PageHeader from '@/components/ui/PageHeader';
 import { apiRequest } from '@/lib/api';
+import { buildPlatformAiI18nMaps } from '@/lib/platform-ai-i18n.mjs';
 import { AI_PROVIDER_PRESETS } from '@/lib/platform-workspace';
-
-const DEFAULT_ROUTING = [
-  { id: 'owner-triage', slug: 'owner-triage', scenario_key: 'owner-triage', scenario: 'Срочность владельца', primary: 'openai', fallback: 'anthropic', policy: 'Безопасный режим владельца', enabled: true },
-  { id: 'doc-explain', slug: 'doc-explain', scenario_key: 'doc-explain', scenario: 'Объяснение документов', primary: 'openai', fallback: 'gemini', policy: 'Без рекомендаций по лечению', enabled: true },
-  { id: 'vet-notes', slug: 'vet-notes', scenario_key: 'vet-notes', scenario: 'Структурирование заметок врача', primary: 'anthropic', fallback: 'openai', policy: 'Только для внутреннего контура врача', enabled: true },
-  { id: 'knowledge-search', slug: 'knowledge-search', scenario_key: 'knowledge-search', scenario: 'Поиск по знаниям и справочникам', primary: 'gemini', fallback: 'openai', policy: 'Только на основе проверенной базы знаний', enabled: true },
-];
-
-const DEFAULT_OVERRIDES = [
-  { id: 'clinic-demo', source_type: 'clinic', level: 'Клиника', target: 'ВетСеть', mode: 'Стандартный контур', provider: 'openai', enabled: true },
-  { id: 'branch-sensitive', source_type: 'tenant', level: 'Платформа', target: 'Стационар / приватные кейсы', mode: 'Локальный резервный контур', provider: 'local', tenant_key: 'private-cases', enabled: true },
-  { id: 'role-vet', source_type: 'role', level: 'Роль', target: 'Ветеринарный врач', mode: 'Ассистент врача', provider: 'anthropic', role: 'vet', enabled: true },
-];
 
 const DEFAULT_GUARDRAILS = {
   monthlyBudget: 4800,
@@ -32,10 +22,101 @@ const DEFAULT_GUARDRAILS = {
   fallbackMode: 'strict',
 };
 
+const LOAD_SPLIT_BLOCKS = [
+  ['loadBlock1Title', 'loadBlock1Text'],
+  ['loadBlock2Title', 'loadBlock2Text'],
+  ['loadBlock3Title', 'loadBlock3Text'],
+];
+
 export default function PlatformAiPage() {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('ru') ? 'ru-RU' : 'en-US';
+  const platformAiI18n = useMemo(() => buildPlatformAiI18nMaps(t), [t]);
+
+  const defaultRouting = useMemo(
+    () => [
+      {
+        id: 'owner-triage',
+        slug: 'owner-triage',
+        scenario_key: 'owner-triage',
+        scenario: t('platform.aiPage.routeOwnerTriageScenario'),
+        primary: 'openai',
+        fallback: 'anthropic',
+        policy: t('platform.aiPage.routeOwnerTriagePolicy'),
+        enabled: true,
+      },
+      {
+        id: 'doc-explain',
+        slug: 'doc-explain',
+        scenario_key: 'doc-explain',
+        scenario: t('platform.aiPage.routeDocExplainScenario'),
+        primary: 'openai',
+        fallback: 'gemini',
+        policy: t('platform.aiPage.routeDocExplainPolicy'),
+        enabled: true,
+      },
+      {
+        id: 'vet-notes',
+        slug: 'vet-notes',
+        scenario_key: 'vet-notes',
+        scenario: t('platform.aiPage.routeVetNotesScenario'),
+        primary: 'anthropic',
+        fallback: 'openai',
+        policy: t('platform.aiPage.routeVetNotesPolicy'),
+        enabled: true,
+      },
+      {
+        id: 'knowledge-search',
+        slug: 'knowledge-search',
+        scenario_key: 'knowledge-search',
+        scenario: t('platform.aiPage.routeKnowledgeScenario'),
+        primary: 'gemini',
+        fallback: 'openai',
+        policy: t('platform.aiPage.routeKnowledgePolicy'),
+        enabled: true,
+      },
+    ],
+    [t]
+  );
+
+  const defaultOverrides = useMemo(
+    () => [
+      {
+        id: 'clinic-demo',
+        source_type: 'clinic',
+        level: t('platform.aiPage.ovClinicLevel'),
+        target: t('platform.aiPage.ovClinicTarget'),
+        mode: t('platform.aiPage.ovClinicMode'),
+        provider: 'openai',
+        enabled: true,
+      },
+      {
+        id: 'branch-sensitive',
+        source_type: 'tenant',
+        level: t('platform.aiPage.ovBranchLevel'),
+        target: t('platform.aiPage.ovBranchTarget'),
+        mode: t('platform.aiPage.ovBranchMode'),
+        provider: 'local',
+        tenant_key: 'private-cases',
+        enabled: true,
+      },
+      {
+        id: 'role-vet',
+        source_type: 'role',
+        level: t('platform.aiPage.ovRoleLevel'),
+        target: t('platform.aiPage.ovRoleTarget'),
+        mode: t('platform.aiPage.ovRoleMode'),
+        provider: 'anthropic',
+        role: 'vet',
+        enabled: true,
+      },
+    ],
+    [t]
+  );
+
   const [providers, setProviders] = useState([]);
-  const [routing, setRouting] = useState(DEFAULT_ROUTING);
-  const [overrides, setOverrides] = useState(DEFAULT_OVERRIDES);
+  const [routing, setRouting] = useState([]);
+  const [overrides, setOverrides] = useState([]);
   const [guardrails, setGuardrails] = useState(DEFAULT_GUARDRAILS);
   const [clinics, setClinics] = useState([]);
   const [clinicUsage, setClinicUsage] = useState([]);
@@ -68,6 +149,18 @@ export default function PlatformAiPage() {
     };
   }, []);
 
+  const localizedProviderPresets = useMemo(
+    () =>
+      AI_PROVIDER_PRESETS.map((p) =>
+        normalizeProvider({
+          ...p,
+          name: p.nameKey ? t(p.nameKey) : p.name,
+          routing: p.routingKey ? t(p.routingKey) : p.routing || '',
+        })
+      ),
+    [normalizeProvider, t]
+  );
+
   const normalizeRoute = useCallback((route) => ({
     id: route.id || route.slug || route.scenario_key,
     slug: route.slug || route.scenario_key,
@@ -82,20 +175,23 @@ export default function PlatformAiPage() {
     enabled: route.enabled !== false,
   }), []);
 
-  const normalizeOverride = useCallback((override) => ({
-    id: override.id || `${override.source_type || 'override'}-${override.target || override.level}`,
-    source_type: override.source_type || 'tenant',
-    level: override.level || 'Платформа',
-    target: override.target || 'Переопределение',
-    mode: override.mode || 'Стандартный контур',
-    provider: override.provider || 'openai',
-    model_key: override.model_key || null,
-    route_slug: override.route_slug || null,
-    tenant_key: override.tenant_key || null,
-    clinic_id: override.clinic_id || null,
-    role: override.role || null,
-    enabled: override.enabled !== false,
-  }), []);
+  const normalizeOverride = useCallback(
+    (override) => ({
+      id: override.id || `${override.source_type || 'override'}-${override.target || override.level}`,
+      source_type: override.source_type || 'tenant',
+      level: override.level || t('platform.aiPage.overrideFallbackLevel'),
+      target: override.target || t('platform.aiPage.overrideFallbackTarget'),
+      mode: override.mode || t('platform.aiPage.overrideFallbackMode'),
+      provider: override.provider || 'openai',
+      model_key: override.model_key || null,
+      route_slug: override.route_slug || null,
+      tenant_key: override.tenant_key || null,
+      clinic_id: override.clinic_id || null,
+      role: override.role || null,
+      enabled: override.enabled !== false,
+    }),
+    [t]
+  );
 
   const loadControlPlane = useCallback(async () => {
     setLoading(true);
@@ -105,13 +201,13 @@ export default function PlatformAiPage() {
       const payload = await apiRequest('/api/v1/platform/ai/control-plane');
       const providerRows = Array.isArray(payload?.providers) && payload.providers.length
         ? payload.providers.map(normalizeProvider)
-        : AI_PROVIDER_PRESETS.map(normalizeProvider);
+        : localizedProviderPresets;
       const routeRows = Array.isArray(payload?.routing) && payload.routing.length
         ? payload.routing.map(normalizeRoute)
-        : DEFAULT_ROUTING.map(normalizeRoute);
+        : defaultRouting.map(normalizeRoute);
       const overrideRows = Array.isArray(payload?.overrides) && payload.overrides.length
         ? payload.overrides.map(normalizeOverride)
-        : DEFAULT_OVERRIDES.map(normalizeOverride);
+        : defaultOverrides.map(normalizeOverride);
 
       setProviders(providerRows);
       setRouting(routeRows);
@@ -125,10 +221,10 @@ export default function PlatformAiPage() {
       setRecentUsage(Array.isArray(payload?.recent_usage) ? payload.recent_usage : []);
       setRouteHealth(Array.isArray(payload?.route_health) ? payload.route_health : []);
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось загрузить центр AI');
-      setProviders(AI_PROVIDER_PRESETS.map(normalizeProvider));
-      setRouting(DEFAULT_ROUTING.map(normalizeRoute));
-      setOverrides(DEFAULT_OVERRIDES.map(normalizeOverride));
+      setError(requestError.message || t('platform.aiPage.loadError'));
+      setProviders(localizedProviderPresets);
+      setRouting(defaultRouting.map(normalizeRoute));
+      setOverrides(defaultOverrides.map(normalizeOverride));
       setGuardrails(DEFAULT_GUARDRAILS);
       setClinics([]);
       setClinicUsage([]);
@@ -140,7 +236,15 @@ export default function PlatformAiPage() {
     } finally {
       setLoading(false);
     }
-  }, [normalizeOverride, normalizeProvider, normalizeRoute]);
+  }, [
+    defaultOverrides,
+    defaultRouting,
+    localizedProviderPresets,
+    normalizeOverride,
+    normalizeProvider,
+    normalizeRoute,
+    t,
+  ]);
 
   useEffect(() => {
     loadControlPlane();
@@ -148,6 +252,39 @@ export default function PlatformAiPage() {
 
   const activeCount = useMemo(() => providers.filter((row) => row.status === 'active').length, [providers]);
   const standbyCount = useMemo(() => providers.filter((row) => row.status === 'standby').length, [providers]);
+
+  const obsLines = useMemo(() => {
+    const g = guardrails || {};
+    const fb =
+      g.fallbackMode === 'strict'
+        ? t('platform.aiPage.fbLabelStrict')
+        : g.fallbackMode === 'graceful'
+          ? t('platform.aiPage.fbLabelGraceful')
+          : t('platform.aiPage.fbLabelClinicLocal');
+    const pii = g.piiRedaction ? t('platform.aiPage.wordOn') : t('platform.aiPage.wordOff');
+    const audit = g.promptAudit ? t('platform.aiPage.promptAuditOn') : t('platform.aiPage.promptAuditOff');
+    return [
+      t('platform.aiPage.obsBudget', { monthly: g.monthlyBudget, hard: g.hardLimit }),
+      t('platform.aiPage.obsFlows', { owner: g.maxOwnerRequestsPerHour, vet: g.maxVetRequestsPerHour }),
+      t('platform.aiPage.obsFailoverPii', { mode: fb, pii }),
+      t('platform.aiPage.obsAuditOverrides', { audit, count: overrides.length }),
+    ];
+  }, [guardrails, overrides.length, t]);
+
+  const localizedRecentUsage = useMemo(
+    () => platformAiI18n.localizeRecentUsage(recentUsage),
+    [platformAiI18n, recentUsage]
+  );
+
+  const localizedRouteHealth = useMemo(
+    () => platformAiI18n.localizeRouteHealth(routeHealth),
+    [platformAiI18n, routeHealth]
+  );
+
+  const localizedOverrideSummary = useMemo(
+    () => platformAiI18n.localizeOverrideSummary(overrideSummary),
+    [overrideSummary, platformAiI18n]
+  );
 
   function patchProvider(id, nextPatch) {
     setProviders((current) => current.map((row) => (row.id === id ? { ...row, ...nextPatch } : row)));
@@ -174,7 +311,7 @@ export default function PlatformAiPage() {
       || Number(g.maxOwnerRequestsPerHour) < 0
       || Number(g.maxVetRequestsPerHour) < 0
     ) {
-      setError('Лимиты guardrails не могут быть отрицательными.');
+      setError(t('platform.aiPage.limitsNegative'));
       setSaving(false);
       return;
     }
@@ -222,9 +359,9 @@ export default function PlatformAiPage() {
       setUsageSummary(payload?.usage_summary || null);
       setRecentUsage(Array.isArray(payload?.recent_usage) ? payload.recent_usage : []);
       setRouteHealth(Array.isArray(payload?.route_health) ? payload.route_health : []);
-      setSaveNote('Настройки сохранены в платформенном контуре.');
+      setSaveNote(t('platform.aiPage.savedNote'));
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось сохранить настройки центра AI');
+      setError(requestError.message || t('platform.aiPage.saveError'));
     } finally {
       setSaving(false);
     }
@@ -232,33 +369,35 @@ export default function PlatformAiPage() {
 
   return (
     <div className="space-y-6">
-      <header className="page-header">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">AI-платформа</p>
-          <h1 className="page-title">Центр AI</h1>
-          <p className="page-subtitle">Провайдеры, модели по умолчанию, резервные цепочки, сценарии по ролям и правила использования AI на уровне платформы.</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button type="button" className="btn-secondary" onClick={loadControlPlane} disabled={loading || saving}>Обновить</button>
-          <button type="button" className="btn-primary" onClick={saveControlPlane} disabled={loading || saving}>
-            {saving ? 'Сохраняем…' : 'Сохранить настройки'}
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow={t('platform.aiPage.headerEyebrow')}
+        title={t('platform.aiPage.headerTitle')}
+        subtitle={t('platform.aiPage.headerSubtitle')}
+        actions={(
+          <>
+            <button type="button" className="btn-secondary" onClick={loadControlPlane} disabled={loading || saving}>
+              {t('platform.aiPage.refresh')}
+            </button>
+            <button type="button" className="btn-primary" onClick={saveControlPlane} disabled={loading || saving}>
+              {saving ? t('platform.aiPage.saving') : t('platform.aiPage.saveSettings')}
+            </button>
+          </>
+        )}
+      />
 
       {error ? <ErrorBanner message={error} onRetry={loadControlPlane} /> : null}
       {saveNote ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{saveNote}</div> : null}
 
       <ShowcasePanel
-        eyebrow="Управление AI"
-        title="Провайдеры, сценарии и резервирование моделей"
-        description="Платформа управляет несколькими AI-провайдерами: кто отвечает за срочность владельца, кто помогает врачу со структурой заметок и кто включается как резерв при высокой нагрузке."
+        eyebrow={t('platform.aiPage.showcaseEyebrow')}
+        title={t('platform.aiPage.showcaseTitle')}
+        description={t('platform.aiPage.showcaseDescription')}
         imageSrc="/assets/img/vet-side.svg"
-        imageAlt="Центр AI"
+        imageAlt={t('platform.aiPage.showcaseImageAlt')}
         badges={[
-          `${providers.length} провайдера`,
-          `${activeCount} активных`,
-          `${routing.length} маршрутов`,
+          t('platform.aiPage.badgeProviders', { count: providers.length }),
+          t('platform.aiPage.badgeActive', { count: activeCount }),
+          t('platform.aiPage.badgeRoutes', { count: routing.length }),
         ]}
       />
 
@@ -272,27 +411,29 @@ export default function PlatformAiPage() {
         <>
 
       <section className="kpi-grid">
-        <StatsCard label="Провайдеры" value={String(providers.length)} />
-        <StatsCard label="Активные" value={String(activeCount)} />
-        <StatsCard label="Резерв" value={String(standbyCount)} />
-        <StatsCard label="Переопределения" value={String(overrides.length)} />
-        <StatsCard label="Месячный бюджет" value={`${guardrails.monthlyBudget} USD`} />
-        <StatsCard label="Клиники в контуре" value={String(clinics.length)} />
-        <StatsCard label="Промптов" value={String(prompts.length)} />
-        <StatsCard label="Запросов за 30 дней" value={String(usageSummary?.requests || 0)} />
+        <StatsCard label={t('platform.aiPage.statsProviders')} value={String(providers.length)} />
+        <StatsCard label={t('platform.aiPage.statsActive')} value={String(activeCount)} />
+        <StatsCard label={t('platform.aiPage.statsStandby')} value={String(standbyCount)} />
+        <StatsCard label={t('platform.aiPage.statsOverrides')} value={String(overrides.length)} />
+        <StatsCard label={t('platform.aiPage.statsMonthlyBudget')} value={`${guardrails.monthlyBudget} USD`} />
+        <StatsCard label={t('platform.aiPage.statsClinics')} value={String(clinics.length)} />
+        <StatsCard label={t('platform.aiPage.statsPrompts')} value={String(prompts.length)} />
+        <StatsCard label={t('platform.aiPage.statsRequests30d')} value={String(usageSummary?.requests || 0)} />
       </section>
 
       <section className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
-        <Card title="Последние AI-запросы" subtitle="Живой feed по маршрутам, блокировкам, fallback и времени ответа">
-          {recentUsage.length ? (
+        <Card title={t('platform.aiPage.cardRecentTitle')} subtitle={t('platform.aiPage.cardRecentSubtitle')}>
+          {localizedRecentUsage.length ? (
             <div className="space-y-3">
-              {recentUsage.map((row) => (
+              {localizedRecentUsage.map((row) => (
                 <div key={row.id} className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-base font-bold text-lapka-900">{row.scenario}</p>
                       <p className="text-sm text-lapka-600">
-                        {row.clinic_name} · {row.role_scope} · {row.provider_slug || 'provider'} / {row.model_key || 'model'}
+                        {row.clinic_name} · {row.role_scope} ·{' '}
+                        {row.provider_slug || t('platform.aiPage.placeholderProvider')} /{' '}
+                        {row.model_key || t('platform.aiPage.placeholderModel')}
                       </p>
                     </div>
                     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
@@ -307,16 +448,18 @@ export default function PlatformAiPage() {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-lapka-700">
                     <span className="rounded-full border border-lapka-200 bg-lapka-50 px-2.5 py-1">
-                      {row.latency_ms ? `${row.latency_ms} мс` : 'без измерения'}
+                      {row.latency_ms ? t('platform.aiPage.latencyMs', { ms: row.latency_ms }) : t('platform.aiPage.latencyNone')}
                     </span>
                     <span className="rounded-full border border-lapka-200 bg-lapka-50 px-2.5 py-1">
                       {row.estimated_cost} USD
                     </span>
                     {row.fallback_used ? (
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">Сработал резерв</span>
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
+                        {t('platform.aiPage.fallbackUsedBadge')}
+                      </span>
                     ) : null}
                     <span className="rounded-full border border-lapka-200 bg-lapka-50 px-2.5 py-1">
-                      {row.created_at ? new Date(row.created_at).toLocaleString('ru-RU') : 'время неизвестно'}
+                      {row.created_at ? new Date(row.created_at).toLocaleString(dateLocale) : t('platform.aiPage.timeUnknown')}
                     </span>
                   </div>
                 </div>
@@ -324,37 +467,39 @@ export default function PlatformAiPage() {
             </div>
           ) : (
             <div className="rounded-[22px] border border-dashed border-lapka-200 bg-lapka-50 px-4 py-5 text-sm text-lapka-600">
-              Лента AI-запросов заполнится после первых обращений из triage, документов, протоколов и лабораторных сценариев.
+              {t('platform.aiPage.recentEmpty')}
             </div>
           )}
         </Card>
 
-        <Card title="Здоровье сценариев" subtitle="Нагрузка, средняя задержка и проблемные маршруты за 14 дней">
-          {routeHealth.length ? (
+        <Card title={t('platform.aiPage.cardHealthTitle')} subtitle={t('platform.aiPage.cardHealthSubtitle')}>
+          {localizedRouteHealth.length ? (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-lapka-200 text-left text-lapka-500">
-                    <th className="px-3 py-3 font-semibold">Сценарий</th>
-                    <th className="px-3 py-3 font-semibold">Роль</th>
-                    <th className="px-3 py-3 font-semibold">Основной</th>
-                    <th className="px-3 py-3 font-semibold">Запросы</th>
-                    <th className="px-3 py-3 font-semibold">Ср. задержка</th>
-                    <th className="px-3 py-3 font-semibold">Сбои</th>
-                    <th className="px-3 py-3 font-semibold">Последний вызов</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thScenario')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thRole')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thPrimary')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thRequests')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thAvgLatency')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thIssues')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thLastCall')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {routeHealth.map((row) => (
+                  {localizedRouteHealth.map((row) => (
                     <tr key={row.route_slug} className="border-b border-lapka-100 last:border-b-0">
                       <td className="px-3 py-3 font-semibold text-lapka-900">{row.scenario}</td>
-                      <td className="px-3 py-3 text-lapka-700">{row.role_scope || 'Все роли'}</td>
-                      <td className="px-3 py-3 text-lapka-800">{row.provider_slug || '—'}</td>
+                      <td className="px-3 py-3 text-lapka-700">{row.role_scope || t('platform.aiPage.allRoles')}</td>
+                      <td className="px-3 py-3 text-lapka-800">{row.provider_slug || t('platform.aiPage.dash')}</td>
                       <td className="px-3 py-3 text-lapka-800">{row.requests}</td>
-                      <td className="px-3 py-3 text-lapka-800">{row.avg_latency_ms ? `${row.avg_latency_ms} мс` : '—'}</td>
+                      <td className="px-3 py-3 text-lapka-800">
+                        {row.avg_latency_ms ? t('platform.aiPage.latencyMs', { ms: row.avg_latency_ms }) : t('platform.aiPage.dash')}
+                      </td>
                       <td className="px-3 py-3 text-lapka-800">{row.issue_count}</td>
                       <td className="px-3 py-3 text-lapka-700">
-                        {row.last_seen ? new Date(row.last_seen).toLocaleString('ru-RU') : 'ещё не запускался'}
+                        {row.last_seen ? new Date(row.last_seen).toLocaleString(dateLocale) : t('platform.aiPage.neverRun')}
                       </td>
                     </tr>
                   ))}
@@ -363,32 +508,32 @@ export default function PlatformAiPage() {
             </div>
           ) : (
             <div className="rounded-[22px] border border-dashed border-lapka-200 bg-lapka-50 px-4 py-5 text-sm text-lapka-600">
-              Срез по сценариям появится после первых живых вызовов и покажет, где есть задержки, ошибки и перегрузка.
+              {t('platform.aiPage.healthEmpty')}
             </div>
           )}
         </Card>
       </section>
 
       <section className="grid gap-5 2xl:grid-cols-[1.08fr_0.92fr]">
-        <Card title="Нагрузка по клиникам" subtitle="Запросы, стоимость, ошибки и локальные переопределения за 30 дней">
+        <Card title={t('platform.aiPage.cardClinicLoadTitle')} subtitle={t('platform.aiPage.cardClinicLoadSubtitle')}>
           {clinicUsage.length ? (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-lapka-200 text-left text-lapka-500">
-                    <th className="px-3 py-3 font-semibold">Клиника</th>
-                    <th className="px-3 py-3 font-semibold">Город</th>
-                    <th className="px-3 py-3 font-semibold">Запросы</th>
-                    <th className="px-3 py-3 font-semibold">Стоимость</th>
-                    <th className="px-3 py-3 font-semibold">Ошибки</th>
-                    <th className="px-3 py-3 font-semibold">Overrides</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thClinic')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thCity')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thRequests')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thCost')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thErrors')}</th>
+                    <th className="px-3 py-3 font-semibold">{t('platform.aiPage.thOverridesCol')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {clinicUsage.map((row) => (
                     <tr key={row.clinic_id} className="border-b border-lapka-100 last:border-b-0">
                       <td className="px-3 py-3 font-semibold text-lapka-900">{row.clinic_name}</td>
-                      <td className="px-3 py-3 text-lapka-700">{row.city || '—'}</td>
+                      <td className="px-3 py-3 text-lapka-700">{row.city || t('platform.aiPage.dash')}</td>
                       <td className="px-3 py-3 text-lapka-800">{row.requests}</td>
                       <td className="px-3 py-3 text-lapka-800">{row.estimated_cost} USD</td>
                       <td className="px-3 py-3 text-lapka-800">{row.errors}</td>
@@ -400,65 +545,65 @@ export default function PlatformAiPage() {
             </div>
           ) : (
             <div className="rounded-[22px] border border-dashed border-lapka-200 bg-lapka-50 px-4 py-5 text-sm text-lapka-600">
-              По клиникам ещё нет накопленной нагрузки. Данные появятся после первых AI-запросов в маршрутах владельца и врача.
+              {t('platform.aiPage.clinicEmpty')}
             </div>
           )}
         </Card>
 
-        <Card title="Матрица переопределений" subtitle="Что именно переопределяется на уровне платформы, клиники и роли">
-          {overrideSummary.length ? (
+        <Card title={t('platform.aiPage.cardMatrixTitle')} subtitle={t('platform.aiPage.cardMatrixSubtitle')}>
+          {localizedOverrideSummary.length ? (
             <div className="space-y-3">
-              {overrideSummary.map((row) => (
+              {localizedOverrideSummary.map((row) => (
                 <div key={row.id} className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-base font-bold text-lapka-900">{row.target}</p>
-                      <p className="text-sm text-lapka-600">{row.level} · {row.route_slug || 'весь контур'} · {row.mode_label}</p>
+                      <p className="text-sm text-lapka-600">
+                        {row.level} · {row.route_slug || t('platform.aiPage.routeAllScopes')} · {row.mode_label}
+                      </p>
                     </div>
                     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${row.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                      {row.enabled ? 'Активно' : 'Отключено'}
+                      {row.enabled ? t('platform.aiPage.statusActive') : t('platform.aiPage.statusInactive')}
                     </span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-lapka-700">
-                    <span className="rounded-full border border-lapka-200 bg-lapka-50 px-2.5 py-1">Провайдер: {row.provider_slug || '—'}</span>
-                    <span className="rounded-full border border-lapka-200 bg-lapka-50 px-2.5 py-1">Модель: {row.model_key || 'по умолчанию'}</span>
+                    <span className="rounded-full border border-lapka-200 bg-lapka-50 px-2.5 py-1">
+                      {t('platform.aiPage.chipProvider', { slug: row.provider_slug || t('platform.aiPage.dash') })}
+                    </span>
+                    <span className="rounded-full border border-lapka-200 bg-lapka-50 px-2.5 py-1">
+                      {t('platform.aiPage.chipModel', {
+                        model: row.model_key || t('platform.aiPage.chipModelDefault'),
+                      })}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="rounded-[22px] border border-dashed border-lapka-200 bg-lapka-50 px-4 py-5 text-sm text-lapka-600">
-              Переопределения ещё не заданы. Здесь появятся правила для ролей, клиник и частных сценариев.
+              {t('platform.aiPage.matrixEmpty')}
             </div>
           )}
         </Card>
       </section>
 
       <section className="grid gap-5 2xl:grid-cols-[1.08fr_0.92fr]">
-        <Card title="Как распределяется нагрузка" subtitle="Сценарии и правила переключения между моделями">
+        <Card title={t('platform.aiPage.loadSplitTitle')} subtitle={t('platform.aiPage.loadSplitSubtitle')}>
           <div className="grid gap-3">
-            {[
-              ['Срочность владельца', 'Только безопасные сценарии, без лечения и дозировок.'],
-              ['Контур врача', 'Структура протокола, заметки визита, контроль полноты.'],
-              ['Документы и знания', 'Объяснение лабораторных и визуализация контекста без назначения терапии.'],
-            ].map(([title, text]) => (
-              <div key={title} className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
-                <p className="text-base font-bold text-lapka-900">{title}</p>
-                <p className="mt-1 text-sm leading-7 text-lapka-700">{text}</p>
+            {LOAD_SPLIT_BLOCKS.map(([titleKey, textKey]) => (
+              <div key={titleKey} className="rounded-[22px] border border-lapka-200 bg-white px-4 py-4">
+                <p className="text-base font-bold text-lapka-900">{t(`platform.aiPage.${titleKey}`)}</p>
+                <p className="mt-1 text-sm leading-7 text-lapka-700">{t(`platform.aiPage.${textKey}`)}</p>
               </div>
             ))}
           </div>
         </Card>
 
-        <Card title="Политика платформы" subtitle="Что централизованно контролирует администратор платформы">
+        <Card title={t('platform.aiPage.policyTitle')} subtitle={t('platform.aiPage.policySubtitle')}>
           <div className="grid gap-3">
-            {[
-              'Разграничение ролей и доступ к сценариям AI по клинике и филиалу.',
-              'Резервные модели на случай деградации основного провайдера.',
-              'Общий словарь политик безопасности, лимитов и шаблонов промптов.',
-            ].map((item) => (
-              <div key={item} className="rounded-[22px] border border-lapka-200 bg-lapka-50 px-4 py-4 text-sm leading-7 text-lapka-700">
-                {item}
+            {['policyB1', 'policyB2', 'policyB3'].map((key) => (
+              <div key={key} className="rounded-[22px] border border-lapka-200 bg-lapka-50 px-4 py-4 text-sm leading-7 text-lapka-700">
+                {t(`platform.aiPage.${key}`)}
               </div>
             ))}
           </div>
@@ -466,29 +611,29 @@ export default function PlatformAiPage() {
       </section>
 
       <section className="grid gap-5 2xl:grid-cols-[1.14fr_0.86fr]">
-        <Card title="Маршрутизация сценариев" subtitle="Какой провайдер отвечает за каждый AI-сценарий по умолчанию">
+        <Card title={t('platform.aiPage.routingTitle')} subtitle={t('platform.aiPage.routingSubtitle')}>
           <div className="space-y-4">
             {routing.map((rule) => (
               <div key={rule.id} className="rounded-[24px] border border-lapka-200 bg-white p-4">
                 <div className="grid gap-3 md:grid-cols-4">
                   <label className="block">
-                    <span className="label">Сценарий</span>
+                    <span className="label">{t('platform.aiPage.labelScenario')}</span>
                     <input className="input" value={rule.scenario} readOnly />
                   </label>
                   <label className="block">
-                    <span className="label">Основной провайдер</span>
+                    <span className="label">{t('platform.aiPage.labelPrimaryProvider')}</span>
                     <select className="input" value={rule.primary} onChange={(event) => patchRouting(rule.id, { primary: event.target.value })}>
                       {providerOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                     </select>
                   </label>
                   <label className="block">
-                    <span className="label">Резерв</span>
+                    <span className="label">{t('platform.aiPage.labelFallback')}</span>
                     <select className="input" value={rule.fallback} onChange={(event) => patchRouting(rule.id, { fallback: event.target.value })}>
                       {providerOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                     </select>
                   </label>
                   <label className="block">
-                    <span className="label">Политика сценария</span>
+                    <span className="label">{t('platform.aiPage.labelScenarioPolicy')}</span>
                     <input className="input" value={rule.policy} onChange={(event) => patchRouting(rule.id, { policy: event.target.value })} />
                   </label>
                 </div>
@@ -497,45 +642,45 @@ export default function PlatformAiPage() {
           </div>
         </Card>
 
-        <Card title="Лимиты и защитные правила" subtitle="Платформенные ограничения для AI-сценариев">
+        <Card title={t('platform.aiPage.guardrailsTitle')} subtitle={t('platform.aiPage.guardrailsSubtitle')}>
           <div className="space-y-3">
             <label className="block">
-              <span className="label">Месячный бюджет</span>
+              <span className="label">{t('platform.aiPage.labelMonthlyBudget')}</span>
               <input className="input" type="number" value={guardrails.monthlyBudget} onChange={(event) => setGuardrails((current) => ({ ...current, monthlyBudget: Number(event.target.value) || 0 }))} />
             </label>
             <label className="block">
-              <span className="label">Жёсткий лимит</span>
+              <span className="label">{t('platform.aiPage.labelHardLimit')}</span>
               <input className="input" type="number" value={guardrails.hardLimit} onChange={(event) => setGuardrails((current) => ({ ...current, hardLimit: Number(event.target.value) || 0 }))} />
             </label>
             <label className="block">
-              <span className="label">Запросов владельца в час</span>
+              <span className="label">{t('platform.aiPage.labelOwnerRph')}</span>
               <input className="input" type="number" value={guardrails.maxOwnerRequestsPerHour} onChange={(event) => setGuardrails((current) => ({ ...current, maxOwnerRequestsPerHour: Number(event.target.value) || 0 }))} />
             </label>
             <label className="block">
-              <span className="label">Запросов врача в час</span>
+              <span className="label">{t('platform.aiPage.labelVetRph')}</span>
               <input className="input" type="number" value={guardrails.maxVetRequestsPerHour} onChange={(event) => setGuardrails((current) => ({ ...current, maxVetRequestsPerHour: Number(event.target.value) || 0 }))} />
             </label>
             <div className="grid gap-2">
               {[
-                ['piiRedaction', 'Маскирование персональных и чувствительных данных'],
-                ['promptAudit', 'Аудит промптов и ответов'],
-              ].map(([key, label]) => (
+                ['piiRedaction', 'guardPiiMask'],
+                ['promptAudit', 'guardPromptAudit'],
+              ].map(([key, labelKey]) => (
                 <label key={key} className="flex items-center gap-3 rounded-[18px] border border-lapka-200 bg-lapka-50 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={Boolean(guardrails[key])}
                     onChange={(event) => setGuardrails((current) => ({ ...current, [key]: event.target.checked }))}
                   />
-                  <span className="text-sm font-semibold text-lapka-800">{label}</span>
+                  <span className="text-sm font-semibold text-lapka-800">{t(`platform.aiPage.${labelKey}`)}</span>
                 </label>
               ))}
             </div>
             <label className="block">
-              <span className="label">Режим резервирования</span>
+              <span className="label">{t('platform.aiPage.labelFallbackMode')}</span>
               <select className="input" value={guardrails.fallbackMode} onChange={(event) => setGuardrails((current) => ({ ...current, fallbackMode: event.target.value }))}>
-                <option value="strict">Строгое резервирование</option>
-                <option value="graceful">Плавное снижение режима</option>
-                <option value="clinic-local">Сначала локальный контур клиники</option>
+                <option value="strict">{t('platform.aiPage.fbStrict')}</option>
+                <option value="graceful">{t('platform.aiPage.fbGraceful')}</option>
+                <option value="clinic-local">{t('platform.aiPage.fbClinicLocal')}</option>
               </select>
             </label>
           </div>
@@ -543,25 +688,25 @@ export default function PlatformAiPage() {
       </section>
 
       <section className="grid gap-5 2xl:grid-cols-[1.1fr_0.9fr]">
-        <Card title="Переопределения" subtitle="Отдельные правила для клиник, филиалов и ролей">
+        <Card title={t('platform.aiPage.overridesManageTitle')} subtitle={t('platform.aiPage.overridesManageSubtitle')}>
           <div className="space-y-4">
             {overrides.map((override) => (
               <div key={override.id} className="rounded-[24px] border border-lapka-200 bg-white p-4">
                 <div className="grid gap-3 md:grid-cols-4">
                   <label className="block">
-                    <span className="label">Уровень</span>
+                    <span className="label">{t('platform.aiPage.labelLevel')}</span>
                     <input className="input" value={override.level} onChange={(event) => patchOverride(override.id, { level: event.target.value })} />
                   </label>
                   <label className="block">
-                    <span className="label">Цель</span>
+                    <span className="label">{t('platform.aiPage.labelTarget')}</span>
                     <input className="input" value={override.target} onChange={(event) => patchOverride(override.id, { target: event.target.value })} />
                   </label>
                   <label className="block">
-                    <span className="label">Режим</span>
+                    <span className="label">{t('platform.aiPage.labelMode')}</span>
                     <input className="input" value={override.mode} onChange={(event) => patchOverride(override.id, { mode: event.target.value })} />
                   </label>
                   <label className="block">
-                    <span className="label">Провайдер</span>
+                    <span className="label">{t('platform.aiPage.labelProvider')}</span>
                     <select className="input" value={override.provider} onChange={(event) => patchOverride(override.id, { provider: event.target.value })}>
                       {providerOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                     </select>
@@ -572,15 +717,10 @@ export default function PlatformAiPage() {
           </div>
         </Card>
 
-        <Card title="Наблюдаемость AI" subtitle="Что администратор платформы держит под контролем">
+        <Card title={t('platform.aiPage.obsTitle')} subtitle={t('platform.aiPage.obsSubtitle')}>
           <div className="grid gap-3">
-            {[
-              `Бюджет ${guardrails.monthlyBudget} USD / жёсткий лимит ${guardrails.hardLimit} USD.`,
-              `Поток владельцев: до ${guardrails.maxOwnerRequestsPerHour} запросов в час. Поток врачей: до ${guardrails.maxVetRequestsPerHour}.`,
-              `Режим резервирования: ${guardrails.fallbackMode === 'strict' ? 'строгое резервирование' : guardrails.fallbackMode === 'graceful' ? 'плавное снижение режима' : 'сначала локальный контур клиники'}. Редактирование PII: ${guardrails.piiRedaction ? 'включено' : 'выключено'}.`,
-              `Аудит промптов: ${guardrails.promptAudit ? 'включён' : 'выключен'}. Переопределений: ${overrides.length}.`,
-            ].map((item) => (
-              <div key={item} className="rounded-[22px] border border-lapka-200 bg-lapka-50 px-4 py-4 text-sm leading-7 text-lapka-700">
+            {obsLines.map((item, idx) => (
+              <div key={idx} className="rounded-[22px] border border-lapka-200 bg-lapka-50 px-4 py-4 text-sm leading-7 text-lapka-700">
                 {item}
               </div>
             ))}
@@ -590,25 +730,29 @@ export default function PlatformAiPage() {
 
       <section className="grid gap-5 2xl:grid-cols-2">
         {providers.map((provider) => (
-          <Card key={provider.id} title={provider.name} subtitle={`Сценарии: ${provider.routing}`}>
+          <Card
+            key={provider.id}
+            title={provider.name}
+            subtitle={t('platform.aiPage.providerScenarios', { routing: provider.routing })}
+          >
             <div className="space-y-3">
               <label className="block">
-                <span className="label">Статус</span>
+                <span className="label">{t('platform.aiPage.labelStatus')}</span>
                 <select className="input" value={provider.status} onChange={(event) => patchProvider(provider.id, { status: event.target.value })}>
-                  <option value="active">Активен</option>
-                  <option value="standby">Резерв</option>
-                  <option value="pilot">Пилот</option>
-                  <option value="disabled">Отключён</option>
+                  <option value="active">{t('platform.aiPage.providerStatusActive')}</option>
+                  <option value="standby">{t('platform.aiPage.providerStatusStandby')}</option>
+                  <option value="pilot">{t('platform.aiPage.providerStatusPilot')}</option>
+                  <option value="disabled">{t('platform.aiPage.providerStatusDisabled')}</option>
                 </select>
               </label>
               <label className="block">
-                <span className="label">Модель по умолчанию</span>
+                <span className="label">{t('platform.aiPage.labelDefaultModel')}</span>
                 <select className="input" value={provider.models[0]} onChange={(event) => patchProvider(provider.id, { models: [event.target.value, ...provider.models.filter((row) => row !== event.target.value)] })}>
                   {provider.models.map((model) => <option key={model} value={model}>{model}</option>)}
                 </select>
               </label>
               <label className="block">
-                <span className="label">Резервная модель</span>
+                <span className="label">{t('platform.aiPage.labelFallbackModel')}</span>
                 <select className="input" value={provider.fallback} onChange={(event) => patchProvider(provider.id, { fallback: event.target.value })}>
                   {provider.models.map((model) => <option key={model} value={model}>{model}</option>)}
                 </select>

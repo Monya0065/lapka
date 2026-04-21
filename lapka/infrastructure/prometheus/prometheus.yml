@@ -1,0 +1,53 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'lapka-production'
+    environment: 'production'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'lapka-api'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__meta_kubernetes_pod_ip]
+        action: replace
+        target_label: __address__
+        regex: (.+):(.+)
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+
+  - job_name: 'lapka-postgres'
+    static_configs:
+      - targets: ['lapka-pgbouncer:6432']
+
+  - job_name: 'lapka-redis'
+    static_configs:
+      - targets: ['lapka-redis:6379']
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['lapka-nginx:80']

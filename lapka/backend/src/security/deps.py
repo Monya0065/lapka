@@ -9,8 +9,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import get_settings
 from src.db.session import get_db_session
-from src.models import ConsentGrant, ConsentScope, Membership, MembershipStatus, PetOwnerLink, RoleEnum, User
+from src.models import ConsentGrant, ConsentScope, LegalAcceptance, Membership, MembershipStatus, PetOwnerLink, RoleEnum, User
 from src.security.jwt import TokenError, decode_token
 
 bearer_scheme = HTTPBearer(auto_error=True)
@@ -195,6 +196,36 @@ async def enforce_pet_scope(
     await require_active_consent(db, pet_id=pet_id, clinic_id=clinic_id, required_scope=required_scope)
 
 
-async def require_current_legal_ack(_current_user: User = Depends(get_current_user)) -> None:
-    """Runs after authentication; extend to enforce LegalAcceptance when product policy requires it."""
+async def require_current_legal_ack(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> None:
+    """When enabled, require latest legal acceptance versions for authenticated requests."""
+    settings = get_settings()
+    if not settings.legal_enforcement_enabled:
+        return None
+
+    required_versions = {
+        "privacy_policy": settings.legal_privacy_policy_version,
+        "terms_of_service": settings.legal_terms_version,
+        "consent_processing": settings.legal_consent_version,
+    }
+    for doc_type, version in required_versions.items():
+        existing = await db.scalar(
+            select(LegalAcceptance).where(
+                LegalAcceptance.user_id == current_user.id,
+                LegalAcceptance.document_type == doc_type,
+                LegalAcceptance.version == version,
+            )
+        )
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_428_PRECONDITION_REQUIRED,
+                detail={
+                    "code": "LEGAL_ACK_REQUIRED",
+                    "message": "Current legal acceptance is required",
+                    "document_type": doc_type,
+                    "required_version": version,
+                },
+            )
     return None

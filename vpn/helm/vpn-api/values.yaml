@@ -1,0 +1,137 @@
+replicaCount: 3
+
+image:
+  repository: ghcr.io/lapka/vpn-api
+  pullPolicy: IfNotPresent
+  tag: "v1.0.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  port: 8000
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+  hosts:
+    - host: api.lapka.ru
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: vpn-api-tls
+      hosts:
+        - api.lapka.ru
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 50
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app: vpn-api
+          topologyKey: kubernetes.io/hostname
+
+persistence:
+  enabled: false
+
+postgresql:
+  enabled: false
+  auth:
+    username: vpn
+    database: vpn
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+
+redis:
+  enabled: false
+  auth:
+    enabled: true
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 3
+
+terminationGracePeriodSeconds: 30
+
+config:
+  database-url: ""
+  redis-url: ""
+  jwt-secret: ""
+  yookassa-shop-id: ""
+  yookassa-secret-key: ""
+  telegram-bot-token: ""

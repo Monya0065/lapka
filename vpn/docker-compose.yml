@@ -1,0 +1,119 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vpn
+      POSTGRES_PASSWORD: vpn
+      POSTGRES_DB: vpn
+      POSTGRES_MAX_CONNECTIONS: 500
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/sql:/docker-entrypoint-initdb.d
+    command: >
+      postgres
+      -c max_connections=500
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=500
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis_data:/data
+
+  # Connection pooling for PostgreSQL
+  pgbouncer:
+    image: pgbouncer/pgbouncer:latest
+    environment:
+      DATABASE_URL: postgresql://vpn:vpn@postgres:5432/vpn
+      POOL_MODE: transaction
+      MIN_CLIENT_CONN: 10
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 50
+      MIN_POOL_SIZE: 20
+      MAX_DB_CONNECTIONS: 100
+    ports:
+      - "6432:5432"
+    depends_on:
+      - postgres
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://vpn:vpn@postgres:5432/vpn
+      - REDIS_URL=redis://redis:6379
+      - API_URL=http://localhost:8000
+      - SECRET_KEY=${SECRET_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - YOOKASSA_SHOP_ID=${YOOKASSA_SHOP_ID}
+      - YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY}
+    depends_on:
+      - postgres
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+
+  bot:
+    build:
+      context: .
+      dockerfile: docker/bot.Dockerfile
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+    volumes:
+      - ./bot:/app
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

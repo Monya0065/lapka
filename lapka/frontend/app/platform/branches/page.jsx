@@ -10,10 +10,12 @@ import ShowcasePanel from '@/components/ui/ShowcasePanel';
 import Skeleton from '@/components/ui/Skeleton';
 import StatsCard from '@/components/ui/StatsCard';
 import Table from '@/components/ui/Table';
+import { useTranslation } from 'react-i18next';
 import { apiRequest } from '@/lib/api';
 import { resolveClinicGallery } from '@/lib/pets';
 
 export default function PlatformBranchesPage() {
+  const { t } = useTranslation('common');
   const searchParams = useSearchParams();
   const selectedClinicId = searchParams?.get('clinic_id') || '';
   const [rows, setRows] = useState([]);
@@ -30,7 +32,7 @@ export default function PlatformBranchesPage() {
         const payload = await apiRequest(`/api/v1/clinics/platform-branches${query}`);
         if (!cancelled) setRows(Array.isArray(payload) ? payload : []);
       } catch (requestError) {
-        if (!cancelled) setError(requestError.message || 'Не удалось загрузить филиалы сети');
+        if (!cancelled) setError(requestError.message || t('platform.branchesPage.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -39,7 +41,7 @@ export default function PlatformBranchesPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedClinicId]);
+  }, [selectedClinicId, t]);
 
   const cities = useMemo(() => new Set(rows.map((row) => row.city).filter(Boolean)).size, [rows]);
   const primaryCount = useMemo(() => rows.filter((row) => row.is_primary).length, [rows]);
@@ -53,13 +55,13 @@ export default function PlatformBranchesPage() {
     <div className="space-y-6">
       <header className="page-header">
         <div>
-          <p className="page-eyebrow">Платформенный контур</p>
-          <h1 className="page-title">Филиалы и ресурсы сети</h1>
-          <p className="page-subtitle">Операционный реестр филиалов, загрузки, телемедицины, комнат и узких мест на уровне сети клиник.</p>
+          <p className="page-eyebrow">{t('platform.branchesPage.headerEyebrow')}</p>
+          <h1 className="page-title">{t('platform.branchesPage.headerTitle')}</h1>
+          <p className="page-subtitle">{t('platform.branchesPage.headerSubtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href="/platform/clinics" className="btn-secondary">Клиники</Link>
-          <Link href="/platform/dashboard" className="btn-secondary">Платформенный обзор</Link>
+          <Link href="/platform/clinics" className="btn-secondary">{t('platform.branchesPage.linkClinics')}</Link>
+          <Link href="/platform/dashboard" className="btn-secondary">{t('platform.branchesPage.linkOverview')}</Link>
         </div>
       </header>
 
@@ -73,22 +75,27 @@ export default function PlatformBranchesPage() {
       ) : (
         <>
           <ShowcasePanel
-            eyebrow="Операционный реестр"
-            title="Филиалы сети как отдельный уровень управления"
+            eyebrow={t('platform.branchesPage.showcaseEyebrow')}
+            title={t('platform.branchesPage.showcaseTitle')}
             description={selectedClinicId
-              ? 'Реестр отфильтрован по выбранной клинике: видно нагрузку филиалов, телемедицину, стационар и сигналы перегрузки.'
-              : 'Здесь видно, какие филиалы тянут поток, где формируются задержки, где выше телемедицина и как распределяется операционная нагрузка по сети.'}
+              ? t('platform.branchesPage.showcaseDescriptionFiltered')
+              : t('platform.branchesPage.showcaseDescriptionDefault')}
             imageSrc="/assets/img/clinic-ops.svg"
-            imageAlt="Реестр филиалов"
-            badges={[`${rows.length} филиалов`, `${cities} городов`, `${emergencyCount} экстренных`, `${flowPressure} сигналов перегрузки`]}
+            imageAlt={t('platform.branchesPage.showcaseImageAlt')}
+            badges={[
+              t('platform.branchesPage.badgeBranches', { count: rows.length }),
+              t('platform.branchesPage.badgeCities', { count: cities }),
+              t('platform.branchesPage.badgeEmergency', { count: emergencyCount }),
+              t('platform.branchesPage.badgeFlowSignals', { count: flowPressure }),
+            ]}
             compact
           />
 
           <section className="kpi-grid">
-            <StatsCard label="Филиалы" value={String(rows.length)} />
-            <StatsCard label="Главные филиалы" value={String(primaryCount)} />
-            <StatsCard label="Городов" value={String(cities)} />
-            <StatsCard label="Перегрузки потока" value={String(flowPressure)} />
+            <StatsCard label={t('platform.branchesPage.kpiBranches')} value={String(rows.length)} />
+            <StatsCard label={t('platform.branchesPage.kpiPrimary')} value={String(primaryCount)} />
+            <StatsCard label={t('platform.branchesPage.kpiCities')} value={String(cities)} />
+            <StatsCard label={t('platform.branchesPage.kpiFlowPressure')} value={String(flowPressure)} />
           </section>
 
           <section className="grid gap-4 xl:grid-cols-2">
@@ -103,8 +110,8 @@ export default function PlatformBranchesPage() {
                   key={branch.id}
                   className="overflow-hidden p-0"
                   title={branch.clinic_name}
-                  subtitle={`${branch.city || 'Город'} · ${branch.address || 'Адрес уточняется'}`}
-                  action={<span className={branch.emergency_available ? 'badge-red' : 'badge-blue'}>{branch.emergency_available ? 'Экстренный филиал' : 'Плановый филиал'}</span>}
+                  subtitle={`${branch.city || t('platform.branchesPage.cityFallback')} · ${branch.address || t('platform.branchesPage.addressFallback')}`}
+                  action={<span className={branch.emergency_available ? 'badge-red' : 'badge-blue'}>{branch.emergency_available ? t('platform.branchesPage.emergencyBranch') : t('platform.branchesPage.plannedBranch')}</span>}
                 >
                   <div className="space-y-0">
                     <div className="relative h-40 w-full overflow-hidden border-b border-lapka-200">
@@ -117,15 +124,15 @@ export default function PlatformBranchesPage() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-lapka-900/45 via-lapka-900/10 to-transparent" />
                       <div className="absolute bottom-3 left-3 rounded-xl bg-white/92 px-3 py-2 backdrop-blur">
-                        <p className="text-sm font-semibold text-lapka-900">{branch.is_primary ? 'Главный филиал' : 'Филиал'}</p>
-                        <p className="text-xs text-lapka-600">{branch.phone || 'Контакт уточняется'}</p>
+                        <p className="text-sm font-semibold text-lapka-900">{branch.is_primary ? t('platform.branchesPage.mainBranch') : t('platform.branchesPage.branch')}</p>
+                        <p className="text-xs text-lapka-600">{branch.phone || t('platform.branchesPage.contactFallback')}</p>
                       </div>
                     </div>
                     <div className="grid gap-3 p-4">
                       <div className="flex flex-wrap gap-2">
-                        <span className="pill">{branch.hours || 'График уточняется'}</span>
-                        <span className="pill">{branch.stats?.appointments_14d || 0} записей / 14 дней</span>
-                        <span className="pill">{branch.stats?.clinic_vets || 0} врачей</span>
+                        <span className="pill">{branch.hours || t('platform.branchesPage.hoursFallback')}</span>
+                        <span className="pill">{t('platform.branchesPage.appointments14dPill', { count: branch.stats?.appointments_14d || 0 })}</span>
+                        <span className="pill">{t('platform.branchesPage.vetsPill', { count: branch.stats?.clinic_vets || 0 })}</span>
                       </div>
                       {gallery.length > 1 ? (
                         <div className="grid gap-2 sm:grid-cols-3">
@@ -133,7 +140,7 @@ export default function PlatformBranchesPage() {
                             <div key={`${branch.id}-${imageSrc}-${index}`} className="overflow-hidden rounded-2xl border border-lapka-200 bg-lapka-50">
                               <AppImage
                                 src={imageSrc}
-                                alt={`${branch.clinic_name} — фото ${index + 1}`}
+                                alt={t('platform.branchesPage.galleryAlt', { clinic: branch.clinic_name, index: index + 1 })}
                                 width={480}
                                 height={320}
                                 sizes="(max-width: 768px) 100vw, 180px"
@@ -145,28 +152,28 @@ export default function PlatformBranchesPage() {
                       ) : null}
                       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-2xl border border-lapka-200 bg-lapka-50 px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lapka-500">Поток сейчас</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lapka-500">{t('platform.branchesPage.metricFlowNow')}</p>
                           <p className="mt-2 text-2xl font-extrabold text-lapka-900">{branch.stats?.active_flow || 0}</p>
                         </div>
                         <div className="rounded-2xl border border-lapka-200 bg-lapka-50 px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lapka-500">Телемедицина</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lapka-500">{t('platform.branchesPage.metricTelemedicine')}</p>
                           <p className="mt-2 text-2xl font-extrabold text-lapka-900">{branch.stats?.telemedicine_14d || 0}</p>
                         </div>
                         <div className="rounded-2xl border border-lapka-200 bg-lapka-50 px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lapka-500">Готовы к выписке</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lapka-500">{t('platform.branchesPage.metricReadyDischarge')}</p>
                           <p className="mt-2 text-2xl font-extrabold text-lapka-900">{branch.stats?.ready_for_discharge || 0}</p>
                         </div>
                         <div className="rounded-2xl border border-lapka-200 bg-lapka-50 px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lapka-500">Сигналы перегрузки</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lapka-500">{t('platform.branchesPage.metricFlowSignals')}</p>
                           <p className="mt-2 text-2xl font-extrabold text-lapka-900">{branch.stats?.blocked_flow || 0}</p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Link className="btn-primary !px-3 !py-1.5" href={branchDetailHref}>Карточка филиала</Link>
-                        <Link className="btn-secondary !px-3 !py-1.5" href={scopedSchedule}>Календарь филиала</Link>
-                        <Link className="btn-secondary !px-3 !py-1.5" href={scopedFlowboard}>Поток филиала</Link>
-                        <Link className="btn-secondary !px-3 !py-1.5" href={scopedInpatient}>Стационар филиала</Link>
-                        <Link className="btn-secondary !px-3 !py-1.5" href={`/platform/clinics/${branch.clinic_id}`}>Карточка клиники</Link>
+                        <Link className="btn-primary !px-3 !py-1.5" href={branchDetailHref}>{t('platform.branchesPage.actionBranchCard')}</Link>
+                        <Link className="btn-secondary !px-3 !py-1.5" href={scopedSchedule}>{t('platform.branchesPage.actionBranchSchedule')}</Link>
+                        <Link className="btn-secondary !px-3 !py-1.5" href={scopedFlowboard}>{t('platform.branchesPage.actionBranchFlow')}</Link>
+                        <Link className="btn-secondary !px-3 !py-1.5" href={scopedInpatient}>{t('platform.branchesPage.actionBranchInpatient')}</Link>
+                        <Link className="btn-secondary !px-3 !py-1.5" href={`/platform/clinics/${branch.clinic_id}`}>{t('platform.branchesPage.actionClinicCard')}</Link>
                       </div>
                     </div>
                   </div>
@@ -175,21 +182,21 @@ export default function PlatformBranchesPage() {
             })}
           </section>
 
-          <Card title="Реестр филиалов" subtitle="Операционный разрез сети по адресам, потокам и сигналам">
+          <Card title={t('platform.branchesPage.registryTitle')} subtitle={t('platform.branchesPage.registrySubtitle')}>
             <Table
               columns={[
-                { id: 'clinic', label: 'Клиника' },
-                { id: 'city', label: 'Город' },
-                { id: 'branch', label: 'Филиал' },
-                { id: 'appointments', label: 'Записи' },
-                { id: 'flow', label: 'Поток' },
-                { id: 'signals', label: 'Сигналы' },
+                { id: 'clinic', label: t('platform.branchesPage.colClinic') },
+                { id: 'city', label: t('platform.branchesPage.colCity') },
+                { id: 'branch', label: t('platform.branchesPage.colBranch') },
+                { id: 'appointments', label: t('platform.branchesPage.colAppointments') },
+                { id: 'flow', label: t('platform.branchesPage.colFlow') },
+                { id: 'signals', label: t('platform.branchesPage.colSignals') },
               ]}
               rows={rows.map((row) => ({
                 id: row.id,
                 clinic: row.clinic_name,
                 city: row.city || '—',
-                branch: row.is_primary ? 'Главный филиал' : 'Филиал',
+                branch: row.is_primary ? t('platform.branchesPage.mainBranch') : t('platform.branchesPage.branch'),
                 appointments: String(row.stats?.appointments_14d || 0),
                 flow: String(row.stats?.active_flow || 0),
                 signals: String(row.stats?.blocked_flow || 0),
@@ -198,9 +205,9 @@ export default function PlatformBranchesPage() {
                 const branch = rows.find((candidate) => candidate.id === row.id);
                 if (!branch) return [];
                 return [
-                  { label: 'Карточка филиала', href: `/platform/branches/${branch.id}` },
-                  { label: 'Календарь филиала', href: `/clinic/schedule?clinic_id=${branch.clinic_id}&branch_id=${branch.id}` },
-                  { label: 'Карточка клиники', href: `/platform/clinics/${branch.clinic_id}` },
+                  { label: t('platform.branchesPage.actionBranchCard'), href: `/platform/branches/${branch.id}` },
+                  { label: t('platform.branchesPage.actionBranchSchedule'), href: `/clinic/schedule?clinic_id=${branch.clinic_id}&branch_id=${branch.id}` },
+                  { label: t('platform.branchesPage.actionClinicCard'), href: `/platform/clinics/${branch.clinic_id}` },
                 ];
               }}
             />

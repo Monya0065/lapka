@@ -9,6 +9,7 @@ import StatsCard from '@/components/ui/StatsCard';
 import Skeleton from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorBanner from '@/components/ui/ErrorBanner';
+import PageHeader from '@/components/ui/PageHeader';
 import { apiRequest } from '@/lib/api';
 import { useClinicScope } from '@/lib/clinic-scope';
 import { localizeAccessScope } from '@/lib/access';
@@ -167,19 +168,19 @@ export default function ClinicDashboardPage() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1 className="page-title" data-testid="clinic-dashboard-title">
-            CRM и контроль клиники
-          </h1>
-          <p className="page-subtitle">Операционные KPI, команда клиники, пациенты по согласию владельца и контроль аудита в одной панели.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/clinic/schedule" className="btn-primary">Открыть расписание</Link>
-          <Link href="/clinic/flowboard" className="btn-secondary">Поток дня</Link>
-          <Link href="/clinic/checkin" className="btn-secondary">Ресепшн</Link>
-        </div>
-      </header>
+      <PageHeader
+        title="CRM и контроль клиники"
+        subtitle="Операционные KPI, команда клиники, пациенты по согласию владельца и контроль аудита в одной панели."
+        testId="clinic-dashboard-header"
+        titleTestId="clinic-dashboard-title"
+        actions={(
+          <>
+            <Link href="/clinic/schedule" className="btn-primary">Открыть расписание</Link>
+            <Link href="/clinic/flowboard" className="btn-secondary">Поток дня</Link>
+            <Link href="/clinic/checkin" className="btn-secondary">Ресепшн</Link>
+          </>
+        )}
+      />
 
       {error ? <ErrorBanner message={error} onRetry={loadAdminData} /> : null}
 

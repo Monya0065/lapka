@@ -5,13 +5,16 @@ import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/Skeleton';
 import ErrorBanner from '@/components/ui/ErrorBanner';
+import { useTranslation } from 'react-i18next';
 import { apiRequest } from '@/lib/api';
 
-function money(cents) {
-  return `${(Number(cents || 0) / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`;
+function money(cents, locale, currencySymbol) {
+  return `${(Number(cents || 0) / 100).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currencySymbol}`;
 }
 
 export default function PlatformLostPetsAdsPage() {
+  const { t, i18n } = useTranslation('common');
+  const locale = i18n.resolvedLanguage === 'ru' ? 'ru-RU' : 'en-US';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -40,11 +43,11 @@ export default function PlatformLostPetsAdsPage() {
       setSummary(summaryPayload || null);
       setEntries(Array.isArray(entriesPayload) ? entriesPayload : []);
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось загрузить бюджет рекламы потеряшек');
+      setError(requestError.message || t('platform.lostPetsAdsPage.errorLoad'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadData();
@@ -64,11 +67,11 @@ export default function PlatformLostPetsAdsPage() {
           note: allocateForm.note.trim() || null,
         },
       });
-      setSuccess('Аллокация в рекламный пул проведена.');
+      setSuccess(t('platform.lostPetsAdsPage.successAllocate'));
       setAllocateForm((prev) => ({ ...prev, payment_id: '', note: '' }));
       await loadData();
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось выполнить аллокацию');
+      setError(requestError.message || t('platform.lostPetsAdsPage.errorAllocate'));
     } finally {
       setSaving(false);
     }
@@ -88,11 +91,11 @@ export default function PlatformLostPetsAdsPage() {
           note: spendForm.note.trim() || null,
         },
       });
-      setSuccess('Расход из рекламного пула зафиксирован.');
+      setSuccess(t('platform.lostPetsAdsPage.successSpend'));
       setSpendForm({ amount_cents: '', external_ref: '', note: '' });
       await loadData();
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось зафиксировать расход');
+      setError(requestError.message || t('platform.lostPetsAdsPage.errorSpend'));
     } finally {
       setSaving(false);
     }
@@ -103,15 +106,14 @@ export default function PlatformLostPetsAdsPage() {
       <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-amber-500/14 via-surface-muted to-orange-500/12 p-5 shadow-card md:p-8">
         <div className="relative grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:items-start">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">Monetization ops</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-theme md:text-4xl">Бюджет рекламы потеряшек</h1>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">{t('platform.lostPetsAdsPage.eyebrow')}</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-theme md:text-4xl">{t('platform.lostPetsAdsPage.title')}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-theme-muted md:text-base">
-              Доходы от платного продвижения объявлений отдельно учитываются и распределяются в рекламный пул. Контур учитывает маркировку
-              рекламы и юридические требования.
+              {t('platform.lostPetsAdsPage.subtitle')}
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Link href="/platform/dashboard" className="btn-secondary">Назад в обзор платформы</Link>
-              <Link href="/platform/legal" className="btn-secondary">Юридический контур</Link>
+              <Link href="/platform/dashboard" className="btn-secondary">{t('platform.lostPetsAdsPage.linkBack')}</Link>
+              <Link href="/platform/legal" className="btn-secondary">{t('platform.lostPetsAdsPage.linkLegal')}</Link>
             </div>
           </div>
           {loading ? (
@@ -123,12 +125,12 @@ export default function PlatformLostPetsAdsPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
-                { label: 'Выручка продвижения', value: money(summary?.total_promotion_revenue_cents) },
-                { label: 'Аллоцировано в пул', value: money(summary?.allocated_to_ads_pool_cents), tone: 'text-sky-700 dark:text-sky-300' },
-                { label: 'Потрачено из пула', value: money(summary?.spent_from_ads_pool_cents), tone: 'text-rose-700 dark:text-rose-300' },
-                { label: 'Доступный баланс', value: money(summary?.available_ads_pool_cents), tone: 'text-emerald-700 dark:text-emerald-300' },
-                { label: 'Маркировка рекламы', value: summary?.ad_label_required ? 'Обязательна' : '—', tone: 'text-amber-700 dark:text-amber-300' },
-                { label: 'Валюта', value: summary?.currency || 'RUB' },
+                { label: t('platform.lostPetsAdsPage.kpiRevenue'), value: money(summary?.total_promotion_revenue_cents, locale, t('platform.lostPetsAdsPage.currencySymbol')) },
+                { label: t('platform.lostPetsAdsPage.kpiAllocated'), value: money(summary?.allocated_to_ads_pool_cents, locale, t('platform.lostPetsAdsPage.currencySymbol')), tone: 'text-sky-700 dark:text-sky-300' },
+                { label: t('platform.lostPetsAdsPage.kpiSpent'), value: money(summary?.spent_from_ads_pool_cents, locale, t('platform.lostPetsAdsPage.currencySymbol')), tone: 'text-rose-700 dark:text-rose-300' },
+                { label: t('platform.lostPetsAdsPage.kpiAvailable'), value: money(summary?.available_ads_pool_cents, locale, t('platform.lostPetsAdsPage.currencySymbol')), tone: 'text-emerald-700 dark:text-emerald-300' },
+                { label: t('platform.lostPetsAdsPage.kpiAdLabel'), value: summary?.ad_label_required ? t('platform.lostPetsAdsPage.adLabelRequired') : '—', tone: 'text-amber-700 dark:text-amber-300' },
+                { label: t('platform.lostPetsAdsPage.kpiCurrency'), value: summary?.currency || t('platform.lostPetsAdsPage.defaultCurrency') },
               ].map((cell) => (
                 <div key={cell.label} className="rounded-2xl border border-border bg-surface/90 px-3 py-4 shadow-sm">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-theme-muted">{cell.label}</p>
@@ -144,10 +146,10 @@ export default function PlatformLostPetsAdsPage() {
       {success ? <div className="callout-success">{success}</div> : null}
 
       <section className="grid gap-4 xl:grid-cols-2">
-        <Card title="Аллокация в рекламный пул" subtitle="Перенос доли дохода от платных объявлений в budget pool">
+        <Card title={t('platform.lostPetsAdsPage.allocateTitle')} subtitle={t('platform.lostPetsAdsPage.allocateSubtitle')}>
           <form className="space-y-3" onSubmit={submitAllocate}>
             <label className="block">
-              <span className="label">Процент аллокации</span>
+              <span className="label">{t('platform.lostPetsAdsPage.allocatePercentLabel')}</span>
               <input
                 className="input"
                 type="number"
@@ -158,16 +160,16 @@ export default function PlatformLostPetsAdsPage() {
               />
             </label>
             <label className="block">
-              <span className="label">ID платежа (опционально)</span>
+              <span className="label">{t('platform.lostPetsAdsPage.paymentIdLabel')}</span>
               <input
                 className="input"
                 value={allocateForm.payment_id}
                 onChange={(event) => setAllocateForm((prev) => ({ ...prev, payment_id: event.target.value }))}
-                placeholder="Если пусто — аллокация по всем новым платежам"
+                placeholder={t('platform.lostPetsAdsPage.paymentIdPlaceholder')}
               />
             </label>
             <label className="block">
-              <span className="label">Примечание</span>
+              <span className="label">{t('platform.lostPetsAdsPage.noteLabel')}</span>
               <textarea
                 className="input min-h-[84px] resize-y"
                 value={allocateForm.note}
@@ -175,15 +177,15 @@ export default function PlatformLostPetsAdsPage() {
               />
             </label>
             <button className="btn-primary w-full" type="submit" disabled={saving}>
-              {saving ? 'Проводим...' : 'Аллоцировать в ads pool'}
+              {saving ? t('platform.lostPetsAdsPage.allocateSubmitting') : t('platform.lostPetsAdsPage.allocateSubmit')}
             </button>
           </form>
         </Card>
 
-        <Card title="Расход на рекламные кампании" subtitle="Фиксация расходов из ads pool (например, Яндекс.Директ)">
+        <Card title={t('platform.lostPetsAdsPage.spendTitle')} subtitle={t('platform.lostPetsAdsPage.spendSubtitle')}>
           <form className="space-y-3" onSubmit={submitSpend}>
             <label className="block">
-              <span className="label">Сумма, коп.</span>
+              <span className="label">{t('platform.lostPetsAdsPage.amountCentsLabel')}</span>
               <input
                 className="input"
                 type="number"
@@ -194,17 +196,17 @@ export default function PlatformLostPetsAdsPage() {
               />
             </label>
             <label className="block">
-              <span className="label">Внешний референс</span>
+              <span className="label">{t('platform.lostPetsAdsPage.externalRefLabel')}</span>
               <input
                 className="input"
                 value={spendForm.external_ref}
                 onChange={(event) => setSpendForm((prev) => ({ ...prev, external_ref: event.target.value }))}
-                placeholder="direct-campaign-..."
+                placeholder={t('platform.lostPetsAdsPage.externalRefPlaceholder')}
                 required
               />
             </label>
             <label className="block">
-              <span className="label">Примечание</span>
+              <span className="label">{t('platform.lostPetsAdsPage.noteLabel')}</span>
               <textarea
                 className="input min-h-[84px] resize-y"
                 value={spendForm.note}
@@ -212,13 +214,13 @@ export default function PlatformLostPetsAdsPage() {
               />
             </label>
             <button className="btn-primary w-full" type="submit" disabled={saving}>
-              {saving ? 'Фиксируем...' : 'Списать из ads pool'}
+              {saving ? t('platform.lostPetsAdsPage.spendSubmitting') : t('platform.lostPetsAdsPage.spendSubmit')}
             </button>
           </form>
         </Card>
       </section>
 
-      <Card title="Проводки рекламного пула" subtitle="Прозрачный журнал аллокаций и расходов">
+      <Card title={t('platform.lostPetsAdsPage.entriesTitle')} subtitle={t('platform.lostPetsAdsPage.entriesSubtitle')}>
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
@@ -231,17 +233,17 @@ export default function PlatformLostPetsAdsPage() {
               <div key={entry.id} className="rounded-2xl border border-border bg-surface-muted/70 px-3 py-2 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-theme">{entry.entry_type}</span>
-                  <span className="font-black tabular-nums text-theme">{money(entry.amount_cents)}</span>
+                  <span className="font-black tabular-nums text-theme">{money(entry.amount_cents, locale, t('platform.lostPetsAdsPage.currencySymbol'))}</span>
                 </div>
                 <p className="mt-1 text-xs text-theme-muted">
-                  {entry.external_ref || entry.source_payment_id || 'manual'} · {new Date(entry.created_at).toLocaleString('ru-RU')}
+                  {entry.external_ref || entry.source_payment_id || t('platform.lostPetsAdsPage.manualFallback')} · {new Date(entry.created_at).toLocaleString(locale)}
                 </p>
                 {entry.note ? <p className="mt-1 text-xs text-theme">{entry.note}</p> : null}
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-theme-muted">Пока нет проводок в рекламном пуле.</p>
+          <p className="text-sm text-theme-muted">{t('platform.lostPetsAdsPage.entriesEmpty')}</p>
         )}
       </Card>
     </div>

@@ -1,0 +1,14 @@
+{
+  "name": "lapka-vpn",
+  "version": "1.0.0",
+  "description": "Lapka VPN Desktop",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.5.0"
+  }
+}

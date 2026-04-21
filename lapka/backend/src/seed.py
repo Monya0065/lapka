@@ -1929,6 +1929,59 @@ def _seed_lapka_id(index: int) -> str:
     return f"LPK-{index:06d}-{str(_seed_uuid('lapka-id', index)).replace('-', '')[:6].upper()}"
 
 
+async def _seed_vpn_mvp_demo(session, *, owner_user_id: uuid.UUID) -> None:
+    """VPN MVP demo rows (requires Alembic ``040_vpn_mvp``). Idempotent."""
+    await session.execute(
+        text(
+            """
+            INSERT INTO vpn_subscriptions (user_id, status, plan_code, updated_at)
+            VALUES (:uid, 'active', 'vpn_default', NOW())
+            ON CONFLICT (user_id) DO UPDATE SET
+                status = 'active',
+                plan_code = EXCLUDED.plan_code,
+                updated_at = NOW()
+            """
+        ),
+        {"uid": owner_user_id},
+    )
+    await session.execute(
+        text(
+            """
+            INSERT INTO vpn_checkouts (
+                checkout_id, user_id, provider, plan_code, amount_rub, status, created_at
+            )
+            VALUES (
+                'lapka_seed_vpn_checkout_1',
+                :uid,
+                'yookassa',
+                'vpn_default',
+                299,
+                'captured',
+                NOW() - INTERVAL '2 hours'
+            )
+            ON CONFLICT (checkout_id) DO NOTHING
+            """
+        ),
+        {"uid": owner_user_id},
+    )
+    await session.execute(
+        text(
+            """
+            INSERT INTO vpn_webhook_events (provider, event_id, checkout_id, status, amount_rub, created_at)
+            VALUES (
+                'yookassa',
+                'lapka_seed_vpn_evt_1',
+                'lapka_seed_vpn_checkout_1',
+                'captured',
+                299,
+                NOW() - INTERVAL '2 hours'
+            )
+            ON CONFLICT (provider, event_id) DO NOTHING
+            """
+        ),
+    )
+
+
 async def seed() -> None:
     seed_value = 2026
     rng = random.Random(seed_value)
@@ -2019,6 +2072,12 @@ async def seed() -> None:
                   places,
                   vet_profiles,
                   clinics,
+                  vpn_webhook_events,
+                  vpn_device_links,
+                  vpn_profiles,
+                  vpn_telegram_links,
+                  vpn_checkouts,
+                  vpn_subscriptions,
                   users
                 RESTART IDENTITY CASCADE
                 """
@@ -3914,6 +3973,8 @@ async def seed() -> None:
                 target_id=vet.id,
             )
 
+        await _seed_vpn_mvp_demo(session, owner_user_id=owner_main.id)
+
         await session.commit()
 
         sample_full = full_record_pets[0]
@@ -3977,6 +4038,7 @@ async def seed() -> None:
                 "ai_clinic_overrides": ai_control_plane_counts["clinic_overrides"],
                 "ai_role_policies": ai_control_plane_counts["role_policies"],
                 "ai_usage_logs": ai_control_plane_counts["usage_logs"],
+                "vpn_demo_owner_subscription_active": 1,
             },
             "demo_credentials": [
                 {"role": "owner", "email": "owner@lapka.local", "password": "demo12345"},

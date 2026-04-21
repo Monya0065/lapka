@@ -8,10 +8,12 @@ import ShowcasePanel from '@/components/ui/ShowcasePanel';
 import Table from '@/components/ui/Table';
 import Skeleton from '@/components/ui/Skeleton';
 import ErrorBanner from '@/components/ui/ErrorBanner';
+import { useTranslation } from 'react-i18next';
 import { apiRequest } from '@/lib/api';
 import { resolveClinicGallery, resolveClinicPhoto } from '@/lib/pets';
 
 export default function PlatformClinicsPage() {
+  const { t } = useTranslation('common');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,7 +27,7 @@ export default function PlatformClinicsPage() {
         const payload = await apiRequest('/api/v1/clinics/platform-registry');
         if (!cancelled) setRows(Array.isArray(payload) ? payload : []);
       } catch (requestError) {
-        if (!cancelled) setError(requestError.message || 'Не удалось загрузить клиники');
+        if (!cancelled) setError(requestError.message || t('platform.clinicsPage.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -34,43 +36,47 @@ export default function PlatformClinicsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   return (
     <div className="space-y-6">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Клиники и филиалы</h1>
-          <p className="page-subtitle">Платформенный реестр организаций, брендов и филиалов, на который опираются переключение клиник, AI-политики и шаблоны.</p>
+          <h1 className="page-title">{t('platform.clinicsPage.headerTitle')}</h1>
+          <p className="page-subtitle">{t('platform.clinicsPage.headerSubtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href="/platform/branches" className="btn-secondary">Реестр филиалов</Link>
-          <Link href="/platform/ai" className="btn-primary">Центр AI</Link>
+          <Link href="/platform/branches" className="btn-secondary">{t('platform.clinicsPage.linkBranches')}</Link>
+          <Link href="/platform/ai" className="btn-primary">{t('platform.clinicsPage.linkAiCenter')}</Link>
         </div>
       </header>
       {error ? <ErrorBanner message={error} /> : null}
       {loading ? <Skeleton className="h-56 w-full" /> : (
         <>
           <ShowcasePanel
-            eyebrow="Реестр организаций"
-            title="Клиники и филиалы, готовые к централизованному управлению"
-            description="Реестр теперь показывает не только обложки клиник, но и живые сетевые сигналы: филиалы, состав команды, активный стационар, сервисы и AI-переопределения."
+            eyebrow={t('platform.clinicsPage.showcaseEyebrow')}
+            title={t('platform.clinicsPage.showcaseTitle')}
+            description={t('platform.clinicsPage.showcaseDescription')}
             imageSrc="/assets/img/clinic-ops.svg"
-            imageAlt="Реестр клиник"
-            badges={[`${rows.length} клиник`, 'Сетевой контур', 'Филиалы и команды']}
+            imageAlt={t('platform.clinicsPage.showcaseImageAlt')}
+            badges={[
+              t('platform.clinicsPage.badgeClinics', { count: rows.length }),
+              t('platform.clinicsPage.badgeNetwork'),
+              t('platform.clinicsPage.badgeBranchesTeams'),
+            ]}
             compact
           />
           <section className="kpi-grid">
-            <Card title="Клиники">
+            <Card title={t('platform.clinicsPage.kpiClinics')}>
               <p className="text-4xl font-semibold text-lapka-900">{rows.length}</p>
             </Card>
-            <Card title="Филиалы">
+            <Card title={t('platform.clinicsPage.kpiBranches')}>
               <p className="text-4xl font-semibold text-lapka-900">{rows.reduce((sum, row) => sum + (row.stats?.branches || 0), 0)}</p>
             </Card>
-            <Card title="Врачи">
+            <Card title={t('platform.clinicsPage.kpiVets')}>
               <p className="text-4xl font-semibold text-lapka-900">{rows.reduce((sum, row) => sum + (row.stats?.vets || 0), 0)}</p>
             </Card>
-            <Card title="Активный стационар">
+            <Card title={t('platform.clinicsPage.kpiInpatient')}>
               <p className="text-4xl font-semibold text-lapka-900">{rows.reduce((sum, row) => sum + (row.stats?.active_inpatient || 0), 0)}</p>
             </Card>
           </section>
@@ -82,8 +88,8 @@ export default function PlatformClinicsPage() {
                   key={clinic.id}
                   className="overflow-hidden p-0"
                   title={clinic.name}
-                  subtitle={`${clinic.city || 'Локация'} · ${clinic.address || 'Адрес уточняется'}`}
-                  action={<span className={clinic.emergency_available ? 'badge-red' : 'badge-green'}>{clinic.emergency_available ? 'Экстренный контур' : 'Плановый контур'}</span>}
+                  subtitle={`${clinic.city || t('platform.clinicsPage.fallbackLocation')} · ${clinic.address || t('platform.clinicsPage.fallbackAddress')}`}
+                  action={<span className={clinic.emergency_available ? 'badge-red' : 'badge-green'}>{clinic.emergency_available ? t('platform.clinicsPage.emergencyContour') : t('platform.clinicsPage.plannedContour')}</span>}
                 >
                   <div className="space-y-0">
                     <div className="relative h-48 w-full overflow-hidden border-b border-lapka-200">
@@ -97,15 +103,15 @@ export default function PlatformClinicsPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-lapka-900/45 via-lapka-900/10 to-transparent" />
                       <div className="absolute bottom-3 left-3 rounded-xl bg-white/92 px-3 py-2 backdrop-blur">
                         <p className="text-sm font-semibold text-lapka-900">{clinic.name}</p>
-                        <p className="text-xs text-lapka-600">{clinic.phone || 'Контакты уточняются'}</p>
+                        <p className="text-xs text-lapka-600">{clinic.phone || t('platform.clinicsPage.fallbackContacts')}</p>
                       </div>
                     </div>
                       <div className="grid gap-3 p-4">
                         <div className="flex flex-wrap gap-2">
-                          <span className="pill">{clinic.city || 'Город'}</span>
-                          <span className="pill">{clinic.hours || 'График уточняется'}</span>
-                          <span className="pill">{Array.isArray(clinic.photos) ? clinic.photos.length : gallery.length} фото</span>
-                          <span className="pill">{clinic.stats?.branches || 0} филиалов</span>
+                          <span className="pill">{clinic.city || t('platform.clinicsPage.fallbackCity')}</span>
+                          <span className="pill">{clinic.hours || t('platform.clinicsPage.fallbackHours')}</span>
+                          <span className="pill">{t('platform.clinicsPage.pillPhotos', { count: Array.isArray(clinic.photos) ? clinic.photos.length : gallery.length })}</span>
+                          <span className="pill">{t('platform.clinicsPage.pillBranches', { count: clinic.stats?.branches || 0 })}</span>
                         </div>
                       {gallery.length > 1 ? (
                         <div className="grid gap-2 sm:grid-cols-3">
@@ -113,7 +119,7 @@ export default function PlatformClinicsPage() {
                             <div key={`${clinic.id}-${imageSrc}-${index}`} className="overflow-hidden rounded-2xl border border-lapka-200 bg-lapka-50">
                               <AppImage
                                 src={imageSrc}
-                                alt={`${clinic.name} — фото ${index + 1}`}
+                                alt={t('platform.clinicsPage.galleryAlt', { clinic: clinic.name, index: index + 1 })}
                                 width={480}
                                 height={320}
                                 sizes="(max-width: 768px) 100vw, 180px"
@@ -125,34 +131,34 @@ export default function PlatformClinicsPage() {
                       ) : null}
                       <div className="grid gap-2 text-sm text-lapka-700 sm:grid-cols-2 xl:grid-cols-3">
                         <div className="rounded-2xl border border-lapka-200 bg-white px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">Контур организации</p>
-                          <p className="mt-2 font-semibold text-lapka-900">{clinic.emergency_available ? 'Экстренный и плановый поток' : 'Плановый поток'}</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">{t('platform.clinicsPage.blockOrgContourTitle')}</p>
+                          <p className="mt-2 font-semibold text-lapka-900">{clinic.emergency_available ? t('platform.clinicsPage.blockOrgContourEmergency') : t('platform.clinicsPage.blockOrgContourPlanned')}</p>
                         </div>
                         <div className="rounded-2xl border border-lapka-200 bg-white px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">Команда</p>
-                          <p className="mt-2 font-semibold text-lapka-900">{clinic.stats?.vets || 0} врачей и {clinic.stats?.admins || 0} администраторов</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">{t('platform.clinicsPage.blockTeamTitle')}</p>
+                          <p className="mt-2 font-semibold text-lapka-900">{t('platform.clinicsPage.blockTeamValue', { vets: clinic.stats?.vets || 0, admins: clinic.stats?.admins || 0 })}</p>
                         </div>
                         <div className="rounded-2xl border border-lapka-200 bg-white px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">Операционный слой</p>
-                          <p className="mt-2 font-semibold text-lapka-900">{clinic.stats?.upcoming_appointments || 0} записей · {clinic.stats?.active_inpatient || 0} в стационаре</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">{t('platform.clinicsPage.blockOpsTitle')}</p>
+                          <p className="mt-2 font-semibold text-lapka-900">{t('platform.clinicsPage.blockOpsValue', { appointments: clinic.stats?.upcoming_appointments || 0, inpatient: clinic.stats?.active_inpatient || 0 })}</p>
                         </div>
                         <div className="rounded-2xl border border-lapka-200 bg-white px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">Пациенты по согласию</p>
-                          <p className="mt-2 font-semibold text-lapka-900">{clinic.stats?.patients || 0} питомцев в активном контуре</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">{t('platform.clinicsPage.blockPatientsTitle')}</p>
+                          <p className="mt-2 font-semibold text-lapka-900">{t('platform.clinicsPage.blockPatientsValue', { count: clinic.stats?.patients || 0 })}</p>
                         </div>
                         <div className="rounded-2xl border border-lapka-200 bg-white px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">Сервисы и шаблоны</p>
-                          <p className="mt-2 font-semibold text-lapka-900">{clinic.stats?.services || 0} активных сервисов</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">{t('platform.clinicsPage.blockServicesTitle')}</p>
+                          <p className="mt-2 font-semibold text-lapka-900">{t('platform.clinicsPage.blockServicesValue', { count: clinic.stats?.services || 0 })}</p>
                         </div>
                         <div className="rounded-2xl border border-lapka-200 bg-white px-3 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">AI-контур</p>
-                          <p className="mt-2 font-semibold text-lapka-900">{clinic.stats?.ai_overrides || 0} переопределений для клиники</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lapka-500">{t('platform.clinicsPage.blockAiTitle')}</p>
+                          <p className="mt-2 font-semibold text-lapka-900">{t('platform.clinicsPage.blockAiValue', { count: clinic.stats?.ai_overrides || 0 })}</p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Link className="btn-secondary !px-3 !py-1.5" href={`/platform/clinics/${clinic.id}`}>Карточка клиники</Link>
-                        <Link className="btn-secondary !px-3 !py-1.5" href="/platform/security">Безопасность</Link>
-                        <Link className="btn-primary !px-3 !py-1.5" href="/platform/ai">Центр AI</Link>
+                        <Link className="btn-secondary !px-3 !py-1.5" href={`/platform/clinics/${clinic.id}`}>{t('platform.clinicsPage.actionClinicCard')}</Link>
+                        <Link className="btn-secondary !px-3 !py-1.5" href="/platform/security">{t('platform.clinicsPage.actionSecurity')}</Link>
+                        <Link className="btn-primary !px-3 !py-1.5" href="/platform/ai">{t('platform.clinicsPage.actionAiCenter')}</Link>
                       </div>
                     </div>
                   </div>
@@ -160,16 +166,16 @@ export default function PlatformClinicsPage() {
               );
             })}
           </section>
-          <Card title="Реестр клиник">
+          <Card title={t('platform.clinicsPage.registryTitle')}>
             <Table
               columns={[
-                { id: 'name', label: 'Название' },
-                { id: 'city', label: 'Город' },
-                { id: 'branches', label: 'Филиалы' },
-                { id: 'vets', label: 'Врачи' },
-                { id: 'patients', label: 'Пациенты' },
-                { id: 'inpatient', label: 'Стационар' },
-                { id: 'ai', label: 'AI' },
+                { id: 'name', label: t('platform.clinicsPage.colName') },
+                { id: 'city', label: t('platform.clinicsPage.colCity') },
+                { id: 'branches', label: t('platform.clinicsPage.colBranches') },
+                { id: 'vets', label: t('platform.clinicsPage.colVets') },
+                { id: 'patients', label: t('platform.clinicsPage.colPatients') },
+                { id: 'inpatient', label: t('platform.clinicsPage.colInpatient') },
+                { id: 'ai', label: t('platform.clinicsPage.colAi') },
               ]}
               rows={rows.map((row) => ({
                 id: row.id,
@@ -182,7 +188,7 @@ export default function PlatformClinicsPage() {
                 ai: String(row.stats?.ai_overrides || 0),
               }))}
               rowActions={(row) => [
-                { label: 'Карточка клиники', href: `/platform/clinics/${row.id}` },
+                { label: t('platform.clinicsPage.actionClinicCard'), href: `/platform/clinics/${row.id}` },
               ]}
             />
           </Card>

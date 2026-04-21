@@ -80,6 +80,7 @@ Append-only events for:
 - Client-side role guards
 - Tabs for large sections
 - Owner supports multiple pets + photo preview
+- VPN MVP: owner area `/owner/vpn` (subscription, plans, profiles, device link, checkout redirect); payment status page `/pay/{provider}/{checkoutId}`; platform `/platform/vpn` (billing reconcile + maintenance prune, with confirmation before prune)
 
 ## 9) Task execution protocol
 1) Backend endpoints + tests
@@ -105,11 +106,28 @@ Must include:
 - One document metadata
 - One active inpatient stay + cameras
 - One public prescription link
+- VPN MVP: active subscription for the main demo owner, one captured checkout, one webhook event (reconcile/billing demos)
 
 ## 12) Run commands
 - `docker compose up --build`
 - `GET http://localhost:8000/health`
 - `http://localhost:8000/docs`
+
+## 14) Code check commands
+- Backend tests: `cd backend && .venv/bin/python -m pytest tests/ -v`
+- Frontend lint: `cd frontend && npm run lint`
+
+## 15) Project structure
+### Backend repositories (src/repositories/)
+- appointments.py, visits.py, clinics.py, documents.py, inpatient.py
+- notifications.py, consents.py, pets.py, users.py
+
+### Backend services (src/services/)
+- appointments.py, visits.py, ai_runtime.py, ai_safe.py, auth.py, audit.py
+
+### Frontend components (components/ui/)
+- Calendar.jsx (FullCalendar)
+- DicomViewer.jsx, MedicalImageViewer.jsx
 
 ## 13) Ambiguity rule
 Prefer safest behavior:

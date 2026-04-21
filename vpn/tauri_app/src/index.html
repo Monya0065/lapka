@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lapka VPN</title>
+  <script src="//unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .menu-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+    }
+
+    .connect-btn {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      border: 4px solid white;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .connect-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .connect-btn.connected {
+      background: rgba(34, 197, 94, 0.3);
+    }
+
+    .connect-btn i {
+      font-size: 48px;
+      color: white;
+    }
+
+    .connect-btn span {
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .server-info {
+      margin-top: 32px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .server-info span {
+      color: white;
+      font-size: 14px;
+    }
+
+    .speed-info {
+      margin-top: 24px;
+      display: flex;
+      gap: 24px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .speed-info.visible {
+      opacity: 1;
+    }
+
+    .speed-info div {
+      color: white;
+      text-align: center;
+    }
+
+    .speed-info .label {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    .speed-info .value {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .dashboard {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: white;
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+    }
+
+    .dashboard.visible {
+      display: flex;
+    }
+
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .dashboard-header h2 {
+      font-size: 18px;
+    }
+
+    .dashboard-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .dashboard-content {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+
+    .menu-item i {
+      font-size: 20px;
+      margin-right: 12px;
+      color: #6366F1;
+    }
+
+    .menu-item span {
+      flex: 1;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: #6366F1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn:disabled {
+      background: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">Lapka VPN</div>
+    <button class="menu-btn" onclick="toggleDashboard()">
+      <i class="ph ph-list"></i>
+    </button>
+  </div>
+
+  <div class="content">
+    <button class="connect-btn" id="connectBtn" onclick="toggleConnection()">
+      <i class="ph ph-power"></i>
+      <span>Connect</span>
+    </button>
+
+    <div class="server-info" onclick="showServers()">
+      <i class="ph ph-globe" style="color: white; font-size: 20px;"></i>
+      <span id="serverName">Netherlands</span>
+      <i class="ph ph-caret-down" style="color: white;"></i>
+    </div>
+
+    <div class="speed-info" id="speedInfo">
+      <div>
+        <div class="label">Download</div>
+        <div class="value" id="downloadSpeed">0 Mbps</div>
+      </div>
+      <div>
+        <div class="label">Upload</div>
+        <div class="value" id="uploadSpeed">0 Mbps</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard" id="dashboard">
+    <div class="dashboard-header">
+      <h2>Dashboard</h2>
+      <button class="dashboard-close" onclick="toggleDashboard()">
+        <i class="ph ph-x"></i>
+      </button>
+    </div>
+
+    <div class="dashboard-content">
+      <div class="menu-item" onclick="showSubscription()">
+        <i class="ph ph-credit-card"></i>
+        <span>Subscription</span>
+        <i class="ph ph-caret-right"></i>
+      </div>
+      <div class="menu-item" onclick="showDevices()">
+        <i class="ph ph-devices"></i>
+        <span>Devices</span>
+        <i class="ph ph-caret-right"></i>
+      </div>
+      <div class="menu-item" onclick="showSettings()">
+        <i class="ph ph-gear"></i>
+        <span>Settings</span>
+        <i class="ph ph-caret-right"></i>
+      </div>
+      <div class="menu-item" onclick="logout()">
+        <i class="ph ph-sign-out"></i>
+        <span>Sign Out</span>
+        <i class="ph ph-caret-right"></i>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isConnected = false;
+    let selectedServer = 'Netherlands';
+
+    function toggleConnection() {
+      isConnected = !isConnected;
+      const btn = document.getElementById('connectBtn');
+      const speedInfo = document.getElementById('speedInfo');
+
+      if (isConnected) {
+        btn.classList.add('connected');
+        btn.querySelector('span').textContent = 'Connected';
+        btn.querySelector('i').classList.remove('ph-power');
+        btn.querySelector('i').classList.add('ph-power');
+        speedInfo.classList.add('visible');
+        document.getElementById('downloadSpeed').textContent = '95.4 Mbps';
+        document.getElementById('uploadSpeed').textContent = '52.8 Mbps';
+      } else {
+        btn.classList.remove('connected');
+        btn.querySelector('span').textContent = 'Connect';
+        speedInfo.classList.remove('visible');
+      }
+    }
+
+    function toggleDashboard() {
+      const dashboard = document.getElementById('dashboard');
+      dashboard.classList.toggle('visible');
+    }
+
+    function showServers() {
+      const servers = ['Netherlands', 'United States', 'Singapore', 'Germany', 'United Kingdom'];
+      const server = prompt('Select server: ' + servers.join(', '));
+      if (server && servers.includes(server)) {
+        selectedServer = server;
+        document.getElementById('serverName').textContent = server;
+      }
+    }
+
+    function showSubscription() {
+      alert('Subscription: Free Trial\nDays remaining: 7');
+    }
+
+    function showDevices() {
+      alert('Devices: iPhone 15');
+    }
+
+    function showSettings() {
+      alert('Settings: Auto-connect, Kill Switch');
+    }
+
+    function logout() {
+      if (confirm('Sign out?')) {
+        window.location.reload();
+      }
+    }
+  </script>
+</body>
+</html>

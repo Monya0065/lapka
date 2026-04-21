@@ -10,6 +10,7 @@ import ErrorBanner from '@/components/ui/ErrorBanner';
 import Skeleton from '@/components/ui/Skeleton';
 import ShowcasePanel from '@/components/ui/ShowcasePanel';
 import { apiRequest } from '@/lib/api';
+import { trackOwnerFunnelStep } from '@/lib/owner-funnel';
 import { buildClinicVisualGallery, resolveClinicGallery, resolveClinicPhoto, resolveVetPhoto } from '@/lib/pets';
 
 function stars(avg) {
@@ -58,6 +59,10 @@ export default function OwnerClinicDetailsPage({ params }) {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [visitId, setVisitId] = useState('');
+
+  useEffect(() => {
+    trackOwnerFunnelStep('clinic_open', { source: 'clinic_profile', clinicId });
+  }, [clinicId]);
 
   const loadClinicData = useCallback(async () => {
     setLoading(true);
@@ -172,7 +177,13 @@ export default function OwnerClinicDetailsPage({ params }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link className="btn-secondary" href="/owner/market">Назад к поиску</Link>
-          <Link className="btn-primary" href={`/owner/appointments?clinic_id=${clinic.id}`}>Записаться</Link>
+          <Link
+            className="btn-primary"
+            href={`/owner/appointments?clinic_id=${clinic.id}`}
+            onClick={() => trackOwnerFunnelStep('booking_open', { source: 'clinic_header_cta', clinicId: clinic.id })}
+          >
+            Записаться
+          </Link>
         </div>
       </header>
 
@@ -340,6 +351,7 @@ export default function OwnerClinicDetailsPage({ params }) {
                     <Link
                       className="btn-secondary !px-3 !py-1.5"
                       href={`/owner/appointments?clinic_id=${clinic.id}&service=${encodeURIComponent(row.name)}`}
+                      onClick={() => trackOwnerFunnelStep('booking_open', { source: 'clinic_service_card', clinicId: clinic.id })}
                     >
                       Записаться на услугу
                     </Link>
@@ -376,7 +388,11 @@ export default function OwnerClinicDetailsPage({ params }) {
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Link className="btn-secondary !px-3 !py-1.5" href={`/owner/vet/${row.id}`}>Профиль врача</Link>
-                    <Link className="btn-primary !px-3 !py-1.5" href={`/owner/appointments?clinic_id=${clinic.id}&vet_id=${row.id}`}>
+                    <Link
+                      className="btn-primary !px-3 !py-1.5"
+                      href={`/owner/appointments?clinic_id=${clinic.id}&vet_id=${row.id}`}
+                      onClick={() => trackOwnerFunnelStep('booking_open', { source: 'clinic_vet_card', clinicId: clinic.id })}
+                    >
                       Записаться
                     </Link>
                   </div>
@@ -401,7 +417,13 @@ export default function OwnerClinicDetailsPage({ params }) {
 
         <Card title="Быстрые действия" subtitle="Самые частые сценарии владельца в контексте клиники">
           <div className="grid gap-2 sm:grid-cols-2">
-            <Link className="action-grid-link" href={`/owner/appointments?clinic_id=${clinic.id}`}>Записаться в клинику</Link>
+            <Link
+              className="action-grid-link"
+              href={`/owner/appointments?clinic_id=${clinic.id}`}
+              onClick={() => trackOwnerFunnelStep('booking_open', { source: 'clinic_quick_actions', clinicId: clinic.id })}
+            >
+              Записаться в клинику
+            </Link>
             <Link className="action-grid-link" href="/owner/map">Открыть на карте</Link>
             <Link className="action-grid-link" href="/owner/pharmacy">Найти препараты рядом</Link>
             <Link className="action-grid-link" href="/owner/insurance">Страхование и документы</Link>

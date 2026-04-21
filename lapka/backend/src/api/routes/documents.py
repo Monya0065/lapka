@@ -1,8 +1,11 @@
+import mimetypes
 import os
+import time
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +17,12 @@ from src.security.deps import enforce_pet_scope, get_current_user, require_owner
 from src.services.ai_safe import explain_document
 from src.services.audit import log_audit
 from src.services.ai_runtime import execute_governed_ai
+from src.services.document_download_token import sign_document_file_link, verify_document_file_link
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+DOWNLOAD_LINK_TTL_SEC = 900
+STORAGE_ROOT = Path("storage").resolve()
 
 
 class DocumentUploadRequest(BaseModel):
@@ -39,6 +46,62 @@ def _serialize_doc(doc: Document) -> dict:
         "file_ref": doc.file_ref,
         "created_at": doc.created_at,
     }
+
+
+async def _fetch_authorized_document(
+    db: AsyncSession,
+    current_user,
+    doc_id: str,
+) -> Document:
+    try:
+        doc_uuid = uuid.UUID(doc_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "BAD_REQUEST", "message": "Invalid document id"},
+        ) from exc
+
+    doc = await db.scalar(select(Document).where(Document.id == doc_uuid))
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "DOCUMENT_NOT_FOUND", "message": "Document not found"},
+        )
+
+    if current_user.role == RoleEnum.owner:
+        await require_owner_of_pet(db, owner_user_id=current_user.id, pet_id=doc.pet_id)
+    else:
+        await enforce_pet_scope(
+            db,
+            current_user=current_user,
+            pet_id=doc.pet_id,
+            clinic_id=doc.clinic_id,
+            required_scope=ConsentScope.full_record,
+        )
+    return doc
+
+
+def _resolved_storage_file_path(file_ref: str) -> Path:
+    rel = (file_ref or "").strip().lstrip("/")
+    if not rel or ".." in rel:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "DOCUMENT_NOT_FOUND", "message": "Document not found"},
+        )
+    full = (Path("storage") / rel).resolve()
+    try:
+        full.relative_to(STORAGE_ROOT)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "DOCUMENT_NOT_FOUND", "message": "Document not found"},
+        ) from exc
+    if not full.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "DOCUMENT_NOT_FOUND", "message": "Document not found"},
+        )
+    return full
 
 
 def _sanitize_file_ref(raw: str) -> str:
@@ -240,31 +303,7 @@ async def get_document(
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    try:
-        doc_uuid = uuid.UUID(doc_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "BAD_REQUEST", "message": "Invalid document id"},
-        ) from exc
-
-    doc = await db.scalar(select(Document).where(Document.id == doc_uuid))
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "DOCUMENT_NOT_FOUND", "message": "Document not found"},
-        )
-
-    if current_user.role == RoleEnum.owner:
-        await require_owner_of_pet(db, owner_user_id=current_user.id, pet_id=doc.pet_id)
-    else:
-        await enforce_pet_scope(
-            db,
-            current_user=current_user,
-            pet_id=doc.pet_id,
-            clinic_id=doc.clinic_id,
-            required_scope=ConsentScope.full_record,
-        )
+    doc = await _fetch_authorized_document(db, current_user, doc_id)
 
     await log_audit(
         db,
@@ -285,26 +324,63 @@ async def download_document_stub(
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    # Signed-like URL stub for MVP.
-    doc = await get_document(doc_id=doc_id, current_user=current_user, db=db)
+    doc = await _fetch_authorized_document(db, current_user, doc_id)
+    exp = int(time.time()) + DOWNLOAD_LINK_TTL_SEC
+    sig = sign_document_file_link(doc_id=str(doc.id), expires_at_unix=exp)
+    download_url = f"/api/v1/documents/{doc.id}/file?exp={exp}&sig={sig}"
+    return {
+        "doc_id": str(doc.id),
+        "download_url": download_url,
+        "expires_in_sec": DOWNLOAD_LINK_TTL_SEC,
+    }
+
+
+@router.get("/{doc_id}/file")
+async def download_document_file(
+    doc_id: str,
+    exp: int = Query(..., ge=0),
+    sig: str = Query(..., min_length=1),
+    db: AsyncSession = Depends(get_db_session),
+) -> FileResponse:
+    try:
+        doc_uuid = uuid.UUID(doc_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "DOCUMENT_NOT_FOUND", "message": "Document not found"},
+        ) from exc
+
+    doc = await db.scalar(select(Document).where(Document.id == doc_uuid))
+    if not doc or not verify_document_file_link(
+        doc_id=str(doc.id),
+        expires_at_unix=exp,
+        signature=sig,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "DOCUMENT_NOT_FOUND", "message": "Document not found"},
+        )
+
+    path = _resolved_storage_file_path(doc.file_ref)
+    media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+
     await log_audit(
         db,
-        actor_user_id=str(current_user.id),
-        clinic_id=str(doc["clinic_id"]),
+        actor_user_id=None,
+        clinic_id=str(doc.clinic_id),
         action="document.download",
         target_type="document",
-        target_id=str(doc["id"]),
+        target_id=str(doc.id),
+        metadata={"via": "signed_link"},
     )
     await db.commit()
-    file_ref = doc.get("file_ref") or f"{doc_id}.bin"
-    if file_ref.startswith("storage/"):
-        file_ref = file_ref[8:]
-    download_path = f"/storage/{file_ref}"
-    return {
-        "doc_id": doc_id,
-        "download_url": f"{download_path}?token=demo-signed-url",
-        "expires_in_sec": 600,
-    }
+
+    return FileResponse(
+        path,
+        media_type=media_type,
+        filename=path.name,
+        content_disposition_type="attachment",
+    )
 
 
 @router.delete("/{doc_id}", response_model=DocumentDeleteResponse)

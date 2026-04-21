@@ -1,0 +1,149 @@
+# VPN Worker - Background processing
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpn-worker
+  namespace: vpn-production
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: vpn-worker
+  template:
+    metadata:
+      labels:
+        app: vpn-worker
+    spec:
+      containers:
+      - name: worker
+        image: lapka/vpn-api:v1.0.0
+        command: ["python", "-m", "app.worker"]
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: vpn-secrets
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: vpn-secrets
+              key: REDIS_URL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: vpn-secrets
+              key: JWT_SECRET
+        envFrom:
+        - configMapRef:
+            name: vpn-config
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+      nodeSelector:
+        workload: background
+---
+# CronJobs for periodic tasks
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vpn-cleanup-expired-sessions
+  namespace: vpn-production
+spec:
+  schedule: "0 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cleanup
+            image: lapka/vpn-api:v1.0.0
+            command: ["python", "-m", "app.cli", "--cleanup-sessions"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vpn-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vpn-secrets
+                  key: REDIS_URL
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vpn-sync-nodes-health
+  namespace: vpn-production
+spec:
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: sync
+            image: lapka/vpn-api:v1.0.0
+            command: ["python", "-m", "app.cli", "--sync-nodes-health"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vpn-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vpn-secrets
+                  key: REDIS_URL
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vpn-renew-subscriptions
+  namespace: vpn-production
+spec:
+  schedule: "0 6 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: renew
+            image: lapka/vpn-api:v1.0.0
+            command: ["python", "-m", "app.cli", "--renew-subscriptions"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vpn-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vpn-secrets
+                  key: REDIS_URL
+            - name: YOOKASSA_SHOP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: vpn-secrets
+                  key: YOOKASSA_SHOP_ID
+            - name: YOOKASSA_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vpn-secrets
+                  key: YOOKASSA_SECRET_KEY
+          restartPolicy: OnFailure

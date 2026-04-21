@@ -46,8 +46,8 @@ export default function AppLayout({
   const quickLinks = groupedLinks.length ? groupedLinks : (sidebarLinks || []);
   const sidebarWidth = sidebarCompact ? '112px' : '292px';
   const layoutGridClass = rightColumn
-    ? 'grid min-w-0 grid-cols-1 gap-6 overflow-x-hidden xl:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] min-[1900px]:grid-cols-[var(--sidebar-width)_minmax(0,1fr)_340px]'
-    : 'grid min-w-0 grid-cols-1 gap-6 overflow-x-hidden xl:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]';
+    ? 'grid min-w-0 grid-cols-1 gap-6 overflow-x-hidden min-[900px]:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] min-[1900px]:grid-cols-[var(--sidebar-width)_minmax(0,1fr)_340px]'
+    : 'grid min-w-0 grid-cols-1 gap-6 overflow-x-hidden min-[900px]:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]';
 
   return (
     <>
@@ -59,11 +59,11 @@ export default function AppLayout({
         showOwnerSos={roleLabel === 'owner'}
       />
 
-      <main className="page-wrap py-5 pb-10 md:py-6">
+      <main className="page-wrap workspace-main-shell py-5 pb-10 md:py-6">
         <div className="mb-4 space-y-2">
           <OfflineModeBanner />
         </div>
-        <div className={layoutGridClass} style={{ '--sidebar-width': sidebarWidth }}>
+        <div className={`${layoutGridClass} workspace-layout-grid`} style={{ '--sidebar-width': sidebarWidth }}>
           <Sidebar
             title={sidebarTitle}
             subtitle={sidebarSubtitle}
@@ -85,13 +85,13 @@ export default function AppLayout({
             storageId={roleLabel || 'workspace'}
           />
 
-          <section className="min-w-0 space-y-5 overflow-hidden md:space-y-7">
+          <section className="workspace-main-column min-w-0 space-y-5 overflow-hidden md:space-y-7">
             {children}
-            {rightColumn ? <div className="space-y-4 min-[1900px]:hidden">{rightColumn}</div> : null}
+            {rightColumn ? <div className="workspace-inline-rail space-y-4 min-[1900px]:hidden">{rightColumn}</div> : null}
           </section>
 
           {rightColumn ? (
-            <aside className="hidden min-w-0 space-y-4 min-[1900px]:sticky min-[1900px]:top-[108px] min-[1900px]:block min-[1900px]:self-start">{rightColumn}</aside>
+            <aside className="workspace-side-rail hidden min-w-0 space-y-4 min-[1900px]:sticky min-[1900px]:top-[108px] min-[1900px]:block min-[1900px]:self-start">{rightColumn}</aside>
           ) : null}
         </div>
       </main>

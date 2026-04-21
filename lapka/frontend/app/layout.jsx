@@ -5,6 +5,7 @@ import I18nProvider from '@/components/providers/I18nProvider';
 import LocaleTextNormalizer from '@/components/providers/LocaleTextNormalizer';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import MobileNav from '@/components/ui/MobileNav';
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ['latin', 'cyrillic-ext', 'latin-ext'],
@@ -20,9 +21,20 @@ export const metadata = {
     icon: '/assets/img/logo-paw.svg',
     apple: '/assets/img/logo-paw.svg',
   },
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-title': 'Лапка',
+    'mobile-web-app-capable': 'yes',
+    'format-detection': 'telephone=no',
+  },
 };
 
 export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
   themeColor: '#2f9ce0',
 };
 
@@ -37,6 +49,7 @@ export default function RootLayout({ children }) {
           </ThemeProvider>
           <LocaleTextNormalizer />
           <PwaController />
+          <MobileNav />
         </I18nProvider>
       </body>
     </html>

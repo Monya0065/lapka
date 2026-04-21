@@ -1,0 +1,129 @@
+# Production compose for 20M+ users
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  db:
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    command: >
+      postgres
+      -c max_connections=500
+      -c shared_buffers=1GB
+      -c effective_cache_size=3GB
+      -c work_mem=32MB
+      -c maintenance_work_mem=512MB
+      -c synchronous_commit=off
+      -c full_page_writes=off
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=64MB
+      -c max_wal_size=2GB
+
+  redis-primary:
+    image: redis:7-alpine
+    container_name: lapka-redis-primary
+    ports:
+      - "6379:6379"
+    volumes:
+      - lapka-redis-primary:/data
+    command: >
+      redis-server
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+      --timeout 0
+      --activerehashing yes
+      --lazyfree-lazy-eviction yes
+      --appendonly yes
+      --appendfsync everysec
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+
+  redis-replica-1:
+    image: redis:7-alpine
+    container_name: lapka-redis-replica-1
+    command: redis-server --replicaof lapka-redis-primary 6379
+    depends_on:
+      - redis-primary
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  redis-replica-2:
+    image: redis:7-alpine
+    container_name: lapka-redis-replica-2
+    command: redis-server --replicaof lapka-redis-primary 6379
+    depends_on:
+      - redis-primary
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: lapka-redis-cache
+    ports:
+      - "6380:6379"
+    volumes:
+      - lapka-redis-cache:/data
+    command: >
+      redis-server
+      --maxmemory 4gb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+
+  api:
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    environment:
+      REDIS_URL: redis://redis-primary:6379/0
+      REDIS_CACHE_URL: redis://redis-cache:6379/0
+      DATABASE_POOL_SIZE: 30
+      DATABASE_MAX_OVERFLOW: 50
+
+  frontend:
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 2G
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/ssl:/etc/nginx/ssl:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  backup:
+    image: postgres:16
+    profiles:
+      - backup
+
+volumes:
+  lapka-redis-primary:
+  lapka-redis-replica-1:
+  lapka-redis-replica-2:
+  lapka-redis-cache:

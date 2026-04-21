@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { loginWithPassword, logoutUser, selectClinic, getStoredSession } from '@/lib/auth';
-import { ROLE_PRESETS, ROLE_ROUTES } from '@/lib/constants';
+import { ROLE_PRESETS, ROLE_ROUTES, safePostLoginPath } from '@/lib/constants';
 
 function profileRoute(role) {
   if (role === 'vet') return '/vet/dashboard';
@@ -14,7 +14,7 @@ function profileRoute(role) {
   return '/owner/profile';
 }
 
-export default function AuthDropdown({ mode = 'menu', initialRole }) {
+export default function AuthDropdown({ mode = 'menu', initialRole, postLoginRedirect = '' }) {
   const router = useRouter();
   const pathname = usePathname();
   const { t, i18n } = useTranslation();
@@ -90,7 +90,8 @@ export default function AuthDropdown({ mode = 'menu', initialRole }) {
     setIsLoading(true);
     try {
       const { user } = await loginWithPassword(email, password, clinicId || undefined);
-      const target = ROLE_ROUTES[user.role] || '/';
+      const fallback = ROLE_ROUTES[user.role] || '/';
+      const target = safePostLoginPath(postLoginRedirect) || fallback;
       setIsOpen(mode === 'card');
       if (pathname !== target) router.push(target);
     } catch (e) {

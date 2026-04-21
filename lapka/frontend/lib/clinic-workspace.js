@@ -1,43 +1,41 @@
 export const CLINIC_SIDEBAR_GROUPS = [
   {
-    title: 'Сегодня',
+    titleKey: 'clinic.workspaceUi.sidebarGroupToday',
     links: [
-      { href: '/clinic/dashboard', label: 'Операционный центр', icon: 'home' },
-      { href: '/clinic/inbox', label: 'Входящие и сигналы', icon: 'notifications' },
-      { href: '/clinic/schedule', label: 'Расписание', icon: 'appointments' },
-      { href: '/clinic/flowboard', label: 'Поток дня', icon: 'records' },
-      { href: '/clinic/checkin', label: 'Ресепшн и регистрация', icon: 'appointments' },
+      { href: '/clinic/dashboard', labelKey: 'clinic.workspaceUi.sidebarOpsCenter', icon: 'home' },
+      { href: '/clinic/inbox', labelKey: 'clinic.workspaceUi.sidebarInboxSignals', icon: 'notifications' },
+      { href: '/clinic/schedule', labelKey: 'nav.schedule', icon: 'appointments' },
+      { href: '/clinic/flowboard', labelKey: 'clinic.workspaceUi.sidebarDayFlow', icon: 'records' },
+      { href: '/clinic/checkin', labelKey: 'clinic.workspaceUi.sidebarReceptionRegistration', icon: 'appointments' },
     ],
   },
   {
-    title: 'Команда и пациенты',
+    titleKey: 'clinic.workspaceUi.sidebarGroupTeamPatients',
     links: [
-      { href: '/clinic/doctors', label: 'Врачи и команда', icon: 'profile' },
-      { href: '/clinic/patients', label: 'Пациенты', icon: 'pets' },
-      { href: '/clinic/inpatient', label: 'Стационар', icon: 'inpatient' },
+      { href: '/clinic/doctors', labelKey: 'clinic.workspaceUi.sidebarDoctorsTeam', icon: 'profile' },
+      { href: '/clinic/patients', labelKey: 'nav.patients', icon: 'pets' },
+      { href: '/clinic/inpatient', labelKey: 'nav.inpatient', icon: 'inpatient' },
     ],
   },
   {
-    title: 'Операции',
+    titleKey: 'clinic.workspaceUi.sidebarGroupOperations',
     links: [
-      { href: '/clinic/services', label: 'Услуги', icon: 'knowledge' },
-      { href: '/clinic/templates', label: 'Шаблоны', icon: 'documents' },
-      { href: '/clinic/billing', label: 'Счета и финансы', icon: 'finance' },
-      { href: '/clinic/insurance', label: 'Страховые кейсы', icon: 'finance' },
+      { href: '/clinic/services', labelKey: 'nav.services', icon: 'knowledge' },
+      { href: '/clinic/templates', labelKey: 'nav.templates', icon: 'documents' },
+      { href: '/clinic/billing', labelKey: 'clinic.workspaceUi.sidebarBillingFinance', icon: 'finance' },
+      { href: '/clinic/insurance', labelKey: 'clinic.workspaceUi.sidebarInsuranceCases', icon: 'finance' },
     ],
   },
   {
-    title: 'Аптека',
-    links: [
-      { href: '/clinic/pharmacy', label: 'Склад и сроки', icon: 'pharmacy' },
-    ],
+    titleKey: 'clinic.workspaceUi.sidebarGroupPharmacy',
+    links: [{ href: '/clinic/pharmacy', labelKey: 'clinic.workspaceUi.sidebarPharmacyStock', icon: 'pharmacy' }],
   },
   {
-    title: 'Контроль',
+    titleKey: 'clinic.workspaceUi.sidebarGroupControl',
     links: [
-      { href: '/clinic/analytics', label: 'Аналитика', icon: 'records' },
-      { href: '/clinic/audit', label: 'Аудит', icon: 'knowledge' },
-      { href: '/clinic/invites', label: 'Приглашения', icon: 'profile' },
+      { href: '/clinic/analytics', labelKey: 'nav.analytics', icon: 'records' },
+      { href: '/clinic/audit', labelKey: 'nav.audit', icon: 'knowledge' },
+      { href: '/clinic/invites', labelKey: 'nav.invites', icon: 'profile' },
     ],
   },
 ];

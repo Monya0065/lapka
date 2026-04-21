@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page, type APIRequestContext } from '@playwright/test';
 
 function pathnameIs(urlString: string, path: string) {
   try {
@@ -23,7 +23,7 @@ const CREDENTIALS = {
   network_admin: { email: 'platform@lapka.local', password: 'demo12345', role: 'network_admin' },
 };
 
-async function login(page, role: keyof typeof CREDENTIALS) {
+async function login(page: Page, role: keyof typeof CREDENTIALS) {
   const user = CREDENTIALS[role];
   await page.goto(`/login?role=${user.role}`);
 
@@ -36,7 +36,7 @@ async function login(page, role: keyof typeof CREDENTIALS) {
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
 }
 
-async function loginViaApi(page, request, role: keyof typeof CREDENTIALS) {
+async function loginViaApi(page: Page, request: APIRequestContext, role: keyof typeof CREDENTIALS) {
   const user = CREDENTIALS[role];
   const apiBase = process.env.E2E_API_URL || 'http://localhost:8000';
   const payload: Record<string, string> = { email: user.email, password: user.password };
@@ -55,7 +55,7 @@ async function loginViaApi(page, request, role: keyof typeof CREDENTIALS) {
 
   await page.goto('/');
   await page.evaluate(
-    ({ access, refresh, role, email, userObj }) => {
+    ({ access, refresh, role, email, userObj }: { access: string; refresh: string; role: string; email: string; userObj: unknown }) => {
       window.localStorage.setItem('lapka.access_token', access);
       window.localStorage.setItem('lapka.refresh_token', refresh);
       window.localStorage.setItem('lapka.role', role);
@@ -67,12 +67,12 @@ async function loginViaApi(page, request, role: keyof typeof CREDENTIALS) {
       refresh: tokens.refresh_token,
       role: me.role,
       email: me.email,
-      userObj: me,
+      userObj: me as unknown,
     },
   );
 }
 
-async function gotoRouteWithReauth(page, request, role: keyof typeof CREDENTIALS, route: string) {
+async function gotoRouteWithReauth(page: Page, request: APIRequestContext, role: keyof typeof CREDENTIALS, route: string) {
   await page.goto(route);
   if (currentPathname(page.url()) === '/login') {
     await loginViaApi(page, request, role);
@@ -80,7 +80,7 @@ async function gotoRouteWithReauth(page, request, role: keyof typeof CREDENTIALS
   }
 }
 
-async function completeLegalGateIfShown(page) {
+async function completeLegalGateIfShown(page: Page) {
   const onLegalPage = () => {
     try {
       return new URL(page.url()).pathname.endsWith('/legal');

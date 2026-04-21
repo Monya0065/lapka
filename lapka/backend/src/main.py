@@ -5,27 +5,24 @@ import logging
 from time import perf_counter
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 import redis.asyncio as redis
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.router import api_router
 from src.core.config import get_settings
-from src.core.metrics import record_request
+from src.core.metrics import metrics_endpoint_label, record_request
 from src.core.rate_limit import enforce_rate_limit
 from src.core.sanitize import sanitize_payload
+from src.db.session import get_db_session
 from src.schemas.common import HealthResponse
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name, version="0.1.0")
-Path("storage").mkdir(parents=True, exist_ok=True)
-
-logger = logging.getLogger("lapka.api")
-if not logger.handlers:
-    logging.basicConfig(level=logging.INFO)
 
 if settings.sentry_dsn:
     try:
@@ -39,9 +36,17 @@ if settings.sentry_dsn:
             traces_sample_rate=0.1,
             send_default_pii=False,
         )
-        logger.info("Sentry initialized")
     except ImportError:
         pass
+
+app = FastAPI(title=settings.app_name, version="0.1.0")
+Path("storage").mkdir(parents=True, exist_ok=True)
+
+logger = logging.getLogger("lapka.api")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
+logger.info("Application starting")
 
 def _allowed_origins() -> set[str]:
     base = {"http://localhost:3000", "http://127.0.0.1:3000"}
@@ -83,14 +88,16 @@ async def cache_middleware(request: Request, call_next):
     """Cache GET requests for 5 minutes"""
     start_time = perf_counter()
     
-    if request.method == "GET" and not request.url.path.startswith("/api/v1/auth"):
+    skip_get_cache = request.url.path.startswith("/api/v1/auth")
+    if request.method == "GET" and not skip_get_cache:
         cache_key = f"cache:{request.url.path}?{request.url.query}"
         
         # Try to get from cache
         cached_response = await redis_client.get(cache_key)
         if cached_response:
-            REQUEST_COUNT.labels(method=request.method, endpoint=request.url.path, status="200").inc()
-            REQUEST_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(perf_counter() - start_time)
+            ep = metrics_endpoint_label(request.url.path)
+            REQUEST_COUNT.labels(method=request.method, endpoint=ep, status="200").inc()
+            REQUEST_LATENCY.labels(method=request.method, endpoint=ep).observe(perf_counter() - start_time)
             return JSONResponse(content=json.loads(cached_response), headers={"X-Cache": "HIT"})
         
         # Get response
@@ -105,14 +112,16 @@ async def cache_middleware(request: Request, call_next):
             except:
                 pass  # Skip caching if not JSON
         
-        REQUEST_COUNT.labels(method=request.method, endpoint=request.url.path, status=str(response.status_code)).inc()
-        REQUEST_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(perf_counter() - start_time)
+        ep = metrics_endpoint_label(request.url.path)
+        REQUEST_COUNT.labels(method=request.method, endpoint=ep, status=str(response.status_code)).inc()
+        REQUEST_LATENCY.labels(method=request.method, endpoint=ep).observe(perf_counter() - start_time)
         return response
     
     # For non-cached requests
     response = await call_next(request)
-    REQUEST_COUNT.labels(method=request.method, endpoint=request.url.path, status=str(response.status_code)).inc()
-    REQUEST_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(perf_counter() - start_time)
+    ep = metrics_endpoint_label(request.url.path)
+    REQUEST_COUNT.labels(method=request.method, endpoint=ep, status=str(response.status_code)).inc()
+    REQUEST_LATENCY.labels(method=request.method, endpoint=ep).observe(perf_counter() - start_time)
     return response
 
 app.include_router(api_router)
@@ -136,7 +145,7 @@ def _enforce_public_rate_limits(request: Request) -> None:
     elif path.startswith("/api/v1/market/"):
         enforce_rate_limit(request, scope="global.market", limit=200, window_sec=60)
     elif path.startswith("/api/v1/lost-pets"):
-        enforce_rate_limit(request, scope="global.lost_pets", limit=120, window_sec=60)
+        enforce_rate_limit(request, scope="global.lost_pets", limit=120, window_sec=3600)
 
 
 def _enforce_csrf(request: Request) -> None:
@@ -146,7 +155,10 @@ def _enforce_csrf(request: Request) -> None:
     path = request.url.path
     if not path.startswith("/api/v1/"):
         return
-    if path.startswith("/api/v1/public/") or path in CSRF_EXEMPT_PATHS:
+    if (
+        path.startswith("/api/v1/public/")
+        or path in CSRF_EXEMPT_PATHS
+    ):
         return
 
     auth_header = request.headers.get("authorization", "")
@@ -264,6 +276,27 @@ async def observability_middleware(request, call_next):
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse(status="ok", service=settings.app_name, timestamp=datetime.now(timezone.utc))
+
+
+@app.get("/health/ready")
+async def health_ready(db: AsyncSession = Depends(get_db_session)) -> dict:
+    checks = {"database": "down", "redis": "down"}
+    status = "degraded"
+    try:
+        await db.execute(text("select 1"))
+        checks["database"] = "ok"
+    except Exception:
+        checks["database"] = "down"
+
+    try:
+        pong = await redis_client.ping()
+        checks["redis"] = "ok" if pong else "down"
+    except Exception:
+        checks["redis"] = "down"
+
+    if all(value == "ok" for value in checks.values()):
+        status = "ok"
+    return {"status": status, "checks": checks, "service": settings.app_name}
 
 
 @app.get("/metrics")

@@ -1,41 +1,42 @@
 export const VET_SIDEBAR_GROUPS = [
   {
-    title: 'Сегодня',
+    titleKey: 'vet.workspaceUi.sidebarGroupToday',
     links: [
-      { href: '/vet/dashboard', label: 'Обзор смены', icon: 'home' },
-      { href: '/vet/inbox', label: 'Входящие и сигналы', icon: 'notifications' },
-      { href: '/vet/appointments', label: 'Поток приёма', icon: 'appointments' },
+      { href: '/vet/dashboard', labelKey: 'vet.workspaceUi.sidebarShiftOverview', icon: 'home' },
+      { href: '/vet/inbox', labelKey: 'vet.workspaceUi.sidebarInboxSignals', icon: 'notifications' },
+      { href: '/vet/appointments', labelKey: 'vet.workspaceUi.sidebarCheckinFlow', icon: 'appointments' },
     ],
   },
   {
-    title: 'Пациенты',
+    titleKey: 'vet.workspaceUi.sidebarGroupPatients',
     links: [
-      { href: '/vet/patients', label: 'Поиск и пациенты', icon: 'pets' },
-      { href: '/vet/documents', label: 'Документы', icon: 'documents' },
-      { href: '/vet/labs', label: 'Лаборатория', icon: 'records' },
+      { href: '/vet/patients', labelKey: 'vet.workspaceUi.sidebarPatientSearch', icon: 'pets' },
+      { href: '/vet/documents', labelKey: 'nav.documents', icon: 'documents' },
+      { href: '/vet/labs', labelKey: 'nav.labs', icon: 'records' },
     ],
   },
   {
-    title: 'Клиническая работа',
+    titleKey: 'vet.workspaceUi.sidebarGroupClinical',
     links: [
-      { href: '/vet/inpatient', label: 'Стационар', icon: 'inpatient' },
-      { href: '/clinical/protocols', label: 'Протоколы', icon: 'knowledge' },
-      { href: '/vet/drugs', label: 'Препараты', icon: 'pharmacy' },
+      { href: '/vet/inpatient', labelKey: 'nav.inpatient', icon: 'inpatient' },
+      { href: '/clinical/protocols', labelKey: 'nav.protocols', icon: 'knowledge' },
+      { href: '/vet/drugs', labelKey: 'nav.drugs', icon: 'pharmacy' },
     ],
   },
   {
-    title: 'Инструменты',
+    titleKey: 'vet.workspaceUi.sidebarGroupTools',
     links: [
-      { href: '/vet/tools', label: 'Калькуляторы и инструменты', icon: 'tools' },
-      { href: '/vet/assistant', label: 'AI-ассистент', icon: 'sos' },
+      { href: '/vet/tools', labelKey: 'vet.workspaceUi.sidebarCalculatorsTools', icon: 'tools' },
+      { href: '/vet/assistant', labelKey: 'nav.aiAssistant', icon: 'sos' },
     ],
   },
 ];
 
-export const VET_TASKS = [
-  'Закрыть текущие протоколы и проверить полноту записей.',
-  'Отметить срочные сигналы у пациентов с неотложными жалобами.',
-  'Проверить лабораторные результаты и входящие документы.',
+/** Keys under `vet.workspaceUi` for the shift checklist in `VetLayout`. */
+export const VET_SHIFT_TASK_KEYS = [
+  'vet.workspaceUi.shiftTask1',
+  'vet.workspaceUi.shiftTask2',
+  'vet.workspaceUi.shiftTask3',
 ];
 
 export function summarizeVetFlow(appointments = []) {

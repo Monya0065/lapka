@@ -370,7 +370,7 @@ export default function OwnerSharedCarePage() {
 
             <Card title="Связь с клиникой и сервисами" subtitle="Совместный уход связывается с сервисным контуром: карта, записи, документы и счета остаются в одной среде владельца.">
               <div className="grid gap-3">
-                <Link href="/owner/services" className="action-grid-link">
+                <Link href="/owner/map" className="action-grid-link">
                   <div>
                     <p className="text-lg font-bold text-lapka-900">Клиники и карта</p>
                     <p className="mt-1 text-sm text-lapka-600">Выберите клинику и согласуйте, кто едет на визит.</p>

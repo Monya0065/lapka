@@ -108,7 +108,7 @@ export default function OwnerPetProfilePage() {
         visitHistorySubtitle: 'Последние визиты из общей базы.',
         visitHistoryEmptyTitle: 'Нет визитов',
         visitHistoryEmptyText: 'История приёмов появится после первого визита.',
-        metaSpecies: 'Вид',
+        metaSex: 'Пол',
         metaBreed: 'Порода',
         metaAge: 'Возраст',
         metaWeight: 'Вес',
@@ -179,7 +179,7 @@ export default function OwnerPetProfilePage() {
         visitHistorySubtitle: 'Recent visits from the shared clinic timeline.',
         visitHistoryEmptyTitle: 'No visits',
         visitHistoryEmptyText: 'Visit history appears after the first appointment.',
-        metaSpecies: 'Species',
+        metaSex: 'Sex',
         metaBreed: 'Breed',
         metaAge: 'Age',
         metaWeight: 'Weight',
@@ -370,81 +370,97 @@ export default function OwnerPetProfilePage() {
         <EmptyState title={copy.notFoundTitle} text={copy.notFoundText} />
       ) : (
         <div className="space-y-4 md:space-y-6">
-          <section className="grid gap-4 2xl:grid-cols-[minmax(0,1.15fr)_360px]">
-            <Card title={copy.heroTitle} subtitle={copy.heroSubtitle} tone="tinted">
-              <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-                <div className="space-y-3">
-                  <PetVisualGallery
-                    pet={pet}
-                    language={i18n.language}
-                    title={isRu ? 'Визуальный профиль' : 'Visual profile'}
-                    subtitle={isRu ? 'Реальное фото из карты, породный ориентир и 3D-визуал в одном блоке.' : 'Profile photo, breed reference and 3D preview in one block.'}
-                    compact
-                    imageClassName="object-cover"
+          <Card tone="tinted">
+            <div className="grid gap-8 lg:grid-cols-[260px_1fr] xl:grid-cols-[300px_1fr]">
+              <div className="space-y-4">
+                <div className="relative aspect-square overflow-hidden rounded-3xl border-2 border-lapka-200 bg-gradient-to-br from-lapka-50 to-white shadow-soft">
+                  <img
+                    src={pet.photo_url || `https://placekitten.com/400/400?text=${encodeURIComponent(pet.name || 'Pet')}`}
+                    alt={pet.name || 'Pet'}
+                    className="h-full w-full object-cover"
                   />
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePhotoSelected}
-                  />
-                  <div className="rounded-[24px] border border-lapka-200 bg-white/90 p-4">
-                    <button
-                      type="button"
-                      className="btn-secondary w-full justify-center"
-                      onClick={handlePhotoButtonClick}
-                      disabled={photoUploading}
-                    >
-                      {photoUploading ? copy.uploadingPhoto : copy.uploadPhoto}
-                    </button>
-                    <p className="mt-2 text-xs text-lapka-500">{copy.uploadPhotoHint}</p>
-                    <p className="mt-2 text-xs text-lapka-500">{isRu ? 'После загрузки собственное фото станет главным визуалом на карточке питомца.' : 'Once uploaded, your own photo becomes the primary visual on the pet card.'}</p>
-                    {photoUploadError ? <p className="mt-2 text-xs font-semibold text-rose-600">{photoUploadError}</p> : null}
-                  </div>
-                  <div className="rounded-[24px] border border-lapka-200 bg-white/90 p-4">
-                    <h2 className="text-3xl font-black tracking-tight text-lapka-900">{pet.name || '—'}</h2>
-                    <p className="mt-1 text-sm text-lapka-600">{localizePetBreed(pet.breed, i18n.language)}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {summaryCards.map((item) => (
-                        <span key={item.label} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${item.tone}`}>
-                          {item.label}: {item.value}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
                 </div>
-
-                <div className="space-y-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {heroMeta.map((item) => (
-                      <div key={item.label} className="rounded-2xl border border-lapka-200 bg-white px-4 py-3">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-lapka-500">{item.label}</p>
-                        <p className="mt-1 text-sm font-semibold text-lapka-900">{item.value || '—'}</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoSelected}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary w-full justify-center text-sm py-2.5"
+                  onClick={handlePhotoButtonClick}
+                  disabled={photoUploading}
+                >
+                  {photoUploading ? copy.uploadingPhoto : isRu ? 'Загрузить фото' : 'Upload photo'}
+                </button>
+                <div className="rounded-2xl border border-lapka-200 bg-white p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-lapka-500 mb-3">{isRu ? 'Документы' : 'Documents'}</p>
+                  <div className="space-y-2">
+                    {heroMeta.slice(5).map((item) => (
+                      <div key={item.label} className="flex justify-between items-center py-1 border-b border-lapka-50 last:border-0">
+                        <span className="text-xs text-lapka-500">{item.label}</span>
+                        <span className="text-xs font-semibold text-lapka-900 truncate max-w-[130px]">{item.value || '—'}</span>
                       </div>
                     ))}
                   </div>
-
-                  <div className="rounded-[24px] border border-lapka-200 bg-white p-4">
-                    <div className="mb-3">
-                      <h3 className="text-lg font-black text-lapka-900">{copy.quickTitle}</h3>
-                      <p className="text-sm text-lapka-600">{copy.quickSubtitle}</p>
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <Link href={`/owner/pet/${petId}/records`} className="btn-primary justify-center">{copy.openRecords}</Link>
-                      <Link href={`/owner/pet/${petId}/documents`} className="btn-secondary justify-center">{copy.openDocuments}</Link>
-                      <Link href={`/owner/pet/${petId}/calendar`} className="btn-secondary justify-center">{copy.openCalendar}</Link>
-                      <Link href={`/owner/pet/${petId}/passport`} className="btn-secondary justify-center">{copy.openPassport}</Link>
-                      <Link href="/owner/care?tab=nutrition" className="btn-secondary justify-center">{copy.openNutrition}</Link>
-                      <Link href="/owner/care?tab=food-safety" className="btn-secondary justify-center">{copy.openSafeFood}</Link>
-                    </div>
-                  </div>
                 </div>
               </div>
-            </Card>
 
-            <div className="space-y-4">
-              <Card title={copy.timelineTitle} subtitle={copy.timelineSubtitle}>
+              <div className="space-y-5">
+                <div className="rounded-3xl bg-gradient-to-br from-lapka-100 via-lapka-50 to-white p-6 shadow-soft">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-4xl font-black text-lapka-900 tracking-tight">{pet.name || '—'}</h2>
+                      <p className="mt-2 text-lg font-medium text-lapka-600">
+                        {localizePetSpecies(pet.species, i18n.language)} · {localizePetBreed(pet.breed, i18n.language)}
+                      </p>
+                    </div>
+                    <span className="rounded-full border-2 border-emerald-200 bg-gradient-to-r from-emerald-50 to-white px-4 py-2 text-sm font-bold text-emerald-700 shadow-sm">
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-lapka-700">
+                    <span className="rounded-full border border-lapka-200 bg-white/80 px-3 py-1.5">{localizePetSex(pet.sex, i18n.language)}</span>
+                    <span className="text-lapka-400">•</span>
+                    <span className="rounded-full border border-lapka-200 bg-white/80 px-3 py-1.5">{formatPetAge(pet.birth_date, i18n.language)}</span>
+                    <span className="text-lapka-400">•</span>
+                    <span className="rounded-full border border-lapka-200 bg-white/80 px-3 py-1.5">{pet.weight_kg ? `${pet.weight_kg} ${isRu ? 'кг' : 'kg'}` : copy.noWeight}</span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-lapka-200 bg-white p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-lapka-500 mb-3">{isRu ? 'Идентификация' : 'Identification'}</p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    {heroMeta.slice(0, 5).map((item) => (
+                      <div key={item.label} className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-lapka-400">{item.label}</span>
+                        <span className="text-sm font-semibold text-lapka-900 truncate">{item.value || '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Link href={`/owner/pet/${petId}/passport`} className="btn-primary flex-1 justify-center text-base py-3.5 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all">
+                    {isRu ? 'QR-паспорт' : 'QR Passport'}
+                  </Link>
+                  <Link href={`/owner/pet/${petId}/records`} className="btn-secondary flex-1 justify-center text-base py-3.5">
+                    {isRu ? 'Медкарта' : 'Medical record'}
+                  </Link>
+                  <Link href={`/owner/pet/${petId}/calendar`} className="btn-subtle flex items-center justify-center px-4 py-3.5">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <section className="grid gap-4 md:grid-cols-1 lg:grid-cols-[320px] xl:grid-cols-[360px] 2xl:grid-cols-[400px]">
+            <Card title={copy.timelineTitle} subtitle={copy.timelineSubtitle}>
                 {timelineItems.length ? (
                   <Timeline items={timelineItems} />
                 ) : (
@@ -478,10 +494,9 @@ export default function OwnerPetProfilePage() {
                   <EmptyState title={copy.remindersEmptyTitle} text={copy.remindersEmptyText} />
                 )}
               </Card>
-            </div>
           </section>
 
-          <section className="grid gap-4 2xl:grid-cols-3">
+          <section className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             <Card title={copy.vaccinesTitle} subtitle={copy.vaccinesSubtitle}>
               {topVaccines.length ? (
                 <div className="space-y-3">

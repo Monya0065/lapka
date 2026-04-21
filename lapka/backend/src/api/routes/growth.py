@@ -8,6 +8,20 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+
+
+class EnhanceDescriptionRequest(BaseModel):
+    pet_name: str
+    species: str
+    breed: str | None
+    description: str
+
+
+class EnhanceDescriptionResponse(BaseModel):
+    enhanced_description: str
+
+
+# AI enhance description
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -437,6 +451,74 @@ async def create_lost_pet_report(
     await db.commit()
 
     return {"status": "ok", "report": _serialize_lost_pet(report, pet, include_private=True)}
+
+
+@router.put("/owner/lost-pets/{report_id}")
+async def update_lost_pet_report(
+    report_id: str,
+    payload: LostPetCreateRequest,
+    current_user=Depends(require_roles(RoleEnum.owner)),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    report_uuid = _as_uuid(report_id, "report_id")
+    report = await db.scalar(
+        select(LostPetReport).where(
+            LostPetReport.id == report_uuid,
+            LostPetReport.owner_id == current_user.id,
+        )
+    )
+    if not report:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "REPORT_NOT_FOUND", "message": "Report not found or access denied"},
+        )
+
+    pet = await db.scalar(select(MasterPet).where(MasterPet.id == report.pet_id))
+    if not pet:
+        raise HTTPException(status_code=404, detail={"code": "PET_NOT_FOUND", "message": "Pet not found"})
+
+    report.city = sanitize_text(payload.city, max_len=128)
+    report.last_seen_location = sanitize_text(payload.last_seen_location, max_len=255)
+    report.last_seen_time = payload.last_seen_time
+    report.description = sanitize_text(payload.description, max_len=2000)
+    if payload.photo_url:
+        report.photo_url = sanitize_text(payload.photo_url, max_len=512)
+
+    await log_audit(
+        db,
+        actor_user_id=str(current_user.id),
+        clinic_id=None,
+        action="lost_pet.update",
+        target_type="lost_pet_report",
+        target_id=str(report.id),
+    )
+    await db.commit()
+
+    return {"status": "ok", "report": _serialize_lost_pet(report, pet, include_private=True)}
+
+
+@router.post("/lost-pets/ai/enhance-description", response_model=EnhanceDescriptionResponse)
+async def enhance_lost_pet_description(
+    payload: EnhanceDescriptionRequest,
+    request: Request,
+) -> EnhanceDescriptionResponse:
+    _enforce_public_rate_limit(request, "lost_pet_ai")
+    
+    original = payload.description or ""
+    pet_info = f"{payload.pet_name} ({payload.species}"
+    if payload.breed:
+        pet_info += f", {payload.breed}"
+    pet_info += ")"
+    
+    enhanced = f"{pet_info}: пропал(ла) {original.lower() if original else 'неизвестно'}. "
+    enhanced += "Особые приметы: "
+    if " collars" in original.lower() or "ошейник" in original.lower():
+        enhanced += "носит ошейник, "
+    if "откликается" in original.lower():
+        enhanced += "откликается на имя, "
+    enhanced += "Пожалуйста, сообщите находку — питомец домашний и очень скучает!"
+    
+    return EnhanceDescriptionResponse(enhanced_description=enhanced)
 
 
 @router.get("/lost-pets")

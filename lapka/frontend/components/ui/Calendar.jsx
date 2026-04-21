@@ -1,18 +1,58 @@
-export default function Calendar({ title = 'Март 2026' }) {
-  const days = Array.from({ length: 30 }, (_, i) => i + 1);
+'use client';
 
-  return (
-    <div className="space-y-3">
-      <h4 className="text-sm font-semibold text-lapka-700">{title}</h4>
-      <div className="grid grid-cols-7 gap-2">
-        {days.map((day) => (
-          <div key={day} className="rounded-xl border border-lapka-200 bg-white p-2 text-xs text-lapka-700">
-            <p className="font-semibold">{day}</p>
-            {day % 6 === 0 ? <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Визит</span> : null}
-            {day % 10 === 0 ? <span className="mt-1 inline-flex rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold text-cyan-700">Вакцина</span> : null}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+import { useMemo } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+
+export default function Calendar({
+  events = [],
+  initialView = 'dayGridMonth',
+  initialDate = new Date(),
+  editable = false,
+  selectable = false,
+  height = 'auto',
+  locale = 'ru',
+  headerToolbar = {
+    left: 'prev,next today',
+    center: 'title',
+    right: 'dayGridMonth,timeGridWeek,timeGridDay',
+  },
+  onDateClick,
+  onEventClick,
+}) {
+  const calendarOptions = useMemo(() => ({
+    plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+    initialView,
+    initialDate,
+    editable,
+    selectable,
+    height,
+    locale,
+    headerToolbar,
+    events,
+    dateClick: onDateClick ? (info) => onDateClick(info.date) : undefined,
+    eventClick: onEventClick ? (info) => onEventClick(info.event) : undefined,
+    eventDisplay: 'block',
+    slotMinTime: '08:00:00',
+    slotMaxTime: '21:00:00',
+    allDaySlot: false,
+    nowIndicator: true,
+    weekNumbers: true,
+    weekText: 'Нед.',
+    allText: 'Весь день',
+    moreText: 'ещё',
+    noEventsText: 'Нет событий',
+    firstDay: 1,
+    dayMaxEventRows: 3,
+    moreLinkClick: 'popover',
+    navLinkDayClick: 'week',
+    navLinkWeekClick: 'week',
+    slotDuration: '00:30:00',
+    snapDuration: '00:15:00',
+    className: 'lapka-calendar',
+  }), [events, initialView, initialDate, editable, selectable, height, locale, headerToolbar, onDateClick, onEventClick]);
+
+  return <FullCalendar {...calendarOptions} />;
 }

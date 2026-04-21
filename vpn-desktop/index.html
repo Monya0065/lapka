@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lapka VPN Desktop</title>
+  <style>
+    :root {
+      --primary: #00D4AA;
+      --primary-hover: #00B894;
+      --bg: #0a0a0a;
+      --card: #1a1a1a;
+      --text: #ffffff;
+      --text-muted: #888;
+      --border: #333;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 420px;
+      padding: 24px;
+    }
+    
+    .logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    
+    .logo svg {
+      width: 64px;
+      height: 64px;
+    }
+    
+    .logo h1 {
+      font-size: 28px;
+      margin-top: 12px;
+    }
+    
+    .logo p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    .card-header h2 {
+      font-size: 18px;
+    }
+    
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .status-active { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .status-trial { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .status-inactive { background: rgba(136,136,136,0.2); color: #888; }
+    
+    .form-group { margin-bottom: 16px; }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: #000;
+    }
+    
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    
+    .btn-secondary {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+    
+    .btn-danger {
+      background: #ef4444;
+      color: #fff;
+    }
+    
+    .error {
+      color: #ef4444;
+      margin-bottom: 16px;
+      font-size: 14px;
+      text-align: center;
+    }
+    
+    .hidden { display: none !important; }
+    
+    /* Dashboard */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .stat {
+      background: var(--bg);
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    
+    .device-list {
+      margin-top: 12px;
+    }
+    
+    .device-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    
+    .device-name {
+      font-weight: 500;
+    }
+    
+    .device-platform {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    
+    .header h2 {
+      font-size: 20px;
+    }
+    
+    .logout {
+      background: transparent;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      width: auto;
+      font-size: 14px;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+    }
+    
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    
+    .actions button {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Login Screen -->
+    <div id="login">
+      <div class="logo">
+        <svg viewBox="0 0 64 64" fill="none">
+          <path d="M32 4C14.327 4 0 18.327 0 36s14.327 32 32 32 32-14.327 32-32S49.673 4 32 4z" fill="#00D4AA"/>
+          <path d="M32 12v40M22 22l10 10 10-10" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <h1>Lapka VPN</h1>
+        <p>Desktop App</p>
+      </div>
+      
+      <div class="card">
+        <div id="login-error" class="error hidden"></div>
+        
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="email" placeholder="example@mail.ru">
+        </div>
+        
+        <div class="form-group">
+          <label>Пароль</label>
+          <input type="password" id="password" placeholder="••••••••">
+        </div>
+        
+        <button class="btn-primary" onclick="login()">Войти</button>
+      </div>
+      
+      <button class="btn-secondary" onclick="showRegister()">Нет аккаунта? Создать</button>
+    </div>
+    
+    <!-- Register Screen -->
+    <div id="register" class="hidden">
+      <div class="logo">
+        <h1>Регистрация</h1>
+        <p>Создайте аккаунт</p>
+      </div>
+      
+      <div class="card">
+        <div id="register-error" class="error hidden"></div>
+        
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" placeholder="example@mail.ru">
+        </div>
+        
+        <div class="form-group">
+          <label>Пароль</label>
+          <input type="password" id="reg-password" placeholder="••••••••">
+        </div>
+        
+        <button class="btn-primary" onclick="register()">Создать аккаунт</button>
+      </div>
+      
+      <button class="btn-secondary" onclick="showLogin()">Назад</button>
+    </div>
+    
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden">
+      <div class="header">
+        <h2>Lapka VPN</h2>
+        <button class="logout" onclick="logout()">Выход</button>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <h2>Подписка</h2>
+          <span class="status-badge" id="status-badge">-</span>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="plan">-</div>
+          <div class="stat-label">Тариф</div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="stat-value" id="devices-count">0</div>
+          <div class="stat-label">Устройств</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="renew-date">-</div>
+          <div class="stat-label">Действует до</div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <h2>Мои устройства</h2>
+        </div>
+        <div id="devices-list" class="device-list">
+          <div class="empty-state">Нет устройств</div>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button class="btn-primary" onclick="addDevice()">+ Добавить</button>
+        <button class="btn-secondary" onclick="showUpgrade()">Улучшить</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8001';
+    let token = null;
+    
+    function showError(id, message) {
+      const el = document.getElementById(id);
+      el.textContent = message;
+      el.classList.remove('hidden');
+    }
+    
+    function hideError(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+    
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      hideError('login-error');
+      
+      if (!email || !password) {
+        showError('login-error', 'Заполните все поля');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API}/api/auth/login`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, password})
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          token = data.access_token;
+          localStorage.setItem('token', token);
+          showDashboard();
+        } else {
+          const data = await res.json();
+          showError('login-error', data.detail || 'Ошибка входа');
+        }
+      } catch (e) {
+        showError('login-error', 'Не удалось подключиться к серверу');
+      }
+    }
+    
+    async function register() {
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-password').value;
+      
+      hideError('register-error');
+      
+      if (!email || !password) {
+        showError('register-error', 'Заполните все поля');
+        return;
+      }
+      
+      if (password.length < 8) {
+        showError('register-error', 'Пароль должен быть 8+ символов');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API}/api/auth/register`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, password})
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          token = data.access_token;
+          localStorage.setItem('token', token);
+          showDashboard();
+        } else {
+          const data = await res.json();
+          showError('register-error', data.detail || 'Ошибка регистрации');
+        }
+      } catch (e) {
+        showError('register-error', 'Не удалось подключиться');
+      }
+    }
+    
+    async function showDashboard() {
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('register').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      
+      await loadData();
+    }
+    
+    async function loadData() {
+      const headers = {Authorization: `Bearer ${token}`};
+      
+      try {
+        // Подписка
+        const subRes = await fetch(`${API}/api/billing/subscription`, {headers});
+        if (subRes.ok) {
+          const sub = await subRes.json();
+          updateSubscriptionUI(sub);
+        }
+        
+        // Устройства
+        const devRes = await fetch(`${API}/api/devices`, {headers});
+        if (devRes.ok) {
+          const devices = await devRes.json();
+          updateDevicesUI(devices);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    
+    function updateSubscriptionUI(sub) {
+      const status = sub?.status || 'none';
+      const plan = sub?.plan_id?.toUpperCase() || 'НЕТ';
+      const renew = sub?.renew_at?.substring(0, 10) || '-';
+      
+      document.getElementById('plan').textContent = plan;
+      document.getElementById('renew-date').textContent = renew;
+      
+      const badge = document.getElementById('status-badge');
+      badge.textContent = status === 'active' ? 'Активна' : status === 'trial' ? 'Пробный' : 'Нет';
+      badge.className = 'status-badge status-' + (status === 'active' ? 'active' : status === 'trial' ? 'trial' : 'inactive');
+    }
+    
+    function updateDevicesUI(devices) {
+      const list = document.getElementById('devices-list');
+      document.getElementById('devices-count').textContent = devices.length;
+      
+      if (devices.length === 0) {
+        list.innerHTML = '<div class="empty-state">Нет устройств</div>';
+        return;
+      }
+      
+      list.innerHTML = devices.map(d => `
+        <div class="device-item">
+          <div>
+            <div class="device-name">${d.name}</div>
+            <div class="device-platform">${d.platform}</div>
+          </div>
+          <button onclick="deleteDevice('${d.id}')" style="width:auto;padding:8px 12px;background:rgba(239,68,68,0.2);color:#ef4444;border:none;border-radius:6px;font-size:13px;">
+            Удалить
+          </button>
+        </div>
+      `).join('');
+    }
+    
+    async function deleteDevice(id) {
+      if (!confirm('Удалить устройство?')) return;
+      
+      try {
+        await fetch(`${API}/api/devices/${id}`, {
+          method: 'DELETE',
+          headers: {Authorization: `Bearer ${token}`},
+        });
+        await loadData();
+      } catch (e) {
+        alert('Ошибка удаления');
+      }
+    }
+    
+    async function addDevice() {
+      const name = prompt('Название устройства:', 'Desktop');
+      if (!name) return;
+      
+      try {
+        await fetch(`${API}/api/devices`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({name, platform: 'desktop'})
+        });
+        await loadData();
+      } catch (e) {
+        alert('Ошибка');
+      }
+    }
+    
+    function showUpgrade() {
+      alert('Купить подписку на сайте lapka.ru');
+    }
+    
+    function logout() {
+      token = null;
+      localStorage.removeItem('token');
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('login').classList.remove('hidden');
+    }
+    
+    function showRegister() {
+      hideError('login-error');
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('register').classList.remove('hidden');
+    }
+    
+    function showLogin() {
+      hideError('register-error');
+      document.getElementById('register').classList.add('hidden');
+      document.getElementById('login').classList.remove('hidden');
+    }
+    
+    // Check token on load
+    window.onload = async () => {
+      token = localStorage.getItem('token');
+      if (token) {
+        showDashboard();
+      }
+    };
+  </script>
+</body>
+</html>

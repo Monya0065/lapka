@@ -10,6 +10,20 @@ python -m src.seed
 uvicorn src.main:app --reload
 ```
 
+## Tests
+
+- Recommended: Python **3.12** + venv: `python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
+- **Unit-only (no Docker):** `LAPKA_SKIP_INTEGRATION=1 python -m pytest -q`
+- **Full suite:** start the stack (`docker compose up --build` from repo root), then `python -m pytest -q` from `backend/`. If the API is down, integration tests are **skipped** locally (not failed); CI sets `LAPKA_REQUIRE_API=1` so missing API fails the job.
+- **Tune API wait:** `LAPKA_API_WAIT_SEC` (default `25`). **Strict CI-style exit:** `LAPKA_REQUIRE_API=1`.
+
+## LLM (free tier)
+
+- **YandexGPT (Russia-friendly):** `LLM_PROVIDER=yandexgpt` + `YANDEX_CLOUD_API_KEY` + `YANDEX_CLOUD_FOLDER_ID` from [Yandex Cloud](https://console.yandex.cloud/) (Foundation Models / YandexGPT enabled for the folder). Optional `YANDEXGPT_MODEL` (default `yandexgpt-lite/latest`). Alternatively set `YANDEX_CLOUD_IAM_TOKEN` (short-lived `Bearer`) instead of the API key.
+- **Groq:** set `LLM_PROVIDER=groq` and `GROQ_API_KEY` (https://console.groq.com/). Optional `GROQ_MODEL` (default `llama-3.3-70b-versatile`). Uses the official `openai` Python package against Groq’s OpenAI-compatible endpoint. **GroqCloud is not served from several regions** (including Russia): you will get **`403 Forbidden`** — use **YandexGPT**, **Ollama**, or **OpenAI**.
+- **Ollama (local):** run `ollama serve`, then `LLM_PROVIDER=ollama` and `OLLAMA_BASE_URL=http://127.0.0.1:11434` (from Docker API use `http://host.docker.internal:11434` on macOS/Windows).
+- **OpenAI:** `LLM_PROVIDER=openai` + `OPENAI_API_KEY`. If nothing is configured, routing falls back to **noop** (rule-based / empty completions where applicable).
+
 ## API base
 
 `/api/v1`

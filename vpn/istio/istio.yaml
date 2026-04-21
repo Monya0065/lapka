@@ -1,0 +1,131 @@
+# Istio Service Mesh Configuration
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: vpn-istio
+  namespace: istio-system
+spec:
+  profile: default
+  meshConfig:
+    enableAutoMtls: true
+    defaultConfig:
+      proxyMetadata:
+        ISTIO_META_DNS_CAPTURE: "true"
+        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+      tracing:
+        sampling: 10
+        zipkin:
+          address: jaeger-collector.istio-system:9411
+  components:
+    ingress:
+      enabled: true
+      k8s:
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+    egress:
+      enabled: true
+---
+apiVersion: networking.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: vpn-api-authz
+  namespace: vpn-production
+spec:
+  selector:
+    matchLabels:
+      app: vpn-api
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/vpn-production/sa/frontend"]
+    - source:
+        principals: ["cluster.local/ns/vpn-production/sa/vpn-mesh"]
+---
+apiVersion: networking.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: vpn-mtls
+  namespace: vpn-production
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: networking.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: vpn-jwt-auth
+  namespace: vpn-production
+spec:
+  selector:
+    matchLabels:
+      app: vpn-api
+  jwtRules:
+  - issuer: "lapka.ru"
+    audiences:
+    - "vpn-api"
+    forwardOriginalToken: true
+    secretName: jwt-public-key
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Sidecar
+metadata:
+  name: vpn-api-sidecar
+  namespace: vpn-production
+spec:
+  workloadSelector:
+    labels:
+      app: vpn-api
+  egress:
+  - hosts:
+    - "vpn-production/*"
+    - "istio-system/*"
+    - "redis.vpn-production.svc.cluster.local"
+    - "postgres.vpn-production.svc.cluster.local"
+---
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: vpn-telemetry
+  namespace: vpn-production
+spec:
+  tracing:
+  - providers:
+    - name: jaeger
+    randomSamplingPercentage: 10.0
+  metrics:
+  - providers:
+    - name: prometheus
+  accessLogging:
+  - providers:
+    - name: envoy
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: vpn-api-destination
+  namespace: vpn-production
+spec:
+  host: vpn-api.vpn-production.svc.cluster.local
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 1000
+        connectTimeout: 10s
+      http:
+        h2UpgradePolicy: UPGRADE
+        http1MaxPendingRequests: 1000
+        http2MaxRequests: 1000
+    loadBalancer:
+      simple: LEAST_REQUEST
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+  subsets:
+  - name: v1
+    labels:
+      version: v1

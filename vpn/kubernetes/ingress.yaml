@@ -1,0 +1,147 @@
+# Ingress Controllers for multi-region
+---
+# Frontend Ingress (Next.js)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vpn-frontend-ingress
+  namespace: vpn-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - lapka.ru
+    - www.lapka.ru
+  secretName: vpn-frontend-tls
+  rules:
+  - host: lapka.ru
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vpn-frontend
+            port:
+              number: 3000
+  - host: www.lapka.ru
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vpn-frontend
+            port:
+              number: 3000
+---
+# API Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vpn-api-ingress
+  namespace: vpn-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/enable-ocsp: "true"
+spec:
+  tls:
+  - hosts:
+    - api.lapka.ru
+  secretName: vpn-api-tls
+  rules:
+  - host: api.lapka.ru
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vpn-api
+            port:
+              number: 8000
+---
+# Bot Webhook Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vpn-bot-ingress
+  namespace: vpn-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - bot.lapka.ru
+  secretName: vpn-bot-tls
+  rules:
+  - host: bot.lapka.ru
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vpn-bot
+            port:
+              number: 8080
+---
+# Metrics Ingress (Prometheus)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vpn-monitoring-ingress
+  namespace: vpn-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/auth-basic: "Prometheus Monitoring"
+spec:
+  tls:
+  - hosts:
+    - metrics.lapka.ru
+  secretName: vpn-monitoring-tls
+  rules:
+  - host: metrics.lapka.ru
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: prometheus
+            port:
+              number: 9090
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vpn-grafana-ingress
+  namespace: vpn-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - grafana.lapka.ru
+  secretName: vpn-grafana-tls
+  rules:
+  - host: grafana.lapka.ru
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000

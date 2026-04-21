@@ -1,0 +1,76 @@
+zones:
+- name: lapka.ru
+  plan: enterprise
+  full_setup: true
+
+  settings:
+    security_level: high
+    always_online: true
+    minify:
+      html: true
+      css: true
+      js: true
+    rocket_loader: true
+    mirage: true
+
+  page_rules:
+  - url: "*.lapka.ru/assets/*"
+    cache_level: cache_everything
+    edge_cache_ttl: 31536000
+    browser_cache_ttl: 86400
+
+  - url: "*.lapka.ru/api/*"
+    cache_level: bypass
+
+  - url: "*.lapka.ru/vpn/*"
+    cache_level: bypass
+
+  - url: "*.lapka.ru/static/*"
+    cache_level: cache_everything
+    edge_cache_ttl: 2592000
+
+  - url: "lapka.ru/*.well-known/*"
+    cache_level: bypass
+
+  workers:
+  - name: vpn-auth
+    script: workers/auth.js
+    route:
+      pattern: "lapka.ru/api/auth/*"
+      methods: ["POST"]
+
+  - name: vpn-stats
+    script: workers/stats.js
+    route:
+      pattern: "lapka.ru/api/stats/*"
+
+  - name: rate-limit
+    script: workers/rate-limit.js
+    route:
+      pattern: "lapka.ru/api/*"
+
+  firewall:
+    rules:
+    - description: Block SQL injection
+      expression: "not eq http.method \"GET\" and cf.threat_score > 10"
+      mode: block
+
+    - description: Block known bad IPs
+      expression: "ip.src in $blocked_ips"
+      mode: challenge
+
+  rate_limits:
+  - url: "lapka.ru/api/auth/login"
+    requests_per_period: 5
+    period: 60
+    action: block
+
+  - url: "lapka.ru/api/billing/payment"
+    requests_per_period: 10
+    period: 300
+    action: block
+
+  custom_error_pages:
+  - description: 503 Service Unavailable
+    code: 503
+    response: "cloudflare/503.html"

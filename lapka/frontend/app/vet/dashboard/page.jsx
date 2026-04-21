@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
+import PageHeader from '@/components/ui/PageHeader';
 import StatsCard from '@/components/ui/StatsCard';
 import Table from '@/components/ui/Table';
 import Timeline from '@/components/ui/Timeline';
@@ -8,14 +9,14 @@ import AppImage from '@/components/ui/AppImage';
 export default function VetDashboardPage() {
   return (
     <div className="space-y-5">
-      <header className="page-header">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lapka-500">Сегодня</p>
-          <h1 className="page-title">Клиническое рабочее пространство врача</h1>
-          <p className="page-subtitle">Сначала поток смены, затем пациенты, протоколы, лаборатория и ближайшие действия без лишней навигации.</p>
-        </div>
-        <Link href="/vet/patients" className="btn-primary">Найти пациента</Link>
-      </header>
+      <PageHeader
+        eyebrow="Сегодня"
+        title="Клиническое рабочее пространство врача"
+        subtitle="Сначала поток смены, затем пациенты, протоколы, лаборатория и ближайшие действия без лишней навигации."
+        actions={(
+          <Link href="/vet/patients" className="btn-primary">Найти пациента</Link>
+        )}
+      />
 
       <section className="grid items-start gap-5 2xl:grid-cols-[1.16fr_0.84fr]">
         <Card className="overflow-hidden p-0">

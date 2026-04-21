@@ -1,0 +1,124 @@
+# Monitoring Alerts Configuration
+groups:
+- name: vpn-api
+  interval: 30s
+  rules:
+    - alert: APIHighErrorRate
+      expr: rate(vpn_api_errors_total[5m]) / rate(vpn_api_requests_total[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "High API error rate"
+        description: "API error rate is {{ $value | humanizePercentage }}"
+
+    - alert: APIHighLatency
+      expr: histogram_quantile(0.95, rate(vpn_api_request_duration_seconds_bucket[5m])) > 2
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High API latency"
+        description: "p95 latency is {{ $value }}s"
+
+    - alert: APIDown
+      expr: up{job="vpn-api"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "API is down"
+        description: "API has been down for 2 minutes"
+
+- name: database
+  interval: 30s
+  rules:
+    - alert: DatabaseDown
+      expr: up{job="postgres"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Database is down"
+        description: "PostgreSQL is not responding"
+
+    - alert: DatabaseHighConnections
+      expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Database connections high"
+        description: "Using {{ $value | humanizePercentage }} of max connections"
+
+    - alert: DatabaseReplicationLag
+      expr: pg_replication_lag > 10
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Replication lag"
+        description: "Replica is {{ $value }}s behind"
+
+- name: vpn
+  interval: 30s
+  rules:
+    - alert: VPNNodesDown
+      expr: vpn_node_status{status="online"} < 5
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Too few VPN nodes online"
+        description: "Only {{ $value }} nodes are online"
+
+    - alert: VPNHighLatency
+      expr: histogram_quantile(0.95, rate(vpn_latency_seconds_bucket[5m])) > 0.5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High VPN latency"
+        description: "p95 latency is {{ $value }}s"
+
+    - alert: VPNServerLoad
+      expr: vpn_node_load > 80
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "VPN server load high"
+        description: "Server {{ $labels.node }} has {{ $value }}% load"
+
+- name: billing
+  interval: 1m
+  rules:
+    - alert: PaymentFailed
+      expr: rate(billing_payment_failed_total[5m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Payments failing"
+        description: "Payment failures detected"
+
+- name: security
+  interval: 30s
+  rules:
+    - alert: HighFailedLogins
+      expr: rate(vpn_failed_logins_total[5m]) > 10
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High failed login attempts"
+        description: "Multiple failed logins detected"
+
+    - alert: IPDenied
+      expr: rate(vpn_ip_denied_total[5m]) > 1
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: "IP blocked"
+        description: "Suspicious IP blocked"
