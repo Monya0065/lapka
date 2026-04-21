@@ -1138,3 +1138,93 @@ async def notify_nearby_lost_pet(
         sent_count=sent_count,
         failed_count=failed_count,
     )
+
+
+class VolunteerRatingRequest(BaseModel):
+    sighting_id: str = Field(min_length=1)
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = None
+
+
+class VolunteerRatingResponse(BaseModel):
+    rating_id: str
+    new_avg_rating: float
+
+
+class VolunteerStatsResponse(BaseModel):
+    user_id: str
+    total_sightings: int
+    total_found: int
+    total_calls: int
+    avg_rating: float
+    badge_level: str
+    rank: int
+
+
+@router.post("/lost-pets/volunteer/rate", response_model=VolunteerRatingResponse)
+async def rate_volunteer(
+    payload: VolunteerRatingRequest,
+    request: Request,
+    current_user: User = Depends(require_roles(RoleEnum.owner)),
+    db: AsyncSession = Depends(get_db_session),
+) -> VolunteerRatingResponse:
+    """Rate a volunteer for their sighting report."""
+    from sqlalchemy import select, func
+    from src.models import LostPetSighting, LostPetVolunteerRating, VolunteerStats
+
+    sighting = await db.get(LostPetSighting, payload.sighting_id)
+    if not sighting:
+        raise HTTPException(status_code=404, detail="Sighting not found")
+
+    rating = LostPetVolunteerRating(
+        sighting_id=uuid.UUID(payload.sighting_id),
+        rater_user_id=current_user.id,
+        rating=payload.rating,
+        comment=payload.comment,
+    )
+    db.add(rating)
+
+    avg_result = await db.execute(
+        select(func.avg(LostPetVolunteerRating.rating))
+        .where(LostPetVolunteerRating.sighting_id == sighting.id)
+    )
+    new_avg = avg_result.scalar() or payload.rating
+
+    await db.commit()
+    return VolunteerRatingResponse(
+        rating_id=str(rating.id),
+        new_avg_rating=round(float(new_avg), 2),
+    )
+
+
+@router.get("/lost-pets/volunteer/leaderboard", response_model=list[VolunteerStatsResponse])
+async def get_volunteer_leaderboard(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[VolunteerStatsResponse]:
+    """Get top volunteers leaderboard."""
+    from sqlalchemy import select, func
+    from src.models import User, VolunteerStats
+
+    query = (
+        select(VolunteerStats, User)
+        .join(User, VolunteerStats.user_id == User.id)
+        .order_by(VolunteerStats.avg_rating.desc(), VolunteerStats.total_found.desc())
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    rows = result.all()
+
+    leaderboard = []
+    for idx, (stats, user) in enumerate(rows, 1):
+        leaderboard.append(VolunteerStatsResponse(
+            user_id=str(stats.user_id),
+            total_sightings=stats.total_sightings,
+            total_found=stats.total_found,
+            total_calls=stats.total_calls,
+            avg_rating=round(float(stats.avg_rating or 0), 2),
+            badge_level=stats.badge_level,
+            rank=idx,
+        ))
+
+    return leaderboard

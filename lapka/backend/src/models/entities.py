@@ -584,6 +584,41 @@ class LostPetSighting(Base):
     )
 
 
+class LostPetVolunteerRating(Base):
+    __tablename__ = "lost_pet_volunteer_ratings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sighting_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("lost_pet_sightings.id", ondelete="CASCADE")
+    )
+    rater_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("idx_lost_pet_volunteer_ratings_sighting", "sighting_id"),
+        Index("idx_lost_pet_volunteer_ratings_user", "rater_user_id"),
+    )
+
+
+class VolunteerStats(Base):
+    __tablename__ = "lost_pet_volunteer_stats"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True)
+    total_sightings: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_found: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    avg_rating: Mapped[float] = mapped_column(Numeric(3, 2), nullable=False, default=0)
+    badge_level: Mapped[str] = mapped_column(String(32), nullable=False, default="bronze")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("idx_lost_pet_volunteer_stats_rating", "avg_rating", "badge_level"),
+    )
+
+
 class Referral(Base):
     __tablename__ = "referrals"
 
