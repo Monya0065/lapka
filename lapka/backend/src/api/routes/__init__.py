@@ -30,6 +30,7 @@ from src.api.routes import (
     symptoms,
     templates,
     visits,
+    vpn,
 )
 
 __all__ = [
@@ -64,4 +65,5 @@ __all__ = [
     "symptoms",
     "templates",
     "visits",
+    "vpn",
 ]

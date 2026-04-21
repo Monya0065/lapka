@@ -1,148 +1,135 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import Card from '@/components/ui/Card';
-import ErrorBanner from '@/components/ui/ErrorBanner';
-import { apiRequest } from '@/lib/api';
+import Link from 'next/link';
 
-function vpnErrorCode(err) {
-  const d = err?.payload?.detail;
-  if (typeof d === 'object' && d && d.code) return d.code;
-  return null;
+interface PaymentStatus {
+  checkout_id: string;
+  provider: string;
+  status: string;
+  amount_rub: number;
+  created_at: string;
 }
 
-function statusHint(status, t) {
-  if (status === 'pending') return t('payVpnPage.pendingHint');
-  if (status === 'captured') return t('payVpnPage.capturedHint');
-  if (status === 'failed') return t('payVpnPage.failedHint');
-  if (status === 'refunded') return t('payVpnPage.refundedHint');
-  return '';
-}
-
-export default function PayVpnCheckoutPage() {
-  const params = useParams();
-  const provider = params?.provider ? String(params.provider) : '';
-  const checkoutId = params?.checkoutId ? String(params.checkoutId) : '';
-  const { t, i18n } = useTranslation('common');
-  const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
-  const isEn = langCode.startsWith('en');
-
+export default function PaymentStatusPage({ params }: { params: { provider: string; checkoutId: string } }) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const [status, setStatus] = useState<PaymentStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [unauthorized, setUnauthorized] = useState(false);
-  const [notFound, setNotFound] = useState(false);
-  const [schemaMissing, setSchemaMissing] = useState(false);
-  const [row, setRow] = useState(null);
-
-  const loginNext = `/pay/${encodeURIComponent(provider)}/${encodeURIComponent(checkoutId)}`;
-
-  const load = useCallback(async () => {
-    if (!checkoutId) return;
-    setLoading(true);
-    setError('');
-    setUnauthorized(false);
-    setNotFound(false);
-    setSchemaMissing(false);
-    try {
-      const data = await apiRequest(`/api/v1/vpn/billing/checkout/${encodeURIComponent(checkoutId)}`, { noCache: true });
-      setRow(data);
-    } catch (e) {
-      const st = e.status;
-      if (st === 401) setUnauthorized(true);
-      else if (st === 404) setNotFound(true);
-      else if (vpnErrorCode(e) === 'VPN_SCHEMA_MISSING') setSchemaMissing(true);
-      else setError(e.message || t('payVpnPage.loadError'));
-    } finally {
-      setLoading(false);
-    }
-  }, [checkoutId, t]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    async function checkStatus() {
+      try {
+        const data = await fetch(`/api/v1/vpn/checkouts/${params.checkoutId}`).then(r => r.json()).catch(() => null);
+        setStatus(data);
+      } catch (e) {
+        console.error('Failed to fetch payment status:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    checkStatus();
+  }, [params.checkoutId]);
 
-  const formatDt = (iso) => {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString(isEn ? 'en-US' : 'ru-RU', { dateStyle: 'short', timeStyle: 'short' });
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lapka-500" />
+      </div>
+    );
+  }
+
+  const isSuccess = status?.status === 'captured';
+  const isPending = status?.status === 'pending';
+  const isFailed = status?.status === 'failed' || status?.status === 'canceled';
 
   return (
-    <div className="page-wrap flex min-h-[70vh] flex-col items-center justify-center py-10">
-      <div className="w-full max-w-lg space-y-4">
-        <header className="text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">{t('payVpnPage.title')}</h1>
-          <p className="mt-1 text-sm text-slate-600">{t('payVpnPage.subtitle')}</p>
-        </header>
+    <div className="max-w-md mx-auto px-4 py-16">
+      <div className="text-center">
+        {isSuccess && (
+          <>
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-green-900 mb-2">
+              {t('payment.success', 'Оплата успешна!')}
+            </h1>
+            <p className="text-green-700 mb-6">
+              {t('payment.successDesc', 'Ваш VPN активирован. Спасибо за покупку!')}
+            </p>
+          </>
+        )}
 
-        {unauthorized ? (
-          <Card headerSize="md" title={t('payVpnPage.loginRequired')}>
-            <Link
-              href={`/login?role=owner&next=${encodeURIComponent(loginNext)}`}
-              prefetch={false}
-              className="btn-primary mt-2 inline-flex"
-            >
-              {t('payVpnPage.loginCta')}
+        {isPending && (
+          <>
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-yellow-900 mb-2">
+              {t('payment.pending', 'Ожидание оплаты')}
+            </h1>
+            <p className="text-yellow-700 mb-6">
+              {t('payment.pendingDesc', 'Пожалуйста, завершите оплату. Страница обновится автоматически.')}
+            </p>
+          </>
+        )}
+
+        {isFailed && (
+          <>
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-red-900 mb-2">
+              {t('payment.failed', 'Оплата не удалась')}
+            </h1>
+            <p className="text-red-700 mb-6">
+              {t('payment.failedDesc', 'Попробуйте ещё раз или свяжитесь с поддержкой.')}
+            </p>
+          </>
+        )}
+
+        {status && (
+          <div className="bg-gray-50 rounded-xl p-4 text-left mb-6">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">{t('payment.checkout', 'Номер заказа')}</span>
+              <span className="font-mono">{status.checkout_id.slice(0, 16)}...</span>
+            </div>
+            <div className="flex justify-between text-sm mt-2">
+              <span className="text-gray-500">{t('payment.amount', 'Сумма')}</span>
+              <span className="font-semibold">{status.amount_rub} ₽</span>
+            </div>
+            <div className="flex justify-between text-sm mt-2">
+              <span className="text-gray-500">{t('payment.provider', 'Способ оплаты')}</span>
+              <span>{status.provider}</span>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3">
+          {isSuccess && (
+            <Link href="/owner/vpn" className="btn-primary w-full">
+              {t('payment.goToVpn', 'Перейти в VPN')}
             </Link>
-          </Card>
-        ) : null}
-
-        {schemaMissing ? <ErrorBanner message={t('payVpnPage.schemaMissing')} /> : null}
-        {notFound ? <ErrorBanner message={t('payVpnPage.notFound')} /> : null}
-        {error ? <ErrorBanner message={error} /> : null}
-
-        {!unauthorized && !notFound && !schemaMissing ? (
-          <Card headerSize="md" title={t('payVpnPage.checkoutId')}>
-            {loading ? <p className="text-sm text-slate-500">…</p> : null}
-            {!loading && row ? (
-              <div className="space-y-3 text-sm">
-                <dl className="grid gap-2">
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500">{t('payVpnPage.checkoutId')}</dt>
-                    <dd className="font-mono text-xs text-slate-800">{row.checkout_id}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500">{t('payVpnPage.provider')}</dt>
-                    <dd>{provider || row.provider}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500">{t('payVpnPage.plan')}</dt>
-                    <dd>{row.plan_code}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500">{t('payVpnPage.amount')}</dt>
-                    <dd>
-                      {row.amount_rub} {isEn ? 'RUB' : '₽'}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500">{t('payVpnPage.status')}</dt>
-                    <dd>
-                      <span className={row.status === 'captured' ? 'badge-green' : row.status === 'pending' ? 'pill' : 'badge-red'}>{row.status}</span>
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500">{isEn ? 'Created' : 'Создан'}</dt>
-                    <dd>{formatDt(row.created_at)}</dd>
-                  </div>
-                </dl>
-                <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">{statusHint(row.status, t)}</p>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" className="btn-secondary" onClick={load} disabled={loading}>
-                    {t('payVpnPage.refresh')}
-                  </button>
-                  <Link href="/owner/pets" prefetch={false} className="btn-primary">
-                    {t('payVpnPage.openVpnCabinet')}
-                  </Link>
-                </div>
-              </div>
-            ) : null}
-          </Card>
-        ) : null}
+          )}
+          
+          {(isPending || isFailed) && (
+            <button onClick={() => window.location.reload()} className="btn-primary w-full">
+              {t('payment.refresh', 'Проверить статус')}
+            </button>
+          )}
+          
+          <Link href="/owner" className="btn-secondary w-full">
+            {t('payment.backToAccount', 'Вернуться в аккаунт')}
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -37,6 +37,7 @@ from src.api.routes import (
     system,
     templates,
     visits,
+    vpn,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -76,3 +77,5 @@ api_router.include_router(symptoms.router)
 api_router.include_router(system.router)
 api_router.include_router(public_booking.router)
 api_router.include_router(analytics.router)
+
+api_router.include_router(vpn.router)
