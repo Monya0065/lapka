@@ -30,12 +30,14 @@ from src.api.routes import (
     protocols,
     public_booking,
     public_links,
+    privacy_pack,
     reminders,
     reviews,
     services,
     symptoms,
     system,
     templates,
+    users,
     visits,
     vpn,
 )
@@ -75,6 +77,7 @@ api_router.include_router(ai_safe.router)
 api_router.include_router(services.router)
 api_router.include_router(symptoms.router)
 api_router.include_router(system.router)
+api_router.include_router(users.router)
 api_router.include_router(public_booking.router)
 api_router.include_router(analytics.router)
 

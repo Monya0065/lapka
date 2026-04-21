@@ -145,3 +145,51 @@ async def get_notification_preferences(
         "document_alerts": prefs.document_alerts,
         "marketing": prefs.marketing,
     }
+
+
+async def upsert_notification_preferences(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    email_enabled: bool | None = None,
+    push_enabled: bool | None = None,
+    sms_enabled: bool | None = None,
+    appointment_reminder: bool | None = None,
+    document_alerts: bool | None = None,
+    marketing: bool | None = None,
+) -> dict:
+    from sqlalchemy import select
+    from src.models import UserNotificationPreference
+
+    prefs = await db.scalar(
+        select(UserNotificationPreference).where(UserNotificationPreference.user_id == user_id)
+    )
+
+    if not prefs:
+        prefs = UserNotificationPreference(user_id=user_id)
+        db.add(prefs)
+
+    if email_enabled is not None:
+        prefs.email_enabled = email_enabled
+    if push_enabled is not None:
+        prefs.push_enabled = push_enabled
+    if sms_enabled is not None:
+        prefs.sms_enabled = sms_enabled
+    if appointment_reminder is not None:
+        prefs.appointment_reminder = appointment_reminder
+    if document_alerts is not None:
+        prefs.document_alerts = document_alerts
+    if marketing is not None:
+        prefs.marketing = marketing
+
+    await db.flush()
+    await db.refresh(prefs)
+
+    return {
+        "email": prefs.email_enabled,
+        "sms": prefs.sms_enabled,
+        "push": prefs.push_enabled,
+        "appointment_reminder": prefs.appointment_reminder,
+        "document_alerts": prefs.document_alerts,
+        "marketing": prefs.marketing,
+    }

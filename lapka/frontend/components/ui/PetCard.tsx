@@ -40,7 +40,7 @@ export default function PetCard({
 
   return (
     <article className="surface-card overflow-hidden p-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-float">
-      <div className="grid min-w-0 gap-4 p-4 lg:grid-cols-[136px_minmax(0,1fr)_auto] lg:items-center lg:gap-5 lg:p-5">
+      <div className="grid min-w-0 gap-4 overflow-hidden p-4 lg:grid-cols-[136px_minmax(0,1fr)_auto] lg:items-center lg:gap-5 lg:p-5">
         <div className="relative shrink-0">
           <AppImage
             src={image}

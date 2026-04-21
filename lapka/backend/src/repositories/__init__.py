@@ -74,6 +74,7 @@ from src.repositories.notifications import (
     delete_notification,
     get_notification,
     get_notification_preferences,
+    upsert_notification_preferences,
     list_notifications,
     mark_all_notifications_read,
     mark_notification_read,
