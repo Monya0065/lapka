@@ -63,6 +63,14 @@ class Settings(BaseSettings):
     yandex_cloud_iam_token: str | None = None
     yandexgpt_model: str = "yandexgpt-lite/latest"
 
+    # Yandex Vision (OCR, image analysis)
+    yandex_vision_enabled: bool = False
+    yandex_vision_folder_id: str | None = None
+
+    # Yandex SpeechKit (STT/TTS)
+    yandex_speechkit_enabled: bool = False
+    yandex_speechkit_folder_id: str | None = None
+
     legal_privacy_policy_version: str = "2024-01-01"
     legal_terms_version: str = "2024-01-01"
     legal_consent_version: str = "2024-01-01"
@@ -117,3 +125,6 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+settings = get_settings()

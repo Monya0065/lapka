@@ -8,6 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.ai_assistant import apply_safety_guard, explain_lab_text, structure_visit_from_transcript, transcribe_audio_file
+from src.ai.services.speechkit import speechkit_service
+from src.ai.services.vision import vision_service
 from src.core.sanitize import sanitize_text
 from src.db.session import get_db_session
 from src.models import MasterPet, RoleEnum
@@ -138,6 +140,105 @@ async def explain_lab_for_vet(
         target_type="ai_assistant",
         target_id=None,
         metadata={"action_type": "lab_explain", "species": payload.species, "route_slug": governed.execution.route_slug},
+    )
+    await db.commit()
+    return safe_payload
+
+
+class ImageAnalysisRequest(BaseModel):
+    photo_url: str = Field(min_length=3, max_length=512)
+
+
+class ImageAnalysisResponse(BaseModel):
+    text_found: str | None
+    labels: list[str]
+    objects_detected: list[dict]
+    suggestions: list[str]
+
+
+@router.post("/analyze-image", response_model=ImageAnalysisResponse)
+async def analyze_pet_image(
+    payload: ImageAnalysisRequest,
+    current_user=Depends(require_roles(RoleEnum.vet)),
+    db: AsyncSession = Depends(get_db_session),
+) -> ImageAnalysisResponse:
+    """Analyze pet photo using Yandex Vision for text detection, labels, and objects."""
+    governed = await execute_governed_ai(
+        db,
+        current_user=current_user,
+        route_slug="image-analyze",
+        payload_size=len(payload.photo_url),
+        metadata={"mode": "image-analyze"},
+        runner=lambda _execution: vision_service.analyze_image(payload.photo_url),
+        success_metadata={"mode": "image-analyze"},
+        failure_message="Анализ изображения временно недоступен.",
+    )
+
+    result = governed.result
+    suggestions = []
+
+    if result.labels:
+        pet_related = ["cat", "dog", "animal", "pet", "veterinary", "medical"]
+        for label in result.labels:
+            if any(p in label.lower() for p in pet_related):
+                suggestions.append(f"Обнаружено: {label}")
+
+    if result.objects_detected:
+        for obj in result.objects_detected[:3]:
+            if obj.get("confidence", 0) > 0.7:
+                suggestions.append(f"Объект: {obj.get('name', 'unknown')}")
+
+    if result.text_found:
+        suggestions.append("Обнаружен текст на изображении")
+
+    return ImageAnalysisResponse(
+        text_found=result.text_found,
+        labels=result.labels,
+        objects_detected=result.objects_detected,
+        suggestions=suggestions,
+    )
+
+
+@router.post("/transcribe-advanced")
+async def transcribe_visit_audio_advanced(
+    audio_file: UploadFile = File(...),
+    current_user=Depends(require_roles(RoleEnum.vet)),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Enhanced transcription using Yandex SpeechKit with full STT capabilities."""
+    audio_data = await audio_file.read()
+
+    governed = await execute_governed_ai(
+        db,
+        current_user=current_user,
+        route_slug="audio-transcribe-advanced",
+        payload_size=len(audio_data),
+        metadata={"mode": "transcribe-advanced", "filename": audio_file.filename},
+        runner=lambda _execution: speechkit_service.transcribe_file(audio_file.filename or "audio.ogg", audio_data),
+        success_metadata={"mode": "transcribe-advanced"},
+        failure_message="Расширенная транскрибация временно недоступна.",
+    )
+
+    if governed.result:
+        payload = {
+            "transcript": governed.result.text,
+            "confidence": governed.result.confidence,
+        }
+    else:
+        payload = {
+            "transcript": "Не удалось распознать речь. Проверьте качество аудио.",
+            "confidence": 0.0,
+        }
+
+    safe_payload = apply_safety_guard(payload, role=current_user.role.value, vet_context=True, mode="transcription")
+    await log_audit(
+        db,
+        actor_user_id=str(current_user.id),
+        clinic_id=governed.execution.clinic_id,
+        action="ai.request",
+        target_type="ai_assistant",
+        target_id=None,
+        metadata={"action_type": "transcribe_advanced", "route_slug": governed.execution.route_slug},
     )
     await db.commit()
     return safe_payload
