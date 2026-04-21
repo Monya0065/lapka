@@ -21,7 +21,7 @@ export default function Card({
       {(title || subtitle || action) && (
         <header className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
-            {title ? <h3 className={titleClass}>{title}</h3> : null}
+            {title ? <h2 className={titleClass}>{title}</h2> : null}
             {subtitle ? <p className="mt-1 text-base leading-relaxed text-lapka-600 md:text-[1.05rem]">{subtitle}</p> : null}
           </div>
           {action}
