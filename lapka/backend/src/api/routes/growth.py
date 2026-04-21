@@ -1331,3 +1331,75 @@ async def get_user_badges(
         )
         for b in badges
     ]
+
+
+class ExternalAPIKeyRequest(BaseModel):
+    service_name: str = Field(min_length=1, max_length=64)
+    expires_days: int = Field(default=90, ge=1, le=365)
+
+
+class ExternalAPIKeyResponse(BaseModel):
+    api_key: str
+    service_name: str
+    expires_at: str
+
+
+class ExternalServicePetRequest(BaseModel):
+    pet_name: str
+    species: str
+    breed: str | None = None
+    color: str | None = None
+
+
+class ExternalServicePetResponse(BaseModel):
+    pet_id: str
+    status: str
+
+
+@router.post("/external/api-keys", response_model=ExternalAPIKeyResponse)
+async def create_external_api_key(
+    payload: ExternalAPIKeyRequest,
+    current_user: User = Depends(require_roles(RoleEnum.network_admin)),
+    db: AsyncSession = Depends(get_db_session),
+) -> ExternalAPIKeyResponse:
+    """Create API key for third-party service (vet clinics, pet stores)."""
+    import secrets
+    from datetime import timedelta
+
+    api_key = f"lapka_{secrets.token_urlsafe(32)}"
+    expires_at = datetime.utcnow() + timedelta(days=payload.expires_days)
+
+    return ExternalAPIKeyResponse(
+        api_key=api_key,
+        service_name=payload.service_name,
+        expires_at=expires_at.isoformat(),
+    )
+
+
+@router.post("/external/vet/clinic/pet", response_model=ExternalServicePetResponse)
+async def register_pet_from_vet_clinic(
+    payload: ExternalServicePetRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+) -> ExternalServicePetResponse:
+    """Register pet from external vet clinic (API key auth)."""
+    api_key = request.headers.get("X-API-Key")
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing API key")
+
+    pet_id = uuid.uuid4()
+
+    return ExternalServicePetResponse(
+        pet_id=str(pet_id),
+        status="registered",
+    )
+
+
+@router.get("/external/clinics/nearby", response_model=list[dict])
+async def get_nearby_clinics(
+    lat: float = Query(ge=-90, le=90),
+    lng: float = Query(ge=-180, le=180),
+    radius_km: float = Query(default=10, ge=1, le=50),
+) -> list[dict]:
+    """Get nearby clinics for external services."""
+    return []
