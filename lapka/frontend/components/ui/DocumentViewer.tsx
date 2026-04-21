@@ -1,51 +1,70 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import Table from '@/components/ui/Table';
 import Badge from '@/components/ui/Badge';
 
-const INITIAL_ROWS = [
-  { type: 'Анализ крови', date: '05.03.2026', status: 'Готов', ai: 'Расшифровать' },
-  { type: 'УЗИ', date: '02.03.2026', status: 'Готов', ai: 'Расшифровать' },
-  { type: 'Рентген', date: '01.03.2026', status: 'В обработке', ai: 'Ожидание' },
-];
-
 function statusBadge(status) {
-  return status === 'Готов' ? <Badge tone="success">{status}</Badge> : <Badge tone="warning">{status}</Badge>;
+  const ok = String(status || '').toLowerCase();
+  return ok.includes('готов') || ok.includes('ready') ? (
+    <Badge tone="success">{status}</Badge>
+  ) : (
+    <Badge tone="warning">{status}</Badge>
+  );
 }
 
-export default function DocumentViewer({ title = 'Документы', subtitle = 'Анализы, выписки, изображения' }) {
-  const [rows, setRows] = useState(INITIAL_ROWS);
-  const fileInputRef = useRef(null);
+function formatDate(value, locale = 'ru-RU') {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
-  function onOpenPicker() {
-    fileInputRef.current?.click();
-  }
+interface DocumentRow {
+  id: string;
+  doc_type: string;
+  created_at: string;
+  file_ref?: string;
+}
 
-  function onPickFile(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setRows((prev) => [
-      {
-        type: 'Файл врача',
-        date: new Date().toLocaleDateString('ru-RU'),
-        status: 'Готов',
-        ai: 'Расшифровать',
-      },
-      ...prev,
-    ]);
-    event.target.value = '';
-  }
+interface DocumentViewerProps {
+  title?: string;
+  subtitle?: string;
+  documents?: DocumentRow[];
+  onViewDocument?: (docId: string) => void;
+  onExplainDocument?: (docId: string) => void;
+  onDownloadDocument?: (docId: string) => void;
+}
 
+export default function DocumentViewer({
+  title = 'Документы',
+  subtitle = 'Анализы, выписки, изображения',
+  documents = [],
+  onViewDocument,
+  onExplainDocument,
+  onDownloadDocument,
+}: DocumentViewerProps) {
   const tableRows = useMemo(
     () =>
-      rows.map((row, index) => [
-        row.type,
-        row.date,
-        <span key={`st-${index}`}>{statusBadge(row.status)}</span>,
-        row.ai,
+      documents.map((doc, index) => [
+        doc.doc_type || 'Документ',
+        formatDate(doc.created_at),
+        <span key={`st-${index}`}>{statusBadge('Готов')}</span>,
+        <span key={`ai-${index}`}>
+          {onExplainDocument ? (
+            <button
+              type="button"
+              className="text-sm text-lapka-600 underline hover:text-lapka-900"
+              onClick={() => onExplainDocument(doc.id)}
+            >
+              Расшифровать
+            </button>
+          ) : (
+            'Расшифровать'
+          )}
+        </span>,
       ]),
-    [rows]
+    [documents, onExplainDocument]
   );
 
   return (
@@ -55,20 +74,13 @@ export default function DocumentViewer({ title = 'Документы', subtitle 
           <h3 className="text-xl font-bold tracking-tight text-lapka-900">{title}</h3>
           <p className="mt-1 text-sm text-lapka-600">{subtitle}</p>
         </div>
-        <button className="btn-secondary" type="button" onClick={onOpenPicker}>
-          Загрузить
-        </button>
       </div>
 
-      <input
-        ref={fileInputRef}
-        className="hidden"
-        type="file"
-        accept=".pdf,.png,.jpg,.jpeg"
-        onChange={onPickFile}
-      />
-
-      <Table columns={['Тип', 'Дата', 'Статус', 'AI']} rows={tableRows} />
+      {documents.length > 0 ? (
+        <Table columns={['Тип', 'Дата', 'Статус', 'AI']} rows={tableRows} />
+      ) : (
+        <p className="text-sm text-lapka-500">Документов пока нет.</p>
+      )}
 
       <p className="mt-3 text-xs text-lapka-600">
         AI объясняет документ простым языком и подсказывает, что обсудить с врачом. Без диагноза и лечения.

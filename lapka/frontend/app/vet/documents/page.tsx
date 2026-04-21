@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Card from '@/components/ui/Card';
 import DocumentViewer from '@/components/ui/DocumentViewer';
 import ErrorBanner from '@/components/ui/ErrorBanner';
+import Skeleton from '@/components/ui/Skeleton';
 import { apiRequest } from '@/lib/api';
 import { useClinicScope } from '@/lib/clinic-scope';
 import { BARSIK_PET_ID } from '@/lib/constants';
@@ -13,9 +14,29 @@ export default function VetDocumentsPage() {
   const [petId, setPetId] = useState(BARSIK_PET_ID);
   const [docType, setDocType] = useState('blood_test');
   const [file, setFile] = useState(null);
+  const [documents, setDocuments] = useState<Record<string, unknown>[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  async function loadDocuments() {
+    if (!clinicId) return;
+    setLoadingDocs(true);
+    try {
+      const rows = await apiRequest<Record<string, unknown>[]>(
+        `/api/v1/documents?clinic_id=${encodeURIComponent(clinicId)}`
+      );
+      setDocuments(rows || []);
+    } catch {
+    } finally {
+      setLoadingDocs(false);
+    }
+  }
+
+  useEffect(() => {
+    loadDocuments();
+  }, [clinicId]);
 
   const typeOptions = useMemo(
     () => [
@@ -44,15 +65,15 @@ export default function VetDocumentsPage() {
     }
     setSaving(true);
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, '_');
-      await apiRequest('/api/v1/documents/upload', {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('pet_id', petId.trim());
+      formData.append('clinic_id', clinicId);
+      formData.append('doc_type', docType);
+      await apiRequest('/api/v1/documents/upload-file', {
         method: 'POST',
-        body: {
-          pet_id: petId.trim(),
-          clinic_id: clinicId,
-          doc_type: docType,
-          file_ref: `uploads/vet_${Date.now()}_${safeName}`,
-        },
+        body: { __formData: formData },
+        noCache: true,
       });
       setSuccess('Документ сохранён и будет доступен владельцу по выданному уровню доступа.');
       setFile(null);
@@ -78,7 +99,22 @@ export default function VetDocumentsPage() {
       {success ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</div> : null}
 
       <section className="grid-soft-2">
-        <DocumentViewer title="Лента документов" subtitle="ОАК, биохимия, рентген, УЗИ, выписки" />
+        {loadingDocs ? (
+          <Skeleton className="h-[280px] w-full" />
+        ) : (
+          <DocumentViewer
+            title="Лента документов"
+            subtitle="ОАК, биохимия, рентген, УЗИ, выписки"
+            documents={documents}
+            onExplainDocument={async (docId) => {
+              try {
+                await apiRequest(`/api/v1/documents/${docId}/ai-explain`, { method: 'POST' });
+              } catch (err) {
+                setError(String(err instanceof Error ? err.message : 'Ошибка'));
+              }
+            }}
+          />
+        )}
 
         <Card title="Добавить документ" subtitle="Метаданные и ссылка на файл">
           <div className="space-y-3">
