@@ -33,6 +33,9 @@ class RoleEnum(str, enum.Enum):
     vet = "vet"
     clinic_admin = "clinic_admin"
     network_admin = "network_admin"
+    volunteer = "volunteer"
+    shelter = "shelter"
+    sponsor = "sponsor"
 
 
 class MembershipStatus(str, enum.Enum):
@@ -616,6 +619,37 @@ class VolunteerStats(Base):
 
     __table_args__ = (
         Index("idx_lost_pet_volunteer_stats_rating", "avg_rating", "badge_level"),
+    )
+
+
+class LostPetPremiumAd(Base):
+    __tablename__ = "lost_pet_premium_ads"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    report_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("lost_pet_reports.id", ondelete="CASCADE")
+    )
+    tier: Mapped[str] = mapped_column(String(32), nullable=False, default="boost")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        Index("idx_lost_pet_premium_ads_active", "is_active", "ends_at"),
+    )
+
+
+class VolunteerBadge(Base):
+    __tablename__ = "lost_pet_volunteer_badges"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    badge_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    badge_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("idx_lost_pet_badges_user", "user_id", "badge_type"),
     )
 
 

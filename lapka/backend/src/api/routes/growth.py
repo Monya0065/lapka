@@ -1228,3 +1228,106 @@ async def get_volunteer_leaderboard(
         ))
 
     return leaderboard
+
+
+class PremiumAdRequest(BaseModel):
+    report_id: str = Field(min_length=1)
+    tier: str = Field(default="boost")
+    duration_days: int = Field(default=7, ge=1, le=30)
+
+
+class PremiumAdResponse(BaseModel):
+    ad_id: str
+    tier: str
+    ends_at: str
+
+
+@router.post("/lost-pets/premium", response_model=PremiumAdResponse)
+async def create_premium_ad(
+    payload: PremiumAdRequest,
+    request: Request,
+    current_user: User = Depends(require_roles(RoleEnum.owner)),
+    db: AsyncSession = Depends(get_db_session),
+) -> PremiumAdResponse:
+    """Create premium/boosted ad for lost pet report."""
+    from datetime import timedelta
+    from src.models import LostPetPremiumAd, LostPetReport
+
+    report = await db.get(LostPetReport, payload.report_id)
+    if not report or report.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Report not found or access denied")
+
+    ends_at = datetime.utcnow() + timedelta(days=payload.duration_days)
+
+    premium_ad = LostPetPremiumAd(
+        report_id=report.id,
+        tier=payload.tier,
+        ends_at=ends_at,
+    )
+    db.add(premium_ad)
+    await db.commit()
+
+    return PremiumAdResponse(
+        ad_id=str(premium_ad.id),
+        tier=premium_ad.tier,
+        ends_at=ends_at.isoformat(),
+    )
+
+
+class BadgeRequest(BaseModel):
+    badge_type: str = Field(min_length=1)
+    badge_name: str = Field(min_length=1)
+
+
+class BadgeResponse(BaseModel):
+    badge_id: str
+    badge_type: str
+    badge_name: str
+
+
+@router.post("/lost-pets/volunteer/badge", response_model=BadgeResponse)
+async def award_badge(
+    payload: BadgeRequest,
+    current_user: User = Depends(require_roles(RoleEnum.shelter, RoleEnum.network_admin)),
+    db: AsyncSession = Depends(get_db_session),
+) -> BadgeResponse:
+    """Award a badge to volunteer (shelter/network_admin only)."""
+    from src.models import VolunteerBadge
+
+    badge = VolunteerBadge(
+        user_id=current_user.id,
+        badge_type=payload.badge_type,
+        badge_name=payload.badge_name,
+    )
+    db.add(badge)
+    await db.commit()
+
+    return BadgeResponse(
+        badge_id=str(badge.id),
+        badge_type=badge.badge_type,
+        badge_name=badge.badge_name,
+    )
+
+
+@router.get("/lost-pets/volunteer/badges/:user_id", response_model=list[BadgeResponse])
+async def get_user_badges(
+    user_id: str,
+    db: AsyncSession = Depends(get_db_session),
+) -> list[BadgeResponse]:
+    """Get badges for a user."""
+    from sqlalchemy import select
+    from src.models import VolunteerBadge
+
+    result = await db.execute(
+        select(VolunteerBadge).where(VolunteerBadge.user_id == uuid.UUID(user_id))
+    )
+    badges = result.scalars().all()
+
+    return [
+        BadgeResponse(
+            badge_id=str(b.id),
+            badge_type=b.badge_type,
+            badge_name=b.badge_name,
+        )
+        for b in badges
+    ]
