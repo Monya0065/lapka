@@ -5,6 +5,21 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import Card from '@/components/ui/Card';
 
+type LocalizedString = string | { ru?: string; en?: string };
+
+interface MarketingPageProps {
+  eyebrow?: LocalizedString;
+  title?: LocalizedString;
+  subtitle?: LocalizedString;
+  bullets?: LocalizedString[];
+  ctaHref?: string;
+  ctaLabel?: LocalizedString;
+  sideImage?: string;
+  cards?: Array<{ title?: LocalizedString; subtitle?: LocalizedString; href?: string; icon?: string }>;
+  sideImageAlt?: string;
+  primaryCtaLabel?: LocalizedString;
+}
+
 export default function MarketingPage({
   eyebrow = 'Платформа Лапка',
   title,
@@ -16,18 +31,18 @@ export default function MarketingPage({
   cards = [],
   sideImageAlt,
   primaryCtaLabel
-}) {
+}: MarketingPageProps) {
   const { t, i18n } = useTranslation();
   const langCode = i18n.resolvedLanguage || i18n.language || 'ru';
   const lang = langCode.startsWith('en') ? 'en' : 'ru';
-  const resolveText = (value) => {
+  const resolveText = (value: LocalizedString): string => {
     if (value && typeof value === 'object') {
-      return value[lang] || value.ru || value.en || '';
+      return value[lang as keyof typeof value] || value.ru || value.en || '';
     }
     return value || '';
   };
-  const resolveList = (value) => (Array.isArray(value) ? value.map(resolveText) : []);
-  const resolveCards = (value) =>
+  const resolveList = (value: LocalizedString[]): string[] => (Array.isArray(value) ? value.map(resolveText) : []);
+  const resolveCards = (value: MarketingPageProps['cards']) =>
     (Array.isArray(value) ? value : []).map((card) => ({
       ...card,
       title: resolveText(card?.title),

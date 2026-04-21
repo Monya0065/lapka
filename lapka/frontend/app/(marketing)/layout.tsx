@@ -1,7 +1,12 @@
 import TopNavigation from '@/components/ui/TopNavigation';
 import MarketingHeaderActions from '@/components/marketing/MarketingHeaderActions';
 
-const links = [
+interface NavLink {
+  href: string;
+  labelKey: string;
+}
+
+const links: NavLink[] = [
   { href: '/', labelKey: 'nav.home' },
   { href: '/about', labelKey: 'nav.about' },
   { href: '/for-owners', labelKey: 'nav.forOwners' },
@@ -16,7 +21,7 @@ const links = [
   { href: '/faq', labelKey: 'nav.faq' }
 ];
 
-export default function MarketingLayout({ children }) {
+export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <TopNavigation links={links} actions={<MarketingHeaderActions />} />
