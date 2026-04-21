@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     cors_origins: str = ""
     sentry_dsn: str | None = None
     sentry_environment: str = "development"
+    log_level: str = "INFO"
+    per_user_rate_limit: int = 200
+    per_user_rate_window_sec: int = 60
 
     # AI provider routing
     llm_provider: str = "noop"

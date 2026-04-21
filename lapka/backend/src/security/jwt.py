@@ -82,3 +82,15 @@ def decode_token(token: str) -> dict[str, Any]:
         raise TokenError("Token id missing")
 
     return payload
+
+
+def extract_user_id_from_token(token: str | None) -> str | None:
+    """Lightweight extraction of user_id from a bearer token. Does NOT verify signature."""
+    if not token or not token.lower().startswith("bearer "):
+        return None
+    raw = token[7:].strip()
+    try:
+        payload = jwt.get_unverified_claims(raw)
+        return payload.get("sub")
+    except Exception:
+        return None

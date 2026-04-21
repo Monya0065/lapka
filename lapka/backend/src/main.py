@@ -35,7 +35,13 @@ if settings.sentry_dsn:
             integrations=[FastApiIntegration()],
             traces_sample_rate=0.1,
             send_default_pii=False,
+            before_send_transaction=lambda event, hint: (
+                event if event.get("transaction") else (
+                    {**event, "transaction": f"{event.get('request', {}).get('method', '?')} {event.get('request', {}).get('url', '/')}"}
+                )
+            ),
         )
+        logger.info(json.dumps({"event": "sentry.init", "environment": settings.sentry_environment, "dsn_set": bool(settings.sentry_dsn)}, ensure_ascii=False))
     except ImportError:
         pass
 
@@ -44,9 +50,30 @@ Path("storage").mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger("lapka.api")
 if not logger.handlers:
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level.upper(), logging.INFO),
+        format="%(message)s",
+        stream=None,
+    )
+    logger.propagate = False
 
 logger.info("Application starting")
+
+def _set_sentry_user(request: Request) -> None:
+    try:
+        import sentry_sdk
+    except ImportError:
+        return
+    if not settings.sentry_dsn:
+        return
+    try:
+        from src.security.jwt import extract_user_id_from_token
+        user_id = extract_user_id_from_token(request.headers.get("authorization"))
+        if user_id:
+            sentry_sdk.set_user({"id": user_id, "ip_address": request.client.host if request.client else ""})
+    except Exception:
+        pass
+
 
 def _allowed_origins() -> set[str]:
     base = {"http://localhost:3000", "http://127.0.0.1:3000"}
@@ -139,6 +166,9 @@ def _extract_origin(value: str | None) -> str | None:
 
 
 def _enforce_public_rate_limits(request: Request) -> None:
+    from src.security.jwt import extract_user_id_from_token
+    from src.core.rate_limit import enforce_user_rate_limit
+
     path = request.url.path
     if path.startswith("/api/v1/public/"):
         enforce_rate_limit(request, scope="global.public", limit=180, window_sec=60)
@@ -146,6 +176,10 @@ def _enforce_public_rate_limits(request: Request) -> None:
         enforce_rate_limit(request, scope="global.market", limit=200, window_sec=60)
     elif path.startswith("/api/v1/lost-pets"):
         enforce_rate_limit(request, scope="global.lost_pets", limit=120, window_sec=3600)
+
+    user_id = extract_user_id_from_token(request.headers.get("authorization"))
+    if user_id:
+        enforce_user_rate_limit(user_id, scope="user.authenticated")
 
 
 def _enforce_csrf(request: Request) -> None:
