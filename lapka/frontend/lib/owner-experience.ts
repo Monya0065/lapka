@@ -1,4 +1,15 @@
-export const DANGEROUS_PRODUCTS = [
+export interface DangerousProduct {
+  id: string;
+  name: string;
+  category: string;
+  severity: 'critical' | 'high' | 'moderate';
+  species: string[];
+  why: string;
+  symptoms: string[];
+  safeAlternative: string;
+}
+
+export const DANGEROUS_PRODUCTS: DangerousProduct[] = [
   {
     id: 'food_chocolate',
     name: 'Шоколад',
@@ -81,7 +92,16 @@ export const DANGEROUS_PRODUCTS = [
   },
 ];
 
-export const CARE_GUIDES = [
+export interface CareGuide {
+  id: string;
+  category: string;
+  title: string;
+  readingTime: string;
+  summary: string;
+  checklist: string[];
+}
+
+export const CARE_GUIDES: CareGuide[] = [
   {
     id: 'care_walk',
     category: 'прогулки',
@@ -116,7 +136,14 @@ export const CARE_GUIDES = [
   },
 ];
 
-export const CARE_FAQ = [
+export interface CareFaq {
+  id: string;
+  category: string;
+  question: string;
+  answer: string;
+}
+
+export const CARE_FAQ: CareFaq[] = [
   {
     id: 'faq_loss_appetite',
     category: 'питание',
@@ -163,9 +190,16 @@ export const MEAL_TYPES = [
   { value: 'snack', label: 'Лакомство' },
 ];
 
-export function analyzeBreedStub(fileName = '') {
+interface BreedStub {
+  breed: string;
+  species: string;
+  confidence: number;
+  note: string;
+}
+
+export function analyzeBreedStub(fileName = ''): BreedStub {
   const normalized = String(fileName || '').toLowerCase();
-  const variants = [
+  const variants: BreedStub[] = [
     {
       breed: 'Британская короткошёрстная',
       species: 'Кот',
@@ -207,8 +241,8 @@ export function analyzeBreedStub(fileName = '') {
   return variants[hash] || variants[0];
 }
 
-export function severityMeta(level) {
-  const map = {
+export function severityMeta(level: string): { label: string; className: string } {
+  const map: Record<string, { label: string; className: string }> = {
     critical: {
       label: 'Критично',
       className: 'badge-red',

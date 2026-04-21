@@ -2,7 +2,7 @@ import { apiRequest } from '@/lib/api';
 
 const SESSION_KEY = 'lapka.ownerFunnel.sessionId';
 
-function readOrCreateSessionId() {
+function readOrCreateSessionId(): string | null {
   if (typeof window === 'undefined') return null;
   try {
     const existing = window.localStorage.getItem(SESSION_KEY);
@@ -15,7 +15,13 @@ function readOrCreateSessionId() {
   }
 }
 
-export function trackOwnerFunnelStep(step, options = {}) {
+interface FunnelOptions {
+  source?: string | null;
+  clinicId?: string | null;
+  petId?: string | null;
+}
+
+export function trackOwnerFunnelStep(step: string, options: FunnelOptions = {}): void {
   if (!step || typeof window === 'undefined') return;
   const body = {
     step,

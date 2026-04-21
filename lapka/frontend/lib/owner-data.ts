@@ -1,6 +1,11 @@
 import { apiRequest } from '@/lib/api';
 
-export async function loadOwnerBaseData() {
+export async function loadOwnerBaseData(): Promise<{
+  pets: Record<string, unknown>[];
+  reminders: Record<string, unknown>[];
+  appointments: Record<string, unknown>[];
+  invoices: Record<string, unknown>[];
+}> {
   const [petsR, remindersR, appointmentsR, invoicesR] = await Promise.allSettled([
     apiRequest('/api/v1/pets'),
     apiRequest('/api/v1/reminders?upcoming_days=120&limit=200'),
@@ -24,7 +29,13 @@ export async function loadOwnerBaseData() {
   };
 }
 
-export async function loadPetHealthBundle(petId) {
+export async function loadPetHealthBundle(petId: string): Promise<{
+  visits: Record<string, unknown>[];
+  documents: Record<string, unknown>[];
+  vaccines: Record<string, unknown>[];
+  prescriptionsByVisit: Record<string, Record<string, unknown>[]>;
+  prescriptions: Record<string, unknown>[];
+}> {
   if (!petId) {
     return {
       visits: [],
@@ -46,11 +57,11 @@ export async function loadPetHealthBundle(petId) {
   const vaccines = Array.isArray(vaccinesPayload) ? vaccinesPayload : [];
 
   const prescriptionPayloads = await Promise.allSettled(
-    visits.slice(0, 24).map((visit) => apiRequest(`/api/v1/visits/${encodeURIComponent(visit.id)}/prescriptions`))
+    visits.slice(0, 24).map((visit) => apiRequest(`/api/v1/visits/${encodeURIComponent(String(visit.id))}/prescriptions`))
   );
 
-  const prescriptionsByVisit = {};
-  const prescriptions = [];
+  const prescriptionsByVisit: Record<string, Record<string, unknown>[]> = {};
+  const prescriptions: Record<string, unknown>[] = [];
   prescriptionPayloads.forEach((result, index) => {
     const visitId = visits[index]?.id;
     if (!visitId) return;
@@ -68,29 +79,36 @@ export async function loadPetHealthBundle(petId) {
   };
 }
 
-export async function loadOwnerServicesData() {
+export async function loadOwnerServicesData(): Promise<{
+  clinics: Record<string, unknown>[];
+  insuranceClaims: Record<string, unknown>[];
+  referrals: Record<string, unknown>[];
+}> {
   const [clinicsPayload, insurancePayload, referralsPayload] = await Promise.allSettled([
-    apiRequest('/api/v1/market/clinics?limit=12'),
+    apiRequest<{ items?: Record<string, unknown>[] }>('/api/v1/market/clinics?limit=12'),
     apiRequest('/api/v1/owner/insurance/claims'),
     apiRequest('/api/v1/referrals/my'),
   ]);
 
   return {
-    clinics: clinicsPayload.status === 'fulfilled' ? clinicsPayload.value?.items || clinicsPayload.value || [] : [],
+    clinics: clinicsPayload.status === 'fulfilled' ? ((clinicsPayload.value as { items?: Record<string, unknown>[] })?.items || []) : [],
     insuranceClaims: insurancePayload.status === 'fulfilled' && Array.isArray(insurancePayload.value) ? insurancePayload.value : [],
     referrals: referralsPayload.status === 'fulfilled' && Array.isArray(referralsPayload.value) ? referralsPayload.value : [],
   };
 }
 
-export async function loadKnowledgeData(query = '') {
+export async function loadKnowledgeData(query = ''): Promise<{
+  diseases: Record<string, unknown>[];
+  symptoms: Record<string, unknown>[];
+}> {
   const q = encodeURIComponent(query || '');
   const [diseasesPayload, symptomsPayload] = await Promise.all([
-    apiRequest(`/api/v1/diseases${query ? `/search?q=${q}&limit=12` : '?limit=12'}`),
-    apiRequest(`/api/v1/symptoms${query ? `/search?q=${q}&limit=12` : '?limit=12'}`),
+    apiRequest<{ items?: Record<string, unknown>[] }>(`/api/v1/diseases${query ? `/search?q=${q}&limit=12` : '?limit=12'}`),
+    apiRequest<{ items?: Record<string, unknown>[] }>(`/api/v1/symptoms${query ? `/search?q=${q}&limit=12` : '?limit=12'}`),
   ]);
 
   return {
-    diseases: diseasesPayload?.items || diseasesPayload || [],
-    symptoms: symptomsPayload?.items || symptomsPayload || [],
+    diseases: (diseasesPayload as { items?: Record<string, unknown>[] })?.items || [],
+    symptoms: (symptomsPayload as { items?: Record<string, unknown>[] })?.items || [],
   };
 }
