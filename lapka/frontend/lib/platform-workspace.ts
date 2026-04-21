@@ -1,4 +1,25 @@
-export const PLATFORM_SIDEBAR_GROUPS = [
+interface SidebarLink {
+  href: string;
+  labelKey: string;
+  icon: string;
+}
+
+interface SidebarGroup {
+  titleKey: string;
+  links: SidebarLink[];
+}
+
+interface AiProviderPreset {
+  id: string;
+  name: string;
+  nameKey?: string;
+  models: string[];
+  status: string;
+  fallback: string;
+  routingKey: string;
+}
+
+export const PLATFORM_SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     titleKey: 'platform.workspaceUi.sidebarGroupOverview',
     links: [
@@ -26,8 +47,7 @@ export const PLATFORM_SIDEBAR_GROUPS = [
   },
 ];
 
-/** Defaults when API has no rows; `routingKey` / `nameKey` resolved in UI via i18n. */
-export const AI_PROVIDER_PRESETS = [
+export const AI_PROVIDER_PRESETS: AiProviderPreset[] = [
   {
     id: 'openai',
     name: 'OpenAI',

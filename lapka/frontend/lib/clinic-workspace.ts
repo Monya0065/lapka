@@ -1,4 +1,15 @@
-export const CLINIC_SIDEBAR_GROUPS = [
+interface SidebarLink {
+  href: string;
+  labelKey: string;
+  icon: string;
+}
+
+interface SidebarGroup {
+  titleKey: string;
+  links: SidebarLink[];
+}
+
+export const CLINIC_SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     titleKey: 'clinic.workspaceUi.sidebarGroupToday',
     links: [
@@ -45,7 +56,20 @@ export function summarizeClinicOperations({
   patients = [],
   appointments = [],
   auditRows = [],
-}) {
+}: {
+  members?: Record<string, unknown>[];
+  patients?: Record<string, unknown>[];
+  appointments?: Record<string, unknown>[];
+  auditRows?: Record<string, unknown>[];
+}): {
+  staff: number;
+  vets: number;
+  patients: number;
+  upcoming: number;
+  inProgress: number;
+  completed: number;
+  audit: number;
+} {
   const staff = Array.isArray(members) ? members : [];
   const patientRows = Array.isArray(patients) ? patients : [];
   const appointmentRows = Array.isArray(appointments) ? appointments : [];
@@ -55,7 +79,7 @@ export function summarizeClinicOperations({
     staff: staff.length,
     vets: staff.filter((item) => item.role_in_clinic === 'vet').length,
     patients: patientRows.length,
-    upcoming: appointmentRows.filter((item) => ['new', 'waiting', 'scheduled', 'confirmed'].includes(item.status)).length,
+    upcoming: appointmentRows.filter((item) => ['new', 'waiting', 'scheduled', 'confirmed'].includes(item.status as string)).length,
     inProgress: appointmentRows.filter((item) => item.status === 'in_progress').length,
     completed: appointmentRows.filter((item) => item.status === 'completed').length,
     audit: audit.length,
