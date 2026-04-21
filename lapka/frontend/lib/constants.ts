@@ -1,5 +1,6 @@
-/** Internal path only (open-redirect safe) for post-login navigation. */
-export function safePostLoginPath(raw) {
+import { Role } from './types';
+
+export function safePostLoginPath(raw: unknown): string | null {
   if (!raw || typeof raw !== 'string') return null;
   const s = raw.trim();
   if (!s.startsWith('/')) return null;
@@ -13,7 +14,7 @@ export const BARSIK_PET_ID = process.env.NEXT_PUBLIC_DEMO_BARSIK_PET_ID || '5555
 export const BARSIK_VISIT_ID = process.env.NEXT_PUBLIC_DEMO_BARSIK_VISIT_ID || '66666666-6666-6666-6666-666666666666';
 export const BARSIK_STAY_ID = process.env.NEXT_PUBLIC_DEMO_BARSIK_STAY_ID || '77777777-7777-7777-7777-777777777777';
 
-export const ROLE_ROUTES = {
+export const ROLE_ROUTES: Record<string, string> = {
   owner: '/owner/dashboard',
   vet: '/vet/dashboard',
   clinic_admin: '/clinic/dashboard',
@@ -25,4 +26,6 @@ export const ROLE_PRESETS = {
   vet: { email: 'vet@lapka.local', password: 'demo12345' },
   clinic_admin: { email: 'admin@lapka.local', password: 'demo12345' },
   network_admin: { email: 'platform@lapka.local', password: 'demo12345' },
-};
+} as const;
+
+export type RolePreset = keyof typeof ROLE_PRESETS;

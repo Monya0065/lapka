@@ -1,4 +1,5 @@
-import { ROLE_ROUTES } from '@/lib/constants';
+import { ROLE_ROUTES } from './constants';
+import type { Role, StoredSession, User, LoginTokens } from './types';
 
 export const STORAGE_KEYS = {
   role: 'lapka.role',
@@ -8,18 +9,18 @@ export const STORAGE_KEYS = {
   user: 'lapka.user',
   csrf: 'lapka.csrf_token',
   clinicScope: 'lapka.selected_clinic_id',
-};
+} as const;
 
-export function getApiBase() {
+export function getApiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 }
 
-function safeStorage() {
+function safeStorage(): Storage | null {
   if (typeof window === 'undefined') return null;
   return window.localStorage;
 }
 
-function getOrCreateCsrfToken() {
+function getOrCreateCsrfToken(): string {
   const storage = safeStorage();
   if (!storage || typeof window === 'undefined') return '';
 
@@ -33,18 +34,18 @@ function getOrCreateCsrfToken() {
   return token;
 }
 
-export function broadcastAuthChange() {
+export function broadcastAuthChange(): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('lapka-auth-change'));
   }
 }
 
-export function getStoredSession() {
+export function getStoredSession(): StoredSession {
   const storage = safeStorage();
   if (!storage) return { role: null, email: null, accessToken: null, refreshToken: null, user: null };
 
   const userRaw = storage.getItem(STORAGE_KEYS.user);
-  let user = null;
+  let user: User | null = null;
   try {
     user = userRaw ? JSON.parse(userRaw) : null;
   } catch {
@@ -52,7 +53,7 @@ export function getStoredSession() {
   }
 
   return {
-    role: storage.getItem(STORAGE_KEYS.role),
+    role: storage.getItem(STORAGE_KEYS.role) as Role,
     email: storage.getItem(STORAGE_KEYS.email),
     accessToken: storage.getItem(STORAGE_KEYS.access),
     refreshToken: storage.getItem(STORAGE_KEYS.refresh),
@@ -60,7 +61,7 @@ export function getStoredSession() {
   };
 }
 
-export function saveSession({ role, email, accessToken, refreshToken, user }) {
+export function saveSession({ role, email, accessToken, refreshToken, user }: StoredSession): void {
   const storage = safeStorage();
   if (!storage) return;
   if (role) storage.setItem(STORAGE_KEYS.role, role);
@@ -71,7 +72,7 @@ export function saveSession({ role, email, accessToken, refreshToken, user }) {
   broadcastAuthChange();
 }
 
-export function clearSession() {
+export function clearSession(): void {
   const storage = safeStorage();
   if (!storage) return;
   storage.removeItem(STORAGE_KEYS.role);
@@ -84,14 +85,14 @@ export function clearSession() {
   broadcastAuthChange();
 }
 
-export function authHeaders(extra = {}) {
+export function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const { accessToken } = getStoredSession();
-  const headers = { ...extra };
+  const headers: Record<string, string> = { ...extra };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   return headers;
 }
 
-export async function fetchCurrentUser(accessToken) {
+export async function fetchCurrentUser(accessToken?: string): Promise<User | null> {
   const token = accessToken || getStoredSession().accessToken;
   if (!token) return null;
 
@@ -104,8 +105,8 @@ export async function fetchCurrentUser(accessToken) {
   return response.json();
 }
 
-export async function loginWithPassword(email, password, clinicId) {
-  const body = { email, password };
+export async function loginWithPassword(email: string, password: string, clinicId?: string): Promise<{ user: User; tokens: LoginTokens }> {
+  const body: Record<string, string> = { email, password };
   if (clinicId) body.clinic_id = clinicId;
   const response = await fetch(`${getApiBase()}/api/v1/auth/login`, {
     method: 'POST',
@@ -124,13 +125,12 @@ export async function loginWithPassword(email, password, clinicId) {
     throw new Error(message);
   }
 
-  const tokens = await response.json();
+  const tokens: LoginTokens = await response.json();
   const user = await fetchCurrentUser(tokens.access_token);
   if (!user) throw new Error('Не удалось получить профиль пользователя после входа');
 
   const storage = safeStorage();
   if (storage) {
-    // keep the chosen clinic id separately for UI purposes
     storage.setItem(STORAGE_KEYS.clinicScope, clinicId || '');
   }
 
@@ -145,7 +145,7 @@ export async function loginWithPassword(email, password, clinicId) {
   return { user, tokens };
 }
 
-export async function selectClinic(clinicId) {
+export async function selectClinic(clinicId: string): Promise<string> {
   const { accessToken } = getStoredSession();
   if (!accessToken) throw new Error('Not logged in');
   const response = await fetch(`${getApiBase()}/api/v1/auth/select-clinic`, {
@@ -157,15 +157,15 @@ export async function selectClinic(clinicId) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body?.detail?.message || 'Failed to select clinic');
   }
-  const tokens = await response.json();
+  const tokens: LoginTokens = await response.json();
   if (tokens.access_token) {
     const user = await fetchCurrentUser(tokens.access_token);
     saveSession({
-      role: user.role,
-      email: user.email,
+      role: user?.role || getStoredSession().role,
+      email: user?.email || getStoredSession().email,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token || getStoredSession().refreshToken,
-      user,
+      user: user || null,
     });
     const storage = safeStorage();
     if (storage) storage.setItem(STORAGE_KEYS.clinicScope, clinicId);
@@ -173,7 +173,7 @@ export async function selectClinic(clinicId) {
   return tokens.access_token;
 }
 
-export async function logoutUser() {
+export async function logoutUser(): Promise<void> {
   const { refreshToken, accessToken } = getStoredSession();
   const csrfToken = getOrCreateCsrfToken();
   if (refreshToken && accessToken) {
@@ -194,7 +194,7 @@ export async function logoutUser() {
   clearSession();
 }
 
-export async function validateStoredSession() {
+export async function validateStoredSession(): Promise<User | null> {
   const session = getStoredSession();
   if (!session.accessToken) return null;
   try {
@@ -218,6 +218,6 @@ export async function validateStoredSession() {
   }
 }
 
-export function roleHome(role) {
-  return ROLE_ROUTES[role] || '/login';
+export function roleHome(role: Role): string {
+  return ROLE_ROUTES[role || ''] || '/login';
 }

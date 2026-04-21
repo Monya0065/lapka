@@ -6,36 +6,37 @@ import {
   removeOfflineQueueItem,
   setOfflineValue,
 } from '@/lib/offlineStore';
+import type { ApiError, SyncResult, OfflineCacheStats } from '@/lib/types';
 
-const memoryCache = new Map();
-const inFlightGetRequests = new Map();
+const memoryCache = new Map<string, { expiresAt: number; value: unknown }>();
+const inFlightGetRequests = new Map<string, Promise<unknown>>();
 let syncInProgress = false;
 
 const OFFLINE_CACHE_PREFIX = 'api-cache:v1:';
 const CSRF_STORAGE_KEY = 'lapka.csrf_token';
 
-function isBrowser() {
+function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
-function cacheKey(path, method, auth, token) {
+function cacheKey(path: string, method: string, auth: boolean, token: string | null): string {
   return `${method}|${auth ? token || 'anon' : 'public'}|${path}`;
 }
 
-function offlineCacheKey(path, method, auth) {
+function offlineCacheKey(path: string, method: string, auth: boolean): string {
   return `${OFFLINE_CACHE_PREFIX}${cacheKey(path, method, auth, null)}`;
 }
 
-function isOfflineNetworkError(error) {
+function isOfflineNetworkError(error: unknown): boolean {
   if (!error) return false;
-  if (error?.name === 'TypeError') return true;
-  const message = String(error.message || '').toLowerCase();
+  if (error instanceof Error && error.name === 'TypeError') return true;
+  const message = String(error instanceof Error ? error.message : '').toLowerCase();
   return message.includes('failed to fetch') || message.includes('network');
 }
 
-function resolveDefaultTtl(path) {
+function resolveDefaultTtl(path: string): number {
   const endpoint = String(path || '');
-  const rules = [
+  const rules: { pattern: RegExp; ttl: number }[] = [
     { pattern: /^\/api\/v1\/vpn\//i, ttl: 0 },
     { pattern: /^\/api\/v1\/(pets|clinics|clinic\/services|diseases|drugs|catalog|symptoms)/i, ttl: 60_000 },
     { pattern: /^\/api\/v1\/(appointments|visits|documents|owner\/invoices|clinic\/invoices|notifications)/i, ttl: 20_000 },
@@ -47,7 +48,7 @@ function resolveDefaultTtl(path) {
   return 8_000;
 }
 
-function getOrCreateCsrfToken() {
+function getOrCreateCsrfToken(): string {
   if (!isBrowser()) return '';
   const storage = window.localStorage;
   let token = storage.getItem(CSRF_STORAGE_KEY);
@@ -60,10 +61,17 @@ function getOrCreateCsrfToken() {
   return token;
 }
 
-async function requestDirect(path, { method = 'GET', body = null, auth = true, headers = {} } = {}) {
+interface RequestOptions {
+  method?: string;
+  body?: unknown;
+  auth?: boolean;
+  headers?: Record<string, string>;
+}
+
+async function requestDirect(path: string, { method = 'GET', body = null, auth = true, headers = {} }: RequestOptions = {}): Promise<unknown> {
   const session = getStoredSession();
-  const finalHeaders = { ...headers };
-  if (!body?.__formData) {
+  const finalHeaders: Record<string, string> = { ...headers };
+  if (!body || !(body as { __formData?: unknown }).__formData) {
     finalHeaders['Content-Type'] = 'application/json';
   }
   if (auth && session.accessToken) {
@@ -79,7 +87,7 @@ async function requestDirect(path, { method = 'GET', body = null, auth = true, h
   const response = await fetch(`${getApiBase()}${path}`, {
     method,
     headers: finalHeaders,
-    body: body?.__formData ? body.__formData : body ? JSON.stringify(body) : undefined,
+    body: (body as { __formData?: unknown })?.__formData ? (body as { __formData: BodyInit }).__formData : body ? JSON.stringify(body) : undefined,
   });
 
   let payload = null;
@@ -93,8 +101,8 @@ async function requestDirect(path, { method = 'GET', body = null, auth = true, h
     if (response.status === 401 && auth) {
       clearSession();
     }
-    const message = payload?.detail?.message || payload?.message || 'Ошибка API';
-    const error = new Error(message);
+    const message = (payload as { detail?: { message?: string }; message?: string })?.detail?.message || (payload as { message?: string })?.message || 'Ошибка API';
+    const error = new Error(message) as ApiError;
     error.status = response.status;
     error.payload = payload;
     throw error;
@@ -103,7 +111,7 @@ async function requestDirect(path, { method = 'GET', body = null, auth = true, h
   return payload;
 }
 
-export async function syncQueuedRequests() {
+export async function syncQueuedRequests(): Promise<SyncResult> {
   if (!isBrowser()) return { synced: 0, failed: 0 };
   if (syncInProgress) return { synced: 0, failed: 0 };
   if (!window.navigator.onLine) return { synced: 0, failed: 0 };
@@ -124,7 +132,7 @@ export async function syncQueuedRequests() {
           auth: item.auth !== false,
           headers: item.headers || {},
         });
-        await removeOfflineQueueItem(item.id);
+        await removeOfflineQueueItem(item.id!);
         synced += 1;
       } catch {
         failed += 1;
@@ -137,15 +145,21 @@ export async function syncQueuedRequests() {
   return { synced, failed };
 }
 
-if (isBrowser() && !window.__LAPKA_OFFLINE_SYNC_BOUND__) {
-  window.__LAPKA_OFFLINE_SYNC_BOUND__ = true;
+if (isBrowser() && !(window as unknown as { __LAPKA_OFFLINE_SYNC_BOUND__?: boolean }).__LAPKA_OFFLINE_SYNC_BOUND__) {
+  (window as unknown as { __LAPKA_OFFLINE_SYNC_BOUND__?: boolean }).__LAPKA_OFFLINE_SYNC_BOUND__ = true;
   window.addEventListener('online', () => {
     syncQueuedRequests();
   });
 }
 
-export async function apiRequest(
-  path,
+interface ApiRequestOptions extends RequestOptions {
+  cacheTtlMs?: number | null;
+  noCache?: boolean;
+  queueOnOffline?: boolean;
+}
+
+export async function apiRequest<T = unknown>(
+  path: string,
   {
     method = 'GET',
     body = null,
@@ -154,34 +168,34 @@ export async function apiRequest(
     cacheTtlMs = null,
     noCache = false,
     queueOnOffline = false,
-  } = {}
-) {
+  }: ApiRequestOptions = {}
+): Promise<T> {
   const session = getStoredSession();
   const normalizedMethod = String(method || 'GET').toUpperCase();
   const effectiveCacheTtlMs = cacheTtlMs == null ? resolveDefaultTtl(path) : cacheTtlMs;
-  const isCacheable = normalizedMethod === 'GET' && !body?.__formData && !noCache && effectiveCacheTtlMs > 0;
+  const isCacheable = normalizedMethod === 'GET' && !body && !noCache && effectiveCacheTtlMs > 0;
   const key = isCacheable ? cacheKey(path, normalizedMethod, auth, session.accessToken) : null;
   const offlineKey = isCacheable ? offlineCacheKey(path, normalizedMethod, auth) : null;
   let staleValue = null;
 
   if (key && memoryCache.has(key)) {
-    const cached = memoryCache.get(key);
+    const cached = memoryCache.get(key)!;
     if (cached.expiresAt > Date.now()) {
-      return cached.value;
+      return cached.value as T;
     }
     staleValue = cached.value;
     memoryCache.delete(key);
   }
 
   if (isCacheable && isBrowser() && !window.navigator.onLine && offlineKey) {
-    const offlineCached = await getOfflineValue(offlineKey);
+    const offlineCached = await getOfflineValue<T>(offlineKey);
     if (offlineCached) {
       return offlineCached;
     }
   }
 
   if (key && inFlightGetRequests.has(key)) {
-    return inFlightGetRequests.get(key);
+    return inFlightGetRequests.get(key) as Promise<T>;
   }
 
   let payload = null;
@@ -197,7 +211,7 @@ export async function apiRequest(
       const networkFailure = isOfflineNetworkError(error);
 
       if (isCacheable && offlineKey) {
-        const offlineCached = await getOfflineValue(offlineKey);
+        const offlineCached = await getOfflineValue<T>(offlineKey);
         if (offlineCached) {
           return offlineCached;
         }
@@ -208,7 +222,7 @@ export async function apiRequest(
         return staleValue;
       }
 
-      if (queueOnOffline && normalizedMethod !== 'GET' && !body?.__formData && networkFailure) {
+      if (queueOnOffline && normalizedMethod !== 'GET' && !body && networkFailure) {
         await enqueueOfflineRequest({
           path,
           method: normalizedMethod,
@@ -220,7 +234,7 @@ export async function apiRequest(
           queued: true,
           offline: true,
           message: 'Изменения сохранены локально и будут отправлены после восстановления сети.',
-        };
+        } as T;
       }
 
       throw error;
@@ -242,7 +256,7 @@ export async function apiRequest(
     return payload;
   };
 
-  const requestPromise = executeRequest();
+  const requestPromise = executeRequest() as Promise<T>;
   if (key) {
     inFlightGetRequests.set(key, requestPromise);
   }
@@ -256,11 +270,11 @@ export async function apiRequest(
   }
 }
 
-export function clearApiMemoryCache() {
+export function clearApiMemoryCache(): void {
   memoryCache.clear();
 }
 
-export async function getOfflineCacheStats() {
+export async function getOfflineCacheStats(): Promise<OfflineCacheStats> {
   const queue = await listOfflineQueue();
   try {
     const keys = isBrowser() ? Object.keys(window.localStorage || {}).length : 0;
