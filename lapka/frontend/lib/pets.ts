@@ -1,10 +1,8 @@
-// Repo currently ships SVG assets under `/assets/img/*`.
-// Keep all visual fallbacks pointed to existing files to avoid broken images.
 const FALLBACK_CAT = '/assets/img/pet-cat.svg';
 const FALLBACK_DOG = '/assets/img/pet-barsik.svg';
 const FALLBACK_GENERIC = FALLBACK_CAT;
 
-const SPECIES_ALIASES = {
+const SPECIES_ALIASES: Record<string, string> = {
   cat: 'cat',
   feline: 'cat',
   кошка: 'cat',
@@ -26,7 +24,7 @@ const SPECIES_ALIASES = {
   птица: 'bird',
 };
 
-const BREED_ALIASES = {
+const BREED_ALIASES: Record<string, string> = {
   'british shorthair': 'british_shorthair',
   'британец': 'british_shorthair',
   'британская короткошёрстная': 'british_shorthair',
@@ -46,15 +44,13 @@ const BREED_ALIASES = {
   корги: 'corgi',
   'golden retriever': 'golden_retriever',
   'золотистый ретривер': 'golden_retriever',
-  'jack russell terrier': 'jack_russell_terrier',
-  'джек-рассел-терьер': 'jack_russell_terrier',
   'shiba inu': 'shiba_inu',
   'сиба-ину': 'shiba_inu',
   mixed: 'mixed',
   метис: 'mixed',
 };
 
-const BREED_VISUALS = {
+const BREED_VISUALS: Record<string, string> = {
   british_shorthair: FALLBACK_CAT,
   siberian: FALLBACK_CAT,
   scottish_fold: FALLBACK_CAT,
@@ -68,8 +64,7 @@ const BREED_VISUALS = {
   mixed: FALLBACK_GENERIC,
 };
 
-const BREED_ILLUSTRATIONS = {
-  // If 3D illustrations are not shipped, fall back to the same SVGs.
+const BREED_ILLUSTRATIONS: Record<string, string> = {
   british_shorthair: FALLBACK_CAT,
   siberian: FALLBACK_CAT,
   scottish_fold: FALLBACK_CAT,
@@ -83,13 +78,9 @@ const BREED_ILLUSTRATIONS = {
   mixed: FALLBACK_GENERIC,
 };
 
-const SPECIES_VISUALS = {
-  cat: [
-    FALLBACK_CAT,
-  ],
-  dog: [
-    FALLBACK_DOG,
-  ],
+const SPECIES_VISUALS: Record<string, string | string[]> = {
+  cat: [FALLBACK_CAT],
+  dog: [FALLBACK_DOG],
   rabbit: FALLBACK_DOG,
   guinea_pig: FALLBACK_GENERIC,
   ferret: FALLBACK_GENERIC,
@@ -97,13 +88,9 @@ const SPECIES_VISUALS = {
   bird: FALLBACK_GENERIC,
 };
 
-const SPECIES_ILLUSTRATIONS = {
-  cat: [
-    FALLBACK_CAT,
-  ],
-  dog: [
-    FALLBACK_DOG,
-  ],
+const SPECIES_ILLUSTRATIONS: Record<string, string | string[]> = {
+  cat: [FALLBACK_CAT],
+  dog: [FALLBACK_DOG],
   rabbit: FALLBACK_DOG,
   guinea_pig: FALLBACK_GENERIC,
   ferret: FALLBACK_GENERIC,
@@ -111,8 +98,8 @@ const SPECIES_ILLUSTRATIONS = {
   bird: FALLBACK_GENERIC,
 };
 
-const CLINIC_NAME_VISUALS = {
-  'ветсеть': '/assets/img/clinics/demo-cover.svg',
+const CLINIC_NAME_VISUALS: Record<string, string> = {
+  ветсеть: '/assets/img/clinics/demo-cover.svg',
   'мвц двасердца': '/assets/img/clinics/moscow-specialty-cover.svg',
   'ветеринарная клиника ветус': '/assets/img/clinics/riga-family-cover.svg',
   'ветеринарный центр пульс': '/assets/img/clinics/helsinki-emergency-cover.svg',
@@ -120,108 +107,114 @@ const CLINIC_NAME_VISUALS = {
   'ветеринарный госпиталь прайд': '/assets/img/clinics/demo-cover.svg',
 };
 
-const CLINIC_GALLERY_VISUALS = {
-  'ветсеть': [
-    '/assets/img/clinics/demo-cover.svg',
-    '/assets/img/clinic-ops.svg',
-    '/assets/img/card-history.svg',
-  ],
-  'мвц двасердца': [
-    '/assets/img/clinics/moscow-specialty-cover.svg',
-    '/assets/img/clinic-ops.svg',
-    '/assets/img/card-history.svg',
-  ],
-  'ветеринарная клиника ветус': [
-    '/assets/img/clinics/riga-family-cover.svg',
-    '/assets/img/clinic-ops.svg',
-    '/assets/img/card-history.svg',
-  ],
-  'ветеринарный центр пульс': [
-    '/assets/img/clinics/helsinki-emergency-cover.svg',
-    '/assets/img/clinic-ops.svg',
-    '/assets/img/card-history.svg',
-  ],
-  'ветеринарная клиника вега': [
-    '/assets/img/clinics/demo-cover.svg',
-    '/assets/img/clinic-ops.svg',
-    '/assets/img/card-history.svg',
-  ],
-  'ветеринарный госпиталь прайд': [
-    '/assets/img/clinics/demo-cover.svg',
-    '/assets/img/clinic-ops.svg',
-    '/assets/img/card-history.svg',
-  ],
+const CLINIC_GALLERY_VISUALS: Record<string, string[]> = {
+  ветсеть: ['/assets/img/clinics/demo-cover.svg', '/assets/img/clinic-ops.svg', '/assets/img/card-history.svg'],
+  'мвц двасердца': ['/assets/img/clinics/moscow-specialty-cover.svg', '/assets/img/clinic-ops.svg', '/assets/img/card-history.svg'],
+  'ветеринарная клиника ветус': ['/assets/img/clinics/riga-family-cover.svg', '/assets/img/clinic-ops.svg', '/assets/img/card-history.svg'],
+  'ветеринарный центр пульс': ['/assets/img/clinics/helsinki-emergency-cover.svg', '/assets/img/clinic-ops.svg', '/assets/img/card-history.svg'],
+  'ветеринарная клиника вега': ['/assets/img/clinics/demo-cover.svg', '/assets/img/clinic-ops.svg', '/assets/img/card-history.svg'],
+  'ветеринарный госпиталь прайд': ['/assets/img/clinics/demo-cover.svg', '/assets/img/clinic-ops.svg', '/assets/img/card-history.svg'],
 };
 
-const VET_SPECIALTY_VISUALS = {
-  'кардиология': '/assets/img/vets/vet-cardiology.svg',
+const VET_SPECIALTY_VISUALS: Record<string, string> = {
+  кардиология: '/assets/img/vets/vet-cardiology.svg',
   'визуальная диагностика': '/assets/img/vets/vet-diagnostics.svg',
-  'узи': '/assets/img/vets/vet-diagnostics.svg',
-  'терапия': '/assets/img/vets/vet-therapy.svg',
-  'неврология': '/assets/img/vets/vet-diagnostics.svg',
-  'дерматология': '/assets/img/vets/vet-dermatology.svg',
-  'стационар': '/assets/img/vets/vet-intensive.svg',
+  узи: '/assets/img/vets/vet-diagnostics.svg',
+  терапия: '/assets/img/vets/vet-therapy.svg',
+  неврология: '/assets/img/vets/vet-diagnostics.svg',
+  дерматология: '/assets/img/vets/vet-dermatology.svg',
+  стационар: '/assets/img/vets/vet-intensive.svg',
   'интенсивная терапия': '/assets/img/vets/vet-intensive.svg',
-  'хирургия': '/assets/img/vets/vet-surgery.svg',
+  хирургия: '/assets/img/vets/vet-surgery.svg',
 };
 
-function resolveLanguage(language = 'ru') {
+interface Pet {
+  photo_url?: string;
+  photo_ref?: string;
+  photo_data_url?: string;
+  avatar_url?: string;
+  image_url?: string;
+  breed?: string;
+  species?: string;
+  lapka_id?: string;
+  chip_id?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+interface Clinic {
+  photos?: string[];
+  photo_url?: string;
+  logo_url?: string;
+  name?: string;
+  photos_json?: string[];
+  [key: string]: unknown;
+}
+
+interface Vet {
+  photo_url?: string;
+  avatar_url?: string;
+  image_url?: string;
+  specialty?: string;
+  full_name?: string;
+  clinic?: Clinic;
+  [key: string]: unknown;
+}
+
+function resolveLanguage(language = 'ru'): string {
   return String(language || 'ru').toLowerCase().startsWith('ru') ? 'ru' : 'en';
 }
 
-function normalizeValue(value) {
+function normalizeValue(value: unknown): string {
   return String(value || '').trim().toLowerCase();
 }
 
-function isTrustedLocalAsset(candidate) {
+function isTrustedLocalAsset(candidate: unknown): boolean {
   return typeof candidate === 'string' && candidate.startsWith('/assets/');
 }
 
-export function isLocalAssetUrl(candidate) {
+export function isLocalAssetUrl(candidate: unknown): boolean {
   return isTrustedLocalAsset(candidate);
 }
 
-function isUserProvidedImage(candidate) {
+function isUserProvidedImage(candidate: unknown): boolean {
   return typeof candidate === 'string' && (candidate.startsWith('data:') || candidate.startsWith('blob:'));
 }
 
-function isPlaceholderRemoteImage(candidate) {
+function isPlaceholderRemoteImage(candidate: unknown): boolean {
   if (typeof candidate !== 'string') return false;
-  return [
-    'picsum.photos',
-    'placehold.co',
-    'via.placeholder.com',
-    'dummyimage.com',
-  ].some((pattern) => candidate.includes(pattern));
+  return ['picsum.photos', 'placehold.co', 'via.placeholder.com', 'dummyimage.com'].some((pattern) =>
+    candidate.includes(pattern)
+  );
 }
 
-function hashString(input) {
+function hashString(input: string): number {
   const value = String(input || '');
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash << 5) - hash) + value.charCodeAt(index);
+    hash = (hash << 5) - hash + value.charCodeAt(index);
     hash |= 0;
   }
   return Math.abs(hash);
 }
 
-function pickSpeciesVisual(speciesKey, seedSource) {
+function pickSpeciesVisual(speciesKey: string, seedSource?: string): string {
   const visual = SPECIES_VISUALS[speciesKey];
   if (Array.isArray(visual)) {
-    return visual[hashString(seedSource) % visual.length];
+    return visual[hashString(seedSource || '') % visual.length];
   }
   return visual || FALLBACK_GENERIC;
 }
 
-function pickSpeciesIllustration(speciesKey, seedSource) {
+function pickSpeciesIllustration(speciesKey: string, seedSource?: string): string {
   const visual = SPECIES_ILLUSTRATIONS[speciesKey];
   if (Array.isArray(visual)) {
-    return visual[hashString(seedSource) % visual.length];
+    return visual[hashString(seedSource || '') % visual.length];
   }
   return visual || '/assets/illustrations/pets/cat-generic-3d.svg';
 }
 
-export function resolvePetPhoto(pet) {
+export function resolvePetPhoto(pet?: Pet | null): string {
   if (!pet || typeof pet !== 'object') return FALLBACK_GENERIC;
 
   const candidate = pet.photo_url || pet.photo_ref || pet.photo_data_url || pet.avatar_url || pet.image_url;
@@ -247,7 +240,7 @@ export function resolvePetPhoto(pet) {
   return FALLBACK_GENERIC;
 }
 
-export function resolvePetIllustration(pet) {
+export function resolvePetIllustration(pet?: Pet | null): string {
   if (!pet || typeof pet !== 'object') return '/assets/illustrations/pets/cat-generic-3d.svg';
 
   const breedKey = BREED_ALIASES[normalizeValue(pet.breed)];
@@ -264,7 +257,7 @@ export function resolvePetIllustration(pet) {
   return '/assets/illustrations/pets/cat-generic-3d.svg';
 }
 
-export function resolveBreedReferencePhoto(pet) {
+export function resolveBreedReferencePhoto(pet?: Pet | null): string {
   if (!pet || typeof pet !== 'object') return resolvePetPhoto(pet);
   const breedKey = BREED_ALIASES[normalizeValue(pet.breed)];
   if (breedKey && BREED_VISUALS[breedKey]) return BREED_VISUALS[breedKey];
@@ -273,32 +266,26 @@ export function resolveBreedReferencePhoto(pet) {
   return resolvePetPhoto(pet);
 }
 
-export function buildPetVisualGallery(pet, language = 'ru') {
+interface GalleryItem {
+  id: string;
+  label: string;
+  src: string;
+  type?: string;
+  description?: string;
+  alt?: string;
+}
+
+export function buildPetVisualGallery(pet?: Pet | null, language = 'ru'): GalleryItem[] {
   const lang = resolveLanguage(language);
   const photo = resolvePetPhoto(pet);
   const breedPhoto = resolveBreedReferencePhoto(pet);
   const illustration = resolvePetIllustration(pet);
-  const items = [
-    {
-      id: 'photo',
-      label: lang === 'ru' ? 'Фото питомца' : 'Pet photo',
-      src: photo,
-      type: 'photo',
-    },
-    {
-      id: 'breed-photo',
-      label: lang === 'ru' ? 'Породное фото' : 'Breed photo',
-      src: breedPhoto,
-      type: 'photo',
-    },
-    {
-      id: 'illustration',
-      label: lang === 'ru' ? '3D-визуал' : '3D visual',
-      src: illustration,
-      type: 'illustration',
-    },
+  const items: GalleryItem[] = [
+    { id: 'photo', label: lang === 'ru' ? 'Фото питомца' : 'Pet photo', src: photo, type: 'photo' },
+    { id: 'breed-photo', label: lang === 'ru' ? 'Породное фото' : 'Breed photo', src: breedPhoto, type: 'photo' },
+    { id: 'illustration', label: lang === 'ru' ? '3D-визуал' : '3D visual', src: illustration, type: 'illustration' },
   ];
-  const seen = new Set();
+  const seen = new Set<string>();
   return items.filter((item) => {
     const key = `${item.type}:${item.src}`;
     if (seen.has(key)) return false;
@@ -307,7 +294,7 @@ export function buildPetVisualGallery(pet, language = 'ru') {
   });
 }
 
-export function resolveClinicPhoto(clinic) {
+export function resolveClinicPhoto(clinic?: Clinic | null): string {
   if (!clinic || typeof clinic !== 'object') return '/assets/photos/clinics/spb-core-cover-photo.jpg';
   const candidate = clinic.photos?.[0] || clinic.photo_url || clinic.logo_url;
   if (typeof candidate === 'string' && candidate.trim()) {
@@ -324,7 +311,7 @@ export function resolveClinicPhoto(clinic) {
   return '/assets/photos/clinics/spb-core-cover-photo.jpg';
 }
 
-export function resolveClinicGallery(clinic) {
+export function resolveClinicGallery(clinic?: Clinic | null): string[] {
   if (!clinic || typeof clinic !== 'object') {
     return ['/assets/photos/clinics/spb-core-cover-photo.jpg'];
   }
@@ -336,13 +323,9 @@ export function resolveClinicGallery(clinic) {
       : [];
 
   const trustedPhotos = rawPhotos
-    .filter((item) => typeof item === 'string' && item.trim())
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     .map((item) => item.trim())
-    .filter((item) => (
-      isUserProvidedImage(item)
-      || isTrustedLocalAsset(item)
-      || !isPlaceholderRemoteImage(item)
-    ));
+    .filter((item) => isUserProvidedImage(item) || isTrustedLocalAsset(item) || !isPlaceholderRemoteImage(item));
 
   if (trustedPhotos.length) {
     return [...new Set(trustedPhotos)];
@@ -354,7 +337,7 @@ export function resolveClinicGallery(clinic) {
   return [resolveClinicPhoto(clinic)];
 }
 
-export function buildClinicVisualGallery(clinic, language = 'ru') {
+export function buildClinicVisualGallery(clinic?: Clinic | null, language = 'ru'): GalleryItem[] {
   const lang = resolveLanguage(language);
   const gallery = resolveClinicGallery(clinic);
   const primary = resolveClinicPhoto(clinic);
@@ -385,7 +368,7 @@ export function buildClinicVisualGallery(clinic, language = 'ru') {
   }));
 }
 
-export function resolveVetPhoto(vet) {
+export function resolveVetPhoto(vet?: Vet | null): string {
   if (!vet || typeof vet !== 'object') return '/assets/photos/vets/vet-therapy-photo.jpg';
   const candidate = vet.photo_url || vet.avatar_url || vet.image_url;
   if (typeof candidate === 'string' && candidate.trim()) {
@@ -402,7 +385,7 @@ export function resolveVetPhoto(vet) {
   return '/assets/photos/vets/vet-therapy-photo.jpg';
 }
 
-export function buildVetVisualGallery(vet, language = 'ru') {
+export function buildVetVisualGallery(vet?: Vet | null, language = 'ru'): GalleryItem[] {
   const lang = resolveLanguage(language);
   const portrait = resolveVetPhoto(vet);
   const clinicGallery = resolveClinicGallery(vet?.clinic);
@@ -431,7 +414,7 @@ export function buildVetVisualGallery(vet, language = 'ru') {
   }));
 }
 
-export function localizePetSpecies(species, language = 'ru') {
+export function localizePetSpecies(species?: string | null, language = 'ru'): string {
   const lang = resolveLanguage(language);
   const raw = String(species || '').trim();
   if (!raw) return lang === 'ru' ? 'Не указан' : 'Not specified';
@@ -441,31 +424,15 @@ export function localizePetSpecies(species, language = 'ru') {
 
   if (!key) return raw;
 
-  const labels = {
-    ru: {
-      cat: 'Кот',
-      dog: 'Собака',
-      rabbit: 'Кролик',
-      guinea_pig: 'Морская свинка',
-      ferret: 'Хорёк',
-      parrot: 'Попугай',
-      bird: 'Птица',
-    },
-    en: {
-      cat: 'Cat',
-      dog: 'Dog',
-      rabbit: 'Rabbit',
-      guinea_pig: 'Guinea pig',
-      ferret: 'Ferret',
-      parrot: 'Parrot',
-      bird: 'Bird',
-    },
+  const labels: Record<string, Record<string, string>> = {
+    ru: { cat: 'Кот', dog: 'Собака', rabbit: 'Кролик', guinea_pig: 'Морская свинка', ferret: 'Хорёк', parrot: 'Попугай', bird: 'Птица' },
+    en: { cat: 'Cat', dog: 'Dog', rabbit: 'Rabbit', guinea_pig: 'Guinea pig', ferret: 'Ferret', parrot: 'Parrot', bird: 'Bird' },
   };
 
   return labels[lang][key] || raw;
 }
 
-export function localizePetBreed(breed, language = 'ru') {
+export function localizePetBreed(breed?: string | null, language = 'ru'): string {
   const lang = resolveLanguage(language);
   const raw = String(breed || '').trim();
   if (!raw) return lang === 'ru' ? 'Не указана' : 'Not specified';
@@ -475,7 +442,7 @@ export function localizePetBreed(breed, language = 'ru') {
 
   if (!key) return raw;
 
-  const labels = {
+  const labels: Record<string, Record<string, string>> = {
     ru: {
       british_shorthair: 'Британская короткошёрстная',
       siberian: 'Сибирская',
@@ -505,145 +472,77 @@ export function localizePetBreed(breed, language = 'ru') {
   return labels[lang][key] || raw;
 }
 
-export function localizeDocumentType(type, language = 'ru') {
+export function localizeDocumentType(type?: string | null, language = 'ru'): string {
   const lang = resolveLanguage(language);
   const raw = String(type || '').trim();
   if (!raw) return lang === 'ru' ? 'Документ' : 'Document';
 
   const normalized = normalizeValue(raw).replace(/\s+/g, '_');
-  const labels = {
-    ru: {
-      blood_test: 'Общий анализ крови',
-      biochemistry: 'Биохимия',
-      xray: 'Рентген',
-      ultrasound: 'УЗИ',
-      discharge: 'Выписка',
-      photo: 'Фото',
-      lab_result: 'Результат лаборатории',
-    },
-    en: {
-      blood_test: 'Complete blood count',
-      biochemistry: 'Biochemistry',
-      xray: 'X-ray',
-      ultrasound: 'Ultrasound',
-      discharge: 'Discharge summary',
-      photo: 'Photo',
-      lab_result: 'Lab result',
-    },
+  const labels: Record<string, Record<string, string>> = {
+    ru: { blood_test: 'Общий анализ крови', biochemistry: 'Биохимия', xray: 'Рентген', ultrasound: 'УЗИ', discharge: 'Выписка', photo: 'Фото', lab_result: 'Результат лаборатории' },
+    en: { blood_test: 'Complete blood count', biochemistry: 'Biochemistry', xray: 'X-ray', ultrasound: 'Ultrasound', discharge: 'Discharge summary', photo: 'Photo', lab_result: 'Lab result' },
   };
 
   return labels[lang][normalized] || raw;
 }
 
-export function localizeServiceType(type, language = 'ru') {
+export function localizeServiceType(type?: string | null, language = 'ru'): string {
   const lang = resolveLanguage(language);
   const raw = String(type || '').trim();
   if (!raw) return lang === 'ru' ? 'Приём' : 'Visit';
 
   const normalized = normalizeValue(raw).replace(/\s+/g, '_');
-  const labels = {
-    ru: {
-      consultation: 'Консультация',
-      vaccination: 'Вакцинация',
-      ultrasound: 'УЗИ',
-      surgery_consult: 'Консультация хирурга',
-      telemedicine: 'Телемедицина',
-      video_consultation: 'Видеоконсультация',
-    },
-    en: {
-      consultation: 'Consultation',
-      vaccination: 'Vaccination',
-      ultrasound: 'Ultrasound',
-      surgery_consult: 'Surgical consultation',
-      telemedicine: 'Telemedicine',
-      video_consultation: 'Video consultation',
-    },
+  const labels: Record<string, Record<string, string>> = {
+    ru: { consultation: 'Консультация', vaccination: 'Вакцинация', ultrasound: 'УЗИ', surgery_consult: 'Консультация хирурга', telemedicine: 'Телемедицина', video_consultation: 'Видеоконсультация' },
+    en: { consultation: 'Consultation', vaccination: 'Vaccination', ultrasound: 'Ultrasound', surgery_consult: 'Surgical consultation', telemedicine: 'Telemedicine', video_consultation: 'Video consultation' },
   };
 
   return labels[lang][normalized] || raw;
 }
 
-export function localizeReminderType(type, language = 'ru') {
+export function localizeReminderType(type?: string | null, language = 'ru'): string {
   const lang = resolveLanguage(language);
   const raw = String(type || '').trim();
   if (!raw) return lang === 'ru' ? 'Напоминание' : 'Reminder';
 
   const normalized = normalizeValue(raw).replace(/\s+/g, '_');
-  const labels = {
-    ru: {
-      vaccine: 'Вакцинация',
-      checkup: 'Контрольный визит',
-      medication: 'Лекарство',
-      appointment: 'Запись',
-      reminder: 'Напоминание',
-    },
-    en: {
-      vaccine: 'Vaccination',
-      checkup: 'Checkup visit',
-      medication: 'Medication',
-      appointment: 'Appointment',
-      reminder: 'Reminder',
-    },
+  const labels: Record<string, Record<string, string>> = {
+    ru: { vaccine: 'Вакцинация', checkup: 'Контрольный визит', medication: 'Лекарство', appointment: 'Запись', reminder: 'Напоминание' },
+    en: { vaccine: 'Vaccination', checkup: 'Checkup visit', medication: 'Medication', appointment: 'Appointment', reminder: 'Reminder' },
   };
 
   return labels[lang][normalized] || raw;
 }
 
-export function localizeVisitType(type, language = 'ru') {
+export function localizeVisitType(type?: string | null, language = 'ru'): string {
   const lang = resolveLanguage(language);
   const raw = String(type || '').trim();
   if (!raw) return lang === 'ru' ? 'Очный визит' : 'In-clinic visit';
 
   const normalized = normalizeValue(raw).replace(/\s+/g, '_');
-  const labels = {
-    ru: {
-      clinic_visit: 'Очный визит',
-      video_consultation: 'Видеоконсультация',
-      telemedicine: 'Телемедицина',
-    },
-    en: {
-      clinic_visit: 'In-clinic visit',
-      video_consultation: 'Video consultation',
-      telemedicine: 'Telemedicine',
-    },
+  const labels: Record<string, Record<string, string>> = {
+    ru: { clinic_visit: 'Очный визит', video_consultation: 'Видеоконсультация', telemedicine: 'Телемедицина' },
+    en: { clinic_visit: 'In-clinic visit', video_consultation: 'Video consultation', telemedicine: 'Telemedicine' },
   };
 
   return labels[lang][normalized] || raw;
 }
 
-export function localizePetSex(sex, language = 'ru') {
+export function localizePetSex(sex?: string | null, language = 'ru'): string {
   const lang = resolveLanguage(language);
   const raw = String(sex || '').trim();
   if (!raw) return lang === 'ru' ? 'Не указан' : 'Not specified';
 
   const normalized = normalizeValue(raw);
-  const labels = {
-    ru: {
-      male: 'Самец',
-      female: 'Самка',
-      m: 'Самец',
-      f: 'Самка',
-      boy: 'Самец',
-      girl: 'Самка',
-      самец: 'Самец',
-      самка: 'Самка',
-    },
-    en: {
-      male: 'Male',
-      female: 'Female',
-      m: 'Male',
-      f: 'Female',
-      boy: 'Male',
-      girl: 'Female',
-      самец: 'Male',
-      самка: 'Female',
-    },
+  const labels: Record<string, Record<string, string>> = {
+    ru: { male: 'Самец', female: 'Самка', m: 'Самец', f: 'Самка', boy: 'Самец', girl: 'Самка', самец: 'Самец', самка: 'Самка' },
+    en: { male: 'Male', female: 'Female', m: 'Male', f: 'Female', boy: 'Male', girl: 'Female', самец: 'Male', самка: 'Female' },
   };
 
   return labels[lang][normalized] || raw;
 }
 
-export function formatPetAge(birthDate, language = 'ru') {
+export function formatPetAge(birthDate?: string | null, language = 'ru'): string {
   const lang = resolveLanguage(language);
   if (!birthDate) return lang === 'ru' ? 'Не указан' : 'Not specified';
 

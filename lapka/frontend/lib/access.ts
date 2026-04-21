@@ -1,8 +1,8 @@
-export function localizeAccessScope(scope, locale = 'ru') {
+export function localizeAccessScope(scope?: string | null, locale = 'ru'): string {
   const value = String(scope || '').trim().toUpperCase();
   const isRu = String(locale || 'ru').toLowerCase().startsWith('ru');
 
-  const ruMap = {
+  const ruMap: Record<string, string> = {
     PRESCRIPTIONS_ONLY: 'Только назначения',
     BASIC_MEDICAL: 'Базовый доступ',
     FULL_RECORD: 'Полная карта',
@@ -10,7 +10,7 @@ export function localizeAccessScope(scope, locale = 'ru') {
     CAMERA_VIEW: 'Камеры стационара',
   };
 
-  const enMap = {
+  const enMap: Record<string, string> = {
     PRESCRIPTIONS_ONLY: 'Prescriptions only',
     BASIC_MEDICAL: 'Basic medical',
     FULL_RECORD: 'Full record',
@@ -19,5 +19,5 @@ export function localizeAccessScope(scope, locale = 'ru') {
   };
 
   if (!value) return isRu ? 'Не выдан' : 'Not granted';
-  return (isRu ? ruMap : enMap)[value] || scope;
+  return (isRu ? ruMap : enMap)[value] || scope || '';
 }
