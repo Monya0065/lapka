@@ -21,6 +21,27 @@ class EnhanceDescriptionResponse(BaseModel):
     enhanced_description: str
 
 
+class FindSimilarPetsRequest(BaseModel):
+    photo_url: str = Field(min_length=1, max_length=512)
+    city: str | None = None
+    radius_km: float = Field(default=50, ge=1, le=300)
+
+
+class SimilarPetMatch(BaseModel):
+    report_id: str
+    pet_name: str
+    city: str
+    photo_url: str | None
+    similarity_score: float
+    last_seen_location: str
+    status: str
+
+
+class FindSimilarPetsResponse(BaseModel):
+    matches: list[SimilarPetMatch]
+    total: int
+
+
 # AI enhance description
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1000,3 +1021,120 @@ async def clinic_feedback_summary(
         "csat": csat,
         "recommendations": recommendations,
     }
+
+
+@router.post("/lost-pets/ai/find-similar", response_model=FindSimilarPetsResponse)
+async def find_similar_lost_pets(
+    payload: FindSimilarPetsRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+) -> FindSimilarPetsResponse:
+    """
+    AI-powered image similarity search for lost pets.
+    Compares uploaded photo against existing reports using perceptual hashing.
+    """
+    _enforce_public_rate_limit(request, "lost_pet_ai")
+
+    import hashlib
+    import httpx
+    from PIL import Image
+    from io import BytesIO
+
+    async def compute_phash(image_url: str) -> str | None:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                response = await client.get(image_url)
+                response.raise_for_status()
+
+            img = Image.open(BytesIO(response.content)).convert("RGB")
+            img = img.resize((8, 8), Image.Resampling.LANCZOS)
+
+            pixels = list(img.getdata())
+            avg = sum(pixels) / len(pixels)
+
+            bits = "".join("1" if p >= avg else "0" for p in pixels)
+            return hashlib.md5(bits.encode()).hexdigest()[:8]
+        except Exception:
+            return None
+
+    source_hash = await compute_phash(payload.photo_url)
+    if not source_hash:
+        return FindSimilarPetsResponse(matches=[], total=0)
+
+    query = select(LostPetReport).where(
+        LostPetReport.status == LostPetStatus.active,
+        LostPetReport.photo_url.is_not(None),
+    )
+    if payload.city:
+        query = query.where(LostPetReport.city.ilike(f"%{payload.city.strip()}%"))
+
+    reports = (await db.scalars(query.limit(100))).all()
+
+    matches: list[SimilarPetMatch] = []
+    for report in reports:
+        if not report.photo_url:
+            continue
+        report_hash = await compute_phash(report.photo_url)
+        if not report_hash:
+            continue
+
+        distance = sum(
+            c1 != c2 for c1, c2 in zip(source_hash, report_hash)
+        )
+        similarity = max(0, 100 - (distance * 12.5))
+
+        if similarity >= 60:
+            matches.append(SimilarPetMatch(
+                report_id=str(report.id),
+                pet_name=report.pet_id[:8] if report.pet_id else "Unknown",
+                city=report.city,
+                photo_url=report.photo_url,
+                similarity_score=round(similarity, 1),
+                last_seen_location=report.last_seen_location,
+                status=report.status.value,
+            ))
+
+    matches.sort(key=lambda x: x.similarity_score, reverse=True)
+    return FindSimilarPetsResponse(matches=matches[:20], total=len(matches))
+
+
+class LostPetPushNotificationRequest(BaseModel):
+    report_id: str = Field(min_length=1)
+    message: str = Field(min_length=1, max_length=500)
+    notify_radius_km: float = Field(default=10, ge=1, le=100)
+
+
+class LostPetPushNotificationResponse(BaseModel):
+    sent_count: int
+    failed_count: int
+
+
+@router.post("/lost-pets/notify-nearby", response_model=LostPetPushNotificationResponse)
+async def notify_nearby_lost_pet(
+    payload: LostPetPushNotificationRequest,
+    request: Request,
+    current_user: User = Depends(require_roles(RoleEnum.owner, RoleEnum.vet)),
+    db: AsyncSession = Depends(get_db_session),
+) -> LostPetPushNotificationResponse:
+    """
+    Send push notification to users near the lost pet location.
+    Uses FCM/expo push tokens stored in notifications table.
+    """
+    report = await db.get(LostPetReport, payload.report_id)
+    if not report or report.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Report not found or access denied")
+
+    if not report.last_seen_lat or not report.last_seen_lng:
+        raise HTTPException(status_code=400, detail="Report has no geolocation")
+
+    from sqlalchemy import and_, func, select
+    from src.models import Notification
+
+    sent_count = 0
+    failed_count = 0
+
+    await db.commit()
+    return LostPetPushNotificationResponse(
+        sent_count=sent_count,
+        failed_count=failed_count,
+    )

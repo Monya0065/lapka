@@ -560,6 +560,9 @@ class LostPetReport(Base):
         Index("idx_lost_pet_reports_city_status", "city", "status"),
         Index("idx_lost_pet_reports_owner_created", "owner_id", "created_at"),
         Index("idx_lost_pet_reports_pet_created", "pet_id", "created_at"),
+        Index("idx_lost_pet_reports_status_created", "status", "created_at"),
+        Index("idx_lost_pet_reports_geo", "last_seen_lat", "last_seen_lng"),
+        Index("idx_lost_pet_reports_promoted", "promotion_tier", "promoted_until"),
     )
 
 
