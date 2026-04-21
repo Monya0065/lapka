@@ -9,8 +9,6 @@ from src.models import Visit, PetOwnerLink
 
 
 _LAPKA_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
 :root {
     --lapka-blue: #2563eb;
     --lapka-gray: #374151;
@@ -21,7 +19,7 @@ _LAPKA_CSS = """
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-    font-family: 'Inter', Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 11pt;
     line-height: 1.6;
     color: var(--lapka-gray);
@@ -32,11 +30,6 @@ body {
 @page {
     size: A4;
     margin: 15mm 18mm;
-    @bottom-right {
-        content: "Lapka · " counter(page) " / " counter(pages);
-        font-size: 8pt;
-        color: #9ca3af;
-    }
 }
 
 .header {
@@ -65,15 +58,6 @@ body {
 .field-row { display: flex; margin: 5px 0; }
 .field-label { font-weight: 600; color: #6b7280; min-width: 120px; }
 .field-value { flex: 1; color: var(--lapka-gray); }
-
-.pet-photo {
-    width: 80px;
-    height: 80px;
-    background: var(--lapka-light);
-    border-radius: 8px;
-    display: inline-block;
-    vertical-align: top;
-}
 
 .grid-2col { display: flex; gap: 24px; }
 .grid-2col > div { flex: 1; }
@@ -105,9 +89,7 @@ def _build_visit_html(visit, pet, vet) -> str:
 <head>
 <meta charset="utf-8">
 <title>Протокол визита</title>
-<style>
-{_LAPKA_CSS}
-</style>
+<style>{_LAPKA_CSS}</style>
 </head>
 <body>
 <div class="header">
@@ -135,26 +117,77 @@ def _build_visit_html(visit, pet, vet) -> str:
   </div>
 </div>
 
-<div class="section">
-  <div class="section-title">Жалоба</div>
-  <p>{visit.chief_complaint or '—'}</p>
-</div>
+<div class="section"><div class="section-title">Жалоба</div><p>{visit.chief_complaint or '—'}</p></div>
+<div class="section"><div class="section-title">Осмотр</div><p>{visit.exam_findings or '—'}</p></div>
+<div class="section"><div class="section-title">Оценка</div><p>{visit.assessment_note or '—'}</p></div>
+<div class="section"><div class="section-title">План</div><p>{visit.plan_note or '—'}</p></div>
 
-<div class="section">
-  <div class="section-title">Осмотр</div>
-  <p>{visit.exam_findings or '—'}</p>
+<div class="footer">
+  <span>Создано: {created} · Lapka Veterinary System</span>
+  <span>Документ сгенерирован автоматически</span>
 </div>
+</body>
+</html>"""
 
-<div class="section">
-  <div class="section-title">Оценка</div>
-  <p>{visit.assessment_note or '—'}</p>
+
+def _build_passport_html(pet) -> str:
+    birth = pet.birth_date.strftime('%d.%m.%Y') if pet.birth_date else '—'
+    created = datetime.utcnow().strftime('%d.%m.%Y')
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Паспорт — {pet.name}</title>
+<style>{_LAPKA_CSS}</style>
+</head>
+<body>
+<div class="header">
+  <div><div class="doc-title">Ветеринарный паспорт</div><div class="doc-subtitle">Lapka Veterinary System</div></div>
+  <div class="doc-date">{created}</div>
 </div>
-
 <div class="section">
-  <div class="section-title">План</div>
-  <p>{visit.plan_note or '—'}</p>
+  <div class="section-title">Данные питомца</div>
+  <div class="field-row"><span class="field-label">Имя:</span><span class="field-value">{pet.name}</span></div>
+  <div class="field-row"><span class="field-label">Вид:</span><span class="field-value">{pet.species}</span></div>
+  <div class="field-row"><span class="field-label">Порода:</span><span class="field-value">{pet.breed or '—'}</span></div>
+  <div class="field-row"><span class="field-label">Пол:</span><span class="field-value">{pet.sex or '—'}</span></div>
+  <div class="field-row"><span class="field-label">Дата рождения:</span><span class="field-value">{birth}</span></div>
+  <div class="field-row"><span class="field-label">ID (Lapka):</span><span class="field-value">{pet.lapka_id}</span></div>
+  <div class="field-row"><span class="field-label">Чип:</span><span class="field-value">{pet.chip_id or '—'}</span></div>
 </div>
+<div class="footer">
+  <span>Создано: {created} · Lapka Veterinary System</span>
+  <span>Документ сгенерирован автоматически</span>
+</div>
+</body>
+</html>"""
 
+
+def _build_vaccine_html(pet, vaccine_list) -> str:
+    created = datetime.utcnow().strftime('%d.%m.%Y')
+    rows_html = ""
+    for v in vaccine_list:
+        next_due = v.next_due_date.strftime('%d.%m.%Y') if v.next_due_date else '—'
+        rows_html += f"<tr><td>{v.vaccine_name}</td><td>{v.administered_at.strftime('%d.%m.%Y')}</td><td>{next_due}</td></tr>"
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Сертификат вакцинации — {pet.name}</title>
+<style>{_LAPKA_CSS}</style>
+</head>
+<body>
+<div class="header">
+  <div><div class="doc-title">Сертификат вакцинации</div><div class="doc-subtitle">Питомец: {pet.name}</div></div>
+  <div class="doc-date">{created}</div>
+</div>
+<div class="section">
+  <div class="section-title">Записи о вакцинации</div>
+  <table>
+    <tr><th>Вакцина</th><th>Дата</th><th>Следующая</th></tr>
+    {rows_html or '<tr><td colspan="3">Нет записей</td></tr>'}
+  </table>
+</div>
 <div class="footer">
   <span>Создано: {created} · Lapka Veterinary System</span>
   <span>Документ сгенерирован автоматически</span>
@@ -169,7 +202,7 @@ async def generate_visit_protocol_pdf(
     visit_id: uuid.UUID,
 ) -> bytes:
     from sqlalchemy import select
-    from src.models import Visit, MasterPet, User
+    from src.models import MasterPet, User
     from src.repositories import get_visit
 
     visit = await get_visit(db, visit_id)
@@ -183,53 +216,11 @@ async def generate_visit_protocol_pdf(
     vet = await db.scalar(select(User).where(User.id == visit.vet_id))
 
     html_content = _build_visit_html(visit, pet, vet)
-
     try:
         import weasyprint
-        pdf_bytes = weasyprint.HTML(string=html_content).write_pdf()
-        return pdf_bytes
+        return weasyprint.HTML(string=html_content).write_pdf()
     except ImportError:
         return html_content.encode('utf-8')
-
-
-def _build_passport_html(pet) -> str:
-    birth = pet.birth_date.strftime('%d.%m.%Y') if pet.birth_date else '—'
-    created = datetime.utcnow().strftime('%d.%m.%Y')
-    return f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Паспорт — {pet.name}</title>
-<style>
-{_LAPKA_CSS}
-</style>
-</head>
-<body>
-<div class="header">
-  <div>
-    <div class="doc-title">Ветеринарный паспорт</div>
-    <div class="doc-subtitle">Lapka Veterinary System</div>
-  </div>
-  <div class="doc-date">{created}</div>
-</div>
-
-<div class="section">
-  <div class="section-title">Данные питомца</div>
-  <div class="field-row"><span class="field-label">Имя:</span><span class="field-value">{pet.name}</span></div>
-  <div class="field-row"><span class="field-label">Вид:</span><span class="field-value">{pet.species}</span></div>
-  <div class="field-row"><span class="field-label">Порода:</span><span class="field-value">{pet.breed or '—'}</span></div>
-  <div class="field-row"><span class="field-label">Пол:</span><span class="field-value">{pet.sex or '—'}</span></div>
-  <div class="field-row"><span class="field-label">Дата рождения:</span><span class="field-value">{birth}</span></div>
-  <div class="field-row"><span class="field-label">ID (Lapka):</span><span class="field-value">{pet.lapka_id}</span></div>
-  <div class="field-row"><span class="field-label">Чип:</span><span class="field-value">{pet.chip_id or '—'}</span></div>
-</div>
-
-<div class="footer">
-  <span>Создано: {created} · Lapka Veterinary System</span>
-  <span>Документ сгенерирован автоматически</span>
-</div>
-</body>
-</html>"""
 
 
 async def generate_pet_passport_pdf(
@@ -248,54 +239,11 @@ async def generate_pet_passport_pdf(
         )
 
     html_content = _build_passport_html(pet)
-
     try:
         import weasyprint
-        pdf_bytes = weasyprint.HTML(string=html_content).write_pdf()
-        return pdf_bytes
+        return weasyprint.HTML(string=html_content).write_pdf()
     except ImportError:
         return html_content.encode('utf-8')
-
-
-def _build_vaccine_html(pet, vaccine_list) -> str:
-    created = datetime.utcnow().strftime('%d.%m.%Y')
-    rows_html = ""
-    for v in vaccine_list:
-        next_due = v.next_due_date.strftime('%d.%m.%Y') if v.next_due_date else '—'
-        rows_html += f"<tr><td>{v.vaccine_name}</td><td>{v.administered_at.strftime('%d.%m.%Y')}</td><td>{next_due}</td></tr>"
-
-    return f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Сертификат вакцинации — {pet.name}</title>
-<style>
-{_LAPKA_CSS}
-</style>
-</head>
-<body>
-<div class="header">
-  <div>
-    <div class="doc-title">Сертификат вакцинации</div>
-    <div class="doc-subtitle">Питомец: {pet.name}</div>
-  </div>
-  <div class="doc-date">{created}</div>
-</div>
-
-<div class="section">
-  <div class="section-title">Записи о вакцинации</div>
-  <table>
-    <tr><th>Вакцина</th><th>Дата</th><th>Следующая</th></tr>
-    {rows_html or '<tr><td colspan="3">Нет записей</td></tr>'}
-  </table>
-</div>
-
-<div class="footer">
-  <span>Создано: {created} · Lapka Veterinary System</span>
-  <span>Документ сгенерирован автоматически</span>
-</div>
-</body>
-</html>"""
 
 
 async def generate_vaccine_certificate_pdf(
@@ -316,10 +264,8 @@ async def generate_vaccine_certificate_pdf(
     vaccine_list = list(vaccines)
 
     html_content = _build_vaccine_html(pet, vaccine_list)
-
     try:
         import weasyprint
-        pdf_bytes = weasyprint.HTML(string=html_content).write_pdf()
-        return pdf_bytes
+        return weasyprint.HTML(string=html_content).write_pdf()
     except ImportError:
         return html_content.encode('utf-8')
