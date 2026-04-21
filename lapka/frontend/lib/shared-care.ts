@@ -8,32 +8,32 @@ export const SHARED_CARE_SCOPES = [
   { id: 'care', label: 'Уход и routines' },
 ];
 
-function isBrowser() {
+function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
-function parseStoredValue(value) {
+function parseStoredValue(value: unknown): Record<string, unknown>[] {
   try {
-    const parsed = JSON.parse(value);
+    const parsed = JSON.parse(String(value));
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-export function loadSharedCareTeam() {
+export function loadSharedCareTeam(): Record<string, unknown>[] {
   if (!isBrowser()) return [];
   return parseStoredValue(window.localStorage.getItem(STORAGE_KEY));
 }
 
-export function saveSharedCareTeam(rows) {
+export function saveSharedCareTeam(rows: Record<string, unknown>[]): void {
   if (!isBrowser()) return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
 }
 
-export function addSharedCareMember(payload) {
+export function addSharedCareMember(payload: Record<string, unknown>): Record<string, unknown> {
   const current = loadSharedCareTeam();
-  const row = {
+  const row: Record<string, unknown> = {
     id: `care-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     full_name: String(payload.full_name || '').trim(),
     email: String(payload.email || '').trim().toLowerCase(),
@@ -48,14 +48,22 @@ export function addSharedCareMember(payload) {
   return row;
 }
 
-export function removeSharedCareMember(memberId) {
+export function removeSharedCareMember(memberId: string): Record<string, unknown>[] {
   const next = loadSharedCareTeam().filter((row) => row.id !== memberId);
   saveSharedCareTeam(next);
   return next;
 }
 
-export function summarizeSharedCare(rows = [], referrals = []) {
-  const family = rows.filter((row) => /сем|family|род/i.test(row.relation || '')).length;
+export function summarizeSharedCare(
+  rows: Record<string, unknown>[] = [],
+  referrals: Record<string, unknown>[] = []
+): {
+  family: number;
+  caregivers: number;
+  activeInvites: number;
+  connected: number;
+} {
+  const family = rows.filter((row) => /сем|family|род/i.test(String(row.relation || ''))).length;
   const caregivers = rows.length;
   const activeInvites = referrals.filter((row) => row.status === 'sent').length;
   const connected = referrals.filter((row) => row.status === 'registered').length;
