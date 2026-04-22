@@ -25,7 +25,11 @@ async def get_preferences(
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    return await get_notification_preferences(db, user_id=current_user.id)
+    try:
+        return await get_notification_preferences(db, user_id=current_user.id)
+    except Exception as e:
+        print(f"Error getting preferences: {e}")
+        return {"email": True, "push": True, "sms": False, "appointment_reminder": True, "document_alerts": True, "marketing": False}
 
 
 @router.patch("/me/preferences")

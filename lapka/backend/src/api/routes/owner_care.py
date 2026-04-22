@@ -95,6 +95,21 @@ async def list_owner_pet_visits(
         return []
 
 
+@router.get("/visits", tags=VISITS_TAGS)
+async def list_owner_visits(
+    limit: int = Query(default=50),
+    offset: int = Query(default=0),
+    current_user=Depends(require_roles(RoleEnum.owner)),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[dict]:
+    try:
+        from src.repositories.visits import list_visits_for_owner
+        visits = await list_visits_for_owner(db, owner_user_id=current_user.id, limit=limit, offset=offset)
+        return [{"id": str(v.id), "pet_id": str(v.pet_id), "clinic_id": str(v.clinic_id), "status": v.status.value if v.status else None, "created_at": v.created_at.isoformat() if v.created_at else None} for v in visits]
+    except Exception:
+        return []
+
+
 @router.get("/visits/{visit_id}", tags=VISITS_TAGS)
 async def get_owner_visit(
     visit_id: str,
