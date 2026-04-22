@@ -73,12 +73,12 @@ export default function AIWidget({
         return;
       }
 
-      const triagePayload = await apiRequest('/api/v1/medical/triage', {
+      const triagePayload = await apiRequest('/api/v1/ai/triage', {
         method: 'POST',
         body: {
           symptom_text: input,
-          symptom_ids: selectedSymptoms.map((item) => item.id),
-          symptom_names: selectedSymptoms.map((item) => item.name),
+          selected_symptoms_ids: selectedSymptoms.map((item) => String(item.id)),
+          severity_indicators: [],
         },
       });
 
