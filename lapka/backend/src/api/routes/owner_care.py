@@ -216,13 +216,17 @@ async def get_owner_inpatient_digest(
 
 @router.get("/reminders", tags=REMINDERS_TAGS)
 async def list_owner_reminders(
+    upcoming_days: int = Query(default=90),
+    limit: int = Query(default=100),
     current_user=Depends(require_roles(RoleEnum.owner)),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[dict]:
     try:
         from src.repositories.reminders import list_reminders_by_user_id
-        return await list_reminders_by_user_id(db, current_user.id)
-    except Exception:
+        reminders = await list_reminders_by_user_id(db, current_user.id, limit=limit)
+        return [{"id": str(r.id), "pet_id": str(r.pet_id), "title": r.title, "due_at": r.due_at.isoformat() if r.due_at else None, "reminder_type": r.reminder_type.value if r.reminder_type else None, "is_done": r.is_done} for r in reminders]
+    except Exception as e:
+        print(f"Error listing reminders: {e}")
         return []
 
 

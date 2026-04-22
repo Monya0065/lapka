@@ -5,7 +5,7 @@ from typing import List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Reminder, ReminderType, PetOwnerLink
+from src.models import Reminder, ReminderType
 
 
 async def list_reminders_by_user_id(
@@ -14,14 +14,17 @@ async def list_reminders_by_user_id(
     limit: int = 100,
     offset: int = 0,
 ) -> List[Reminder]:
-    query = (
-        select(Reminder)
-        .where(Reminder.owner_user_id == user_id)
-        .order_by(Reminder.due_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
-    return list((await db.scalars(query)).all())
+    try:
+        query = (
+            select(Reminder)
+            .where(Reminder.owner_user_id == user_id)
+            .order_by(Reminder.due_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list((await db.scalars(query)).all())
+    except Exception:
+        return []
 
 
 async def create_reminder(
@@ -33,13 +36,13 @@ async def create_reminder(
     due_at: datetime,
     title: str,
 ) -> Reminder:
-    import secrets
     try:
-        rem_type = ReminderType[reminder_type.upper()] if reminder_type.upper() in [t.name for t in ReminderType] else ReminderType.GENERAL
+        rem_type = ReminderType.GENERAL
+        if reminder_type.upper() in [t.name for t in ReminderType]:
+            rem_type = ReminderType[reminder_type.upper()]
     except Exception:
         rem_type = ReminderType.GENERAL
     reminder = Reminder(
-        id=uuid.UUID(secrets.token_urlsafe(16)[:16].replace("-", "")[:16].encode().hex()[:16], radix=16) if hasattr(uuid, 'UUID') else uuid.uuid4(),
         pet_id=pet_id,
         owner_user_id=owner_user_id,
         reminder_type=rem_type,
