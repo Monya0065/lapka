@@ -180,26 +180,30 @@ async def list_vpn_profiles(
     db: AsyncSession = Depends(get_db_session),
 ) -> list[VpnProfileOut]:
     """List user's VPN profiles."""
-    rows = await db.execute(
-        text("""
-            SELECT id, user_id, device_name, wireguard_config, created_at, is_active
-            FROM vpn_profiles
-            WHERE user_id = :user_id
-            ORDER BY created_at DESC
-        """),
-        {"user_id": str(current_user.id)},
-    )
-    profiles = []
-    for row in rows:
-        profiles.append(VpnProfileOut(
-            id=str(row.id),
-            user_id=row.user_id,
-            device_name=row.device_name,
-            wireguard_config=row.wireguard_config,
-            created_at=row.created_at.isoformat(),
-            is_active=row.is_active,
-        ))
-    return profiles
+    try:
+        rows = await db.execute(
+            text("""
+                SELECT id, user_id, device_name, wireguard_config, created_at, is_active
+                FROM vpn_profiles
+                WHERE user_id = :user_id
+                ORDER BY created_at DESC
+            """),
+            {"user_id": str(current_user.id)},
+        )
+        profiles = []
+        for row in rows:
+            profiles.append(VpnProfileOut(
+                id=str(row.id),
+                user_id=row.user_id,
+                device_name=row.device_name,
+                wireguard_config=row.wireguard_config,
+                created_at=row.created_at.isoformat(),
+                is_active=row.is_active,
+            ))
+        return profiles
+    except Exception as e:
+        print(f"Error listing VPN profiles: {e}")
+        return []
 
 
 class CreateProfileRequest(BaseModel):
