@@ -8,6 +8,7 @@ from src.repositories.appointments import (
     list_appointments_for_clinic,
     list_appointments_for_owner,
     update_appointment,
+    add_appointment,
 )
 from src.repositories.audit import (
     count_audit_events,

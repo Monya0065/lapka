@@ -47,32 +47,50 @@ async def list_owner_appointments(
 
 @router.post("/appointments", tags=APPOINTMENTS_TAGS, status_code=status.HTTP_201_CREATED)
 async def create_owner_appointment(
-    pet_id: str,
-    vet_id: str,
-    clinic_id: str,
-    scheduled_at: datetime,
-    reason: str | None = None,
+    body: dict,
     current_user=Depends(require_roles(RoleEnum.owner)),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    from src.repositories.pets import get_pet
-    from src.repositories.appointments import create_appointment
+    from pydantic import BaseModel
+    from src.services.appointments import AppointmentService
 
-    pet_uuid = uuid.UUID(pet_id)
+    class CreateAppointmentBody(BaseModel):
+        pet_id: str
+        vet_id: str
+        clinic_id: str
+        scheduled_at: datetime
+        reason: str | None = None
+        service_type: str = "checkup"
+
+    try:
+        data = CreateAppointmentBody(**body)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    pet_uuid = uuid.UUID(data.pet_id)
     await require_owner_of_pet(db, owner_user_id=current_user.id, pet_id=pet_uuid)
-    pet = await get_pet(db, pet_uuid)
-    if not pet:
-        raise HTTPException(status_code=404, detail="Pet not found")
-    appointment = await create_appointment(
-        db,
-        pet_id=pet_uuid,
-        vet_id=uuid.UUID(vet_id),
-        clinic_id=uuid.UUID(clinic_id),
-        scheduled_at=scheduled_at,
-        reason=reason,
-        owner_user_id=current_user.id,
-    )
-    return appointment
+
+    service = AppointmentService(db)
+    try:
+        appointment = await service.create_appointment(
+            pet_id=pet_uuid,
+            vet_id=uuid.UUID(data.vet_id),
+            clinic_id=uuid.UUID(data.clinic_id),
+            scheduled_at=data.scheduled_at,
+            service_type=data.service_type,
+            reason=data.reason,
+            owner_user_id=current_user.id,
+        )
+        return {
+            "id": str(appointment.id),
+            "pet_id": str(appointment.pet_id),
+            "clinic_id": str(appointment.clinic_id),
+            "vet_id": str(appointment.vet_id),
+            "status": appointment.status.value,
+            "start_at": appointment.start_at.isoformat() if appointment.start_at else None,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/pets/{pet_id}/visits", tags=VISITS_TAGS)

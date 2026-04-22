@@ -23,7 +23,7 @@ async def list_appointments_by_pet_ids(
     query = (
         select(Appointment)
         .where(Appointment.pet_id.in_(pet_ids))
-        .order_by(Appointment.scheduled_at.desc())
+        .order_by(Appointment.start_at.desc())
         .limit(limit)
         .offset(offset)
     )
@@ -36,17 +36,18 @@ async def create_appointment(
     pet_id: uuid.UUID,
     vet_id: uuid.UUID,
     clinic_id: uuid.UUID,
-    scheduled_at: datetime,
-    reason: str | None = None,
     owner_user_id: uuid.UUID | None = None,
+    start_at: datetime,
+    reason: str | None = None,
 ) -> Appointment:
     import secrets
     appointment = Appointment(
-        id=uuid.UUID(secrets.token_urlsafe(16)[:16].replace("-", "")[:16].encode().hex()[:16], radix=16) if hasattr(uuid, 'UUID') else uuid.uuid4(),
+        id=uuid.UUID(int=int.from_bytes(secrets.token_bytes(8), "big")) if hasattr(uuid, 'UUID') else uuid.uuid4(),
         pet_id=pet_id,
         vet_id=vet_id,
         clinic_id=clinic_id,
-        scheduled_at=scheduled_at,
+        owner_user_id=owner_user_id,
+        start_at=start_at,
         reason=reason,
         status=AppointmentStatus.PENDING,
         appointment_type_id=None,
@@ -84,11 +85,11 @@ async def list_appointments(
     if status:
         conditions.append(Appointment.status == status)
     if from_date:
-        conditions.append(Appointment.scheduled_at >= from_date)
+        conditions.append(Appointment.start_at >= from_date)
     if to_date:
-        conditions.append(Appointment.scheduled_at <= to_date)
+        conditions.append(Appointment.start_at <= to_date)
     
-    query = select(Appointment).order_by(Appointment.scheduled_at.desc())
+    query = select(Appointment).order_by(Appointment.start_at.desc())
     
     if conditions:
         query = query.where(and_(*conditions))
@@ -111,7 +112,7 @@ async def list_appointments_for_owner(
     query = (
         select(Appointment)
         .where(Appointment.pet_id.in_(pet_ids_subquery))
-        .order_by(Appointment.scheduled_at.desc())
+        .order_by(Appointment.start_at.desc())
         .limit(limit)
         .offset(offset)
     )
@@ -130,14 +131,14 @@ async def list_appointments_for_clinic(
     conditions = [Appointment.clinic_id == clinic_id]
     
     if from_date:
-        conditions.append(Appointment.scheduled_at >= from_date)
+        conditions.append(Appointment.start_at >= from_date)
     if to_date:
-        conditions.append(Appointment.scheduled_at <= to_date)
+        conditions.append(Appointment.start_at <= to_date)
     
     query = (
         select(Appointment)
         .where(and_(*conditions))
-        .order_by(Appointment.scheduled_at.asc())
+        .order_by(Appointment.start_at.asc())
         .limit(limit)
         .offset(offset)
     )
@@ -163,7 +164,7 @@ async def count_appointments(
     return int((await db.scalar(query)) or 0)
 
 
-async def create_appointment(db: AsyncSession, appointment: Appointment) -> Appointment:
+async def add_appointment(db: AsyncSession, appointment: Appointment) -> Appointment:
     db.add(appointment)
     await db.flush()
     await db.refresh(appointment)
@@ -197,8 +198,8 @@ async def get_upcoming_appointments_for_clinic(
         .where(
             and_(
                 Appointment.clinic_id == clinic_id,
-                Appointment.scheduled_at >= now,
-                Appointment.scheduled_at <= end_date,
+                Appointment.start_at >= now,
+                Appointment.start_at <= end_date,
                 Appointment.status.in_([
                     AppointmentStatus.scheduled,
                     AppointmentStatus.confirmed,
@@ -206,7 +207,7 @@ async def get_upcoming_appointments_for_clinic(
                 ]),
             )
         )
-        .order_by(Appointment.scheduled_at.asc())
+        .order_by(Appointment.start_at.asc())
         .limit(limit)
     )
     return list((await db.scalars(query)).all())

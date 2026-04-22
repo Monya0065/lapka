@@ -9,6 +9,7 @@ from src.models import Appointment, AppointmentStatus, Visit, VisitStatus
 from src.repositories import (
     count_appointments,
     create_appointment as repo_create_appointment,
+    add_appointment as repo_add_appointment,
     delete_appointment as repo_delete_appointment,
     get_appointment as repo_get_appointment,
     list_appointments,
@@ -71,7 +72,8 @@ class AppointmentService:
         vet_id: uuid.UUID,
         scheduled_at: datetime,
         service_type: str,
-        **kwargs,
+        owner_user_id: uuid.UUID,
+        reason: str | None = None,
     ) -> Appointment:
         existing = await list_appointments(
             self.db,
@@ -93,11 +95,16 @@ class AppointmentService:
             pet_id=pet_id,
             clinic_id=clinic_id,
             vet_id=vet_id,
-            scheduled_at=scheduled_at,
+            owner_user_id=owner_user_id,
+            start_at=scheduled_at,
             service_type=service_type,
-            **kwargs,
+            service_name=service_type or "clinic_visit",
+            visit_type="clinic_visit",
+            flow_stage="scheduled",
+            urgency_level="routine",
+            protocol_status="not_started",
         )
-        return await repo_create_appointment(self.db, appointment)
+        return await repo_add_appointment(self.db, appointment)
 
     async def update_appointment_status(
         self,
