@@ -30,6 +30,7 @@ from src.api.routes import (
     platform_ai,
     protocols,
     public_booking,
+    public_care_guides,
     public_links,
     privacy_pack,
     reminders,
@@ -65,6 +66,7 @@ api_router.include_router(patient_search.router)
 api_router.include_router(platform_ai.router)
 api_router.include_router(audit.router)
 api_router.include_router(public_links.router)
+api_router.include_router(public_care_guides.router)
 api_router.include_router(pharmacy_inventory.router)
 api_router.include_router(protocols.router)
 api_router.include_router(appointments.router)
