@@ -20,4 +20,4 @@ def _script_dir() -> ScriptDirectory:
 
 def test_alembic_head_is_latest():
     script = _script_dir()
-    assert script.get_current_head() == "039_lp_hotspot_notif"
+    assert script.get_current_head() == "042_vpn_webhook_unique_idx"

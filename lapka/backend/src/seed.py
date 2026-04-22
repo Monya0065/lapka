@@ -1967,8 +1967,9 @@ async def _seed_vpn_mvp_demo(session, *, owner_user_id: uuid.UUID) -> None:
     await session.execute(
         text(
             """
-            INSERT INTO vpn_webhook_events (provider, event_id, checkout_id, status, amount_rub, created_at)
+            INSERT INTO vpn_webhook_events (id, provider, event_id, checkout_id, status, amount_rub, created_at)
             VALUES (
+                gen_random_uuid(),
                 'yookassa',
                 'lapka_seed_vpn_evt_1',
                 'lapka_seed_vpn_checkout_1',
