@@ -2460,7 +2460,7 @@ async def seed() -> None:
             "parrot": ["Волнистый попугай", "Корелла"],
         }
 
-        pet_assignments: list[User] = [owner_main, owner_main, owner_main] + owner_users[1:]
+        pet_assignments: list[User] = [owner_main, owner_main] + owner_users[1:]
         owner_pet_count = {owner.id: 0 for owner in owner_users}
         for assigned_owner in pet_assignments:
             owner_pet_count[assigned_owner.id] += 1
