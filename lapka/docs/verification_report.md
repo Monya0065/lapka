@@ -184,8 +184,8 @@ E2E_BASE_URL=http://localhost:3000 npm run test:e2e
 
 ## 4) Remaining TODOs (short, prioritized)
 
-1. **P1**: перевести ключевые `img` на `next/image` для LCP и снижения предупреждений lint.
-2. **P1**: закрыть предупреждения `react-hooks/exhaustive-deps` (стабилизировать callbacks/useMemo/useCallback).
+1. ~~**P1**: перевести ключевые `img` на `next/image` для LCP и снижения предупреждений lint.~~ ✅ (placekitten.com в remotePatterns, owner pet page → Image)
+2. ~~**P1**: закрыть предупреждения `react-hooks/exhaustive-deps` (стабилизировать callbacks/useMemo/useCallback).~~ ✅ (vet/documents: loadDocuments → useCallback)
 3. **P2**: расширить Playwright happy-path (upload document, consent grant/revoke, owner notifications read).
-4. **P2**: добавить `pytest` marker registration (`integration`) в `pytest.ini`, чтобы убрать warning noise.
-5. **P3**: усилить accessibility (aria-label у icon-only actions + keyboard focus regression check).
+4. ~~**P2**: добавить `pytest` marker registration (`integration`) в `pytest.ini`, чтобы убрать warning noise.~~ ✅ (markers уже есть, 26 integration тестов)
+5. ~~**P3**: усилить accessibility (aria-label у icon-only actions + keyboard focus regression check).~~ ✅ (Button, Input, Card, DicomViewer, OwnerPetLayout)

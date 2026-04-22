@@ -20,7 +20,7 @@ export default function VetDocumentsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  async function loadDocuments() {
+  const loadDocuments = useCallback(async () => {
     if (!clinicId) return;
     setLoadingDocs(true);
     try {
@@ -32,11 +32,11 @@ export default function VetDocumentsPage() {
     } finally {
       setLoadingDocs(false);
     }
-  }
+  }, [clinicId]);
 
   useEffect(() => {
     loadDocuments();
-  }, [clinicId]);
+  }, [loadDocuments]);
 
   const typeOptions = useMemo(
     () => [

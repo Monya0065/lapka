@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import Card from '@/components/ui/Card';
@@ -374,10 +375,12 @@ export default function OwnerPetProfilePage() {
             <div className="grid gap-8 lg:grid-cols-[260px_1fr] xl:grid-cols-[300px_1fr]">
               <div className="space-y-4">
                 <div className="relative aspect-square overflow-hidden rounded-3xl border-2 border-lapka-200 bg-gradient-to-br from-lapka-50 to-white shadow-soft">
-                  <img
+                  <Image
                     src={pet.photo_url || `https://placekitten.com/400/400?text=${encodeURIComponent(pet.name || 'Pet')}`}
                     alt={pet.name || 'Pet'}
-                    className="h-full w-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="300px"
                   />
                 </div>
                 <input
