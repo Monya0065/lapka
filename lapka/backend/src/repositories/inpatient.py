@@ -5,11 +5,44 @@ from typing import List, Optional
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import InpatientStay, InpatientStatus
+from src.models import InpatientStay, InpatientStatus, PetOwnerLink
 
 
 async def get_inpatient_stay(db: AsyncSession, stay_id: uuid.UUID) -> InpatientStay | None:
     return await db.scalar(select(InpatientStay).where(InpatientStay.id == stay_id))
+
+
+async def list_inpatient_stays_by_user_id(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    limit: int = 100,
+    offset: int = 0,
+) -> List[InpatientStay]:
+    pet_ids_subquery = (
+        select(PetOwnerLink.pet_id)
+        .where(PetOwnerLink.user_id == user_id)
+    )
+    query = (
+        select(InpatientStay)
+        .where(InpatientStay.pet_id.in_(pet_ids_subquery))
+        .order_by(InpatientStay.admitted_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list((await db.scalars(query)).all())
+
+
+async def get_inpatient_digest_for_user(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+) -> dict:
+    stays = await list_inpatient_stays_by_user_id(db, user_id, limit=10)
+    active = [s for s in stays if s.status == InpatientStatus.ACTIVE]
+    return {
+        "active_count": len(active),
+        "total_stays": len(stays),
+        "recent_stays": [{"id": str(s.id), "pet_id": str(s.pet_id), "status": s.status.value} for s in stays[:5]],
+    }
 
 
 async def list_inpatient_stays(

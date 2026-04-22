@@ -12,6 +12,19 @@ async def get_visit(db: AsyncSession, visit_id: uuid.UUID) -> Visit | None:
     return await db.scalar(select(Visit).where(Visit.id == visit_id))
 
 
+async def get_visit_by_id(db: AsyncSession, visit_id: uuid.UUID) -> Visit | None:
+    return await get_visit(db, visit_id)
+
+
+async def list_visits_by_pet_id(
+    db: AsyncSession,
+    pet_id: uuid.UUID,
+    limit: int = 50,
+    offset: int = 0,
+) -> List[Visit]:
+    return await list_visits_for_pet(db, pet_id=pet_id, limit=limit, offset=offset)
+
+
 async def list_visits(
     db: AsyncSession,
     *,

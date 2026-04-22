@@ -22,6 +22,7 @@ from src.api.routes import (
     medical_engine,
     mvp_boost,
     notifications,
+    owner_care,
     patient_search,
     pets,
     places,
@@ -59,6 +60,7 @@ api_router.include_router(market.router)
 api_router.include_router(medical_engine.router)
 api_router.include_router(mvp_boost.router)
 api_router.include_router(notifications.router)
+api_router.include_router(owner_care.router)
 api_router.include_router(patient_search.router)
 api_router.include_router(platform_ai.router)
 api_router.include_router(audit.router)

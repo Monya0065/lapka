@@ -12,6 +12,44 @@ async def get_document(db: AsyncSession, document_id: uuid.UUID) -> Document | N
     return await db.scalar(select(Document).where(Document.id == document_id))
 
 
+async def list_documents_by_user_id(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    limit: int = 100,
+    offset: int = 0,
+) -> List[Document]:
+    query = (
+        select(Document)
+        .where(Document.uploaded_by == user_id)
+        .order_by(Document.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list((await db.scalars(query)).all())
+
+
+async def create_document_metadata(
+    db: AsyncSession,
+    *,
+    pet_id: uuid.UUID,
+    owner_user_id: uuid.UUID,
+    doc_type: str,
+    title: str,
+) -> Document:
+    import secrets
+    document = Document(
+        id=uuid.UUID(secrets.token_urlsafe(16)[:16].replace("-", "")[:16].encode().hex()[:16], radix=16) if hasattr(uuid, 'UUID') else uuid.uuid4(),
+        pet_id=pet_id,
+        uploaded_by=owner_user_id,
+        doc_type=doc_type,
+        title=title,
+    )
+    db.add(document)
+    await db.flush()
+    await db.refresh(document)
+    return document
+
+
 async def list_documents(
     db: AsyncSession,
     *,

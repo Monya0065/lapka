@@ -7,6 +7,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import ConsentGrant, ConsentScope
 
 
+async def list_consents_by_user_id(db: AsyncSession, owner_user_id: uuid.UUID) -> list[ConsentGrant]:
+    rows = await db.scalars(select(ConsentGrant).where(ConsentGrant.owner_user_id == owner_user_id))
+    return list(rows)
+
+
+async def create_consent_by_scope(
+    db: AsyncSession,
+    *,
+    pet_id: uuid.UUID,
+    owner_user_id: uuid.UUID,
+    clinic_id: uuid.UUID,
+    scope: str,
+) -> ConsentGrant:
+    try:
+        scope_level = ConsentScope[scope.upper()] if scope.upper() in [s.name for s in ConsentScope] else ConsentScope.BASIC_MEDICAL
+    except Exception:
+        scope_level = ConsentScope.BASIC_MEDICAL
+    return await create_consent(
+        db,
+        pet_id=pet_id,
+        owner_user_id=owner_user_id,
+        clinic_id=clinic_id,
+        scope_level=scope_level,
+        expires_at=None,
+    )
+
+
 async def list_consents_for_owner(db: AsyncSession, owner_user_id: uuid.UUID) -> list[ConsentGrant]:
     rows = await db.scalars(select(ConsentGrant).where(ConsentGrant.owner_user_id == owner_user_id))
     return list(rows)

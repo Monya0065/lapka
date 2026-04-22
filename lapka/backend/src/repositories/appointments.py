@@ -12,6 +12,52 @@ async def get_appointment(db: AsyncSession, appointment_id: uuid.UUID) -> Appoin
     return await db.scalar(select(Appointment).where(Appointment.id == appointment_id))
 
 
+async def list_appointments_by_pet_ids(
+    db: AsyncSession,
+    pet_ids: list[uuid.UUID],
+    limit: int = 100,
+    offset: int = 0,
+) -> List[Appointment]:
+    if not pet_ids:
+        return []
+    query = (
+        select(Appointment)
+        .where(Appointment.pet_id.in_(pet_ids))
+        .order_by(Appointment.scheduled_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list((await db.scalars(query)).all())
+
+
+async def create_appointment(
+    db: AsyncSession,
+    *,
+    pet_id: uuid.UUID,
+    vet_id: uuid.UUID,
+    clinic_id: uuid.UUID,
+    scheduled_at: datetime,
+    reason: str | None = None,
+    owner_user_id: uuid.UUID | None = None,
+) -> Appointment:
+    import secrets
+    appointment = Appointment(
+        id=uuid.UUID(secrets.token_urlsafe(16)[:16].replace("-", "")[:16].encode().hex()[:16], radix=16) if hasattr(uuid, 'UUID') else uuid.uuid4(),
+        pet_id=pet_id,
+        vet_id=vet_id,
+        clinic_id=clinic_id,
+        scheduled_at=scheduled_at,
+        reason=reason,
+        status=AppointmentStatus.PENDING,
+        appointment_type_id=None,
+        location_id=None,
+    )
+    db.add(appointment)
+    await db.flush()
+    await db.refresh(appointment)
+    return appointment
+
+
 async def list_appointments(
     db: AsyncSession,
     *,
